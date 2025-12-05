@@ -15,7 +15,7 @@ const API_URL = 'http://localhost:5000/auth/login';
 export const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [empresaId, setEmpresaId] = useState('');
+    const [empresaId, setEmpresaId] = useState('692e3daf42fe36202c44aa15');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { login, isAuthenticated } = useAuth();

@@ -9,6 +9,7 @@ import { appTheme } from './theme/theme'; // ⭐️ Importar o tema criado
 import { AuthProvider, useAuth } from './contexts/AuthContext'; // ⭐️ O contexto de autenticação
 import { MainLayout } from './layouts/MainLayout'; // ⭐️ O layout principal
 import { LoginPage } from './pages/LoginPage'; // ⭐️ A página de login
+import { ClientesPage } from './pages/ClientesPage';
 // import { DashboardPage } from './pages/DashboardPage'; // ⭐️ Crie esta página simples
 
 // -----------------------------------------------------------
@@ -45,7 +46,8 @@ const App = () => {
               <Route path="/dashboard" element={<h1>Dash Page Placeholder</h1>} />
               {/* <Route path="/dashboard" element={<DashboardPage />} /> */}
               {/* Adicione rotas placeholder aqui */}
-              <Route path="/clientes" element={<h1>Clientes Page Placeholder</h1>} />
+              {/* ⭐️ Rota Clientes REAL */}
+              <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/imoveis" element={<h1>Imóveis Page Placeholder</h1>} />
             </Route>
 
