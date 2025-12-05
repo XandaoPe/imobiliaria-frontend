@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'; // ⭐️ O cont
 import { MainLayout } from './layouts/MainLayout'; // ⭐️ O layout principal
 import { LoginPage } from './pages/LoginPage'; // ⭐️ A página de login
 import { ClientesPage } from './pages/ClientesPage';
+import { ImoveisPage } from './pages/ImoveisPage';
 // import { DashboardPage } from './pages/DashboardPage'; // ⭐️ Crie esta página simples
 
 // -----------------------------------------------------------
@@ -48,7 +49,7 @@ const App = () => {
               {/* Adicione rotas placeholder aqui */}
               {/* ⭐️ Rota Clientes REAL */}
               <Route path="/clientes" element={<ClientesPage />} />
-              <Route path="/imoveis" element={<h1>Imóveis Page Placeholder</h1>} />
+              <Route path="/imoveis" element={<ImoveisPage />} />
             </Route>
 
             {/* Rota para qualquer URL não mapeada */}
