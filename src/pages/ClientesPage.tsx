@@ -1,103 +1,155 @@
 // src/pages/ClientesPage.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Box, Typography, Button, CircularProgress, Alert, Paper } from '@mui/material';
-import { DataGrid, GridColDef, GridRowsProp, GridColumnVisibilityModel } from '@mui/x-data-grid'; // ⭐️ Importar GridColumnVisibilityModel
+import {
+    DataGrid,
+    GridColDef,
+    GridColumnVisibilityModel
+} from '@mui/x-data-grid';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import { ClienteFormModal } from '../components/ClienteFormModal';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { Cliente, normalizeCPF, normalizeStatus } from '../types/cliente'; // ⭐️ IMPORTE O TIPO UNIFICADO
 
 // ⚠️ Ajuste a URL base da sua API
 const API_URL = 'http://localhost:5000/clientes';
 
-// ⭐️ Interface para tipagem dos dados
-interface Cliente {
-    _id: string;
-    nome: string;
-    email: string;
-    telefone: string;
-    perfil: string; // Exemplo: Comprador, Locatário
-    // empresaId não será exibido, mas é usado no backend
-}
-
-// ⭐️ Definição das colunas para o DataGrid
-const columns: GridColDef[] = [
-    // ❌ A propriedade 'hide: true' foi removida daqui!
-    { field: '_id', headerName: 'ID', width: 90 },
-    { field: 'nome', headerName: 'Nome Completo', width: 250, editable: false },
-    { field: 'email', headerName: 'Email', width: 200, editable: false },
-    { field: 'telefone', headerName: 'Telefone', width: 150, editable: false },
-    { field: 'perfil', headerName: 'Tipo', width: 130, editable: false },
-    {
-        field: 'actions',
-        headerName: 'Ações',
-        type: 'actions',
-        width: 150,
-        getActions: (params) => [
-            // ⚠️ Aqui você adicionará botões de Editar e Excluir
-            <Button
-                key="edit" // Chave adicionada para melhor prática no React
-                color="primary"
-                size="small"
-                onClick={() => console.log('Editar:', params.row._id)}
-            >
-                Editar
-            </Button>,
-        ],
-    },
-];
+// ⭐️ REMOVA a interface Cliente local e use a importada
 
 export const ClientesPage = () => {
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // ⭐️ NOVO: Estado para controlar a visibilidade das colunas
+    const [openModal, setOpenModal] = useState(false);
+    const [clienteToEdit, setClienteToEdit] = useState<Cliente | null>(null);
+
     const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>({
-        // Oculta a coluna 'id' definindo seu valor como false
-        id: false,
+        _id: false,
+        cpf: false,
+        observacoes: false,
     });
 
+    const fetchClientes = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await axios.get(API_URL);
+
+            // ⭐️ Normaliza os dados recebidos do backend
+            const clientesNormalizados = response.data.map((cliente: any) => ({
+                ...cliente,
+                status: normalizeStatus(cliente.status || 'ATIVO'),
+                cpf: normalizeCPF(cliente.cpf || ''),
+            }));
+
+            setClientes(clientesNormalizados as Cliente[]);
+            setError(null);
+        } catch (err: any) {
+            let errorMessage = 'Falha ao carregar clientes.';
+            if (err.response) {
+                errorMessage = err.response.data?.message || errorMessage;
+            }
+            setError(errorMessage);
+            console.error("Erro ao buscar clientes:", err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        // A requisição GET para /clientes será multitenant
-        // O backend usará o token JWT (configurado no AuthContext) para 
-        // buscar APENAS os clientes da empresa do usuário logado.
-        const fetchClientes = async () => {
-            try {
-                setLoading(true);
-                // O Axios já está configurado globalmente no AuthContext para enviar o header Authorization
-                const response = await axios.get(API_URL);
-
-                // ⭐️ Ajuste se a resposta estiver aninhada (ex: response.data.data)
-                setClientes(response.data as Cliente[]);
-
-            } catch (err: any) {
-                let errorMessage = 'Falha ao carregar clientes.';
-                if (err.response && err.response.status === 401) {
-                    errorMessage = 'Sessão expirada ou acesso negada. Faça login novamente.';
-                } else if (err.response) {
-                    errorMessage = err.response.data?.message || errorMessage;
-                }
-                setError(errorMessage);
-                console.error("Erro ao buscar clientes:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchClientes();
-    }, []);
+    }, [fetchClientes]);
+
+    const handleOpenCreate = () => {
+        setClienteToEdit(null);
+        setOpenModal(true);
+    };
+
+    const handleOpenEdit = (cliente: Cliente) => {
+        setClienteToEdit(cliente);
+        setOpenModal(true);
+    };
+
+    const handleClose = () => {
+        setOpenModal(false);
+        setClienteToEdit(null);
+    };
+
+    const handleDelete = async (clienteId: string, nome: string) => {
+        if (!window.confirm(`Tem certeza que deseja excluir o cliente ${nome}?`)) {
+            return;
+        }
+
+        try {
+            await axios.delete(`${API_URL}/${clienteId}`);
+            fetchClientes();
+        } catch (err: any) {
+            alert(err.response?.data?.message || 'Erro ao excluir cliente.');
+        }
+    };
+
+    const columns: GridColDef[] = [
+        { field: '_id', headerName: 'ID', width: 90 },
+        { field: 'nome', headerName: 'Nome Completo', width: 250, editable: false },
+        { field: 'cpf', headerName: 'CPF', width: 150, editable: false },
+        { field: 'email', headerName: 'Email', width: 200, editable: false },
+        { field: 'telefone', headerName: 'Telefone', width: 150, editable: false },
+        {
+            field: 'status',
+            headerName: 'Status',
+            width: 120,
+            editable: false,
+            valueGetter: (value) => value === 'ATIVO' ? 'ATIVO' : 'INATIVO'
+        },
+        { field: 'perfil', headerName: 'Tipo', width: 130, editable: false },
+        { field: 'observacoes', headerName: 'Observações', width: 200, editable: false },
+        {
+            field: 'actions',
+            headerName: 'Ações',
+            type: 'actions',
+            width: 150,
+            getActions: (params) => [
+                <Button
+                    key="edit"
+                    color="primary"
+                    size="small"
+                    startIcon={<EditIcon />}
+                    onClick={() => handleOpenEdit(params.row as Cliente)}
+                >
+                    Editar
+                </Button>,
+                <Button
+                    key="delete"
+                    color="error"
+                    size="small"
+                    startIcon={<DeleteIcon />}
+                    onClick={() => handleDelete(params.row._id, params.row.nome)}
+                >
+                    Excluir
+                </Button>,
+            ],
+        },
+    ];
 
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                 <CircularProgress />
-                <Typography sx={{ ml: 2 }}>Carregando clientes...</Typography>
             </Box>
         );
     }
 
     if (error) {
-        return <Alert severity="error">{error}</Alert>;
+        return (
+            <Box sx={{ p: 3 }}>
+                <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+                <Button variant="contained" onClick={fetchClientes}>
+                    Tentar Novamente
+                </Button>
+            </Box>
+        );
     }
 
     return (
@@ -109,8 +161,7 @@ export const ClientesPage = () => {
                 <Button
                     variant="contained"
                     startIcon={<PersonAddIcon />}
-                    // ⚠️ Lógica para abrir o Modal de Novo Cliente
-                    onClick={() => console.log("Abrir Modal Novo Cliente")}
+                    onClick={handleOpenCreate}
                 >
                     Novo Cliente
                 </Button>
@@ -120,18 +171,22 @@ export const ClientesPage = () => {
                 <DataGrid
                     rows={clientes}
                     columns={columns}
-                    pageSizeOptions={[10, 25, 50]} // ⭐️ Uso de rowsPerPageOptions é depreciado, alterado para pageSizeOptions
-                    // ⭐️ NOVO: Propriedades para visibilidade de coluna
+                    pageSizeOptions={[10, 25, 50]}
                     columnVisibilityModel={columnVisibilityModel}
-                    onColumnVisibilityModelChange={setColumnVisibilityModel}
-
+                    onColumnVisibilityModelChange={(newModel) => setColumnVisibilityModel(newModel)}
                     checkboxSelection
-                    disableRowSelectionOnClick // ⭐️ Uso de disableSelectionOnClick é depreciado, alterado para disableRowSelectionOnClick
-                    // ⚠️ Assumindo que o campo 'id' é único e está mapeado corretamente
+                    disableRowSelectionOnClick
                     getRowId={(row) => row._id}
                     loading={loading}
                 />
             </Paper>
+
+            <ClienteFormModal
+                open={openModal}
+                onClose={handleClose}
+                clienteToEdit={clienteToEdit}
+                onSuccess={fetchClientes}
+            />
         </Box>
     );
 };
