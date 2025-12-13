@@ -80,6 +80,7 @@ export const imovelValidationSchema = yup.object().shape({
         .string()
         .nullable()
         .default(null)
+        .optional()
         .transform((value, originalValue) =>
             originalValue === '' || originalValue === undefined ? null : value
         ),

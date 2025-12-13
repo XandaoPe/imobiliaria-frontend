@@ -1,8 +1,8 @@
 // src/pages/ImoveisPage.tsx
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { Box, Typography, Button, CircularProgress, Alert, Paper } from '@mui/material';
+import { Box, Typography, Button, CircularProgress, Alert, Paper, TextField, InputAdornment } from '@mui/material';
 import {
     DataGrid,
     GridColDef,
@@ -14,9 +14,40 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Imovel, ImovelFormData } from '../types/imovel';
 import { ImovelFormModal } from '../components/ImovelFormModal';
+import SearchIcon from '@mui/icons-material/Search'; // ⭐️ NOVO: SearchIcon
+
+
+const HighlightedText: React.FC<{ text: string; highlight: string }> = ({ text, highlight }) => {
+
+    const textToDisplay = text ?? '';
+
+    if (!textToDisplay.trim() || !highlight.trim()) {
+        return <>{textToDisplay}</>;
+    }
+
+    const regex = new RegExp(`(${highlight})`, 'gi');
+    const parts = text.split(regex);
+
+    return (
+        <Typography component="span" variant="body2">
+            {parts.map((part, i) =>
+                regex.test(part) ? (
+                    <span key={i} style={{ backgroundColor: '#ffeb3b', fontWeight: 'bold' }}>
+                        {part}
+                    </span>
+                ) : (
+                    <span key={i}>{part}</span>
+                )
+            )}
+        </Typography>
+    );
+};
+// FIM - HighlightedText
 
 // ⚠️ Ajuste a URL base da sua API para Imóveis
 const API_URL = 'http://localhost:5000/imoveis';
+
+const DEBOUNCE_DELAY = 300;
 
 export const ImoveisPage = () => {
     const [imoveis, setImoveis] = useState<Imovel[]>([]);
@@ -26,18 +57,28 @@ export const ImoveisPage = () => {
     const [openModal, setOpenModal] = useState(false);
     const [imovelToEdit, setImovelToEdit] = useState<Imovel | null>(null);
 
+    // ⭐️ NOVO: Estados para a busca e debounce
+    const [searchText, setSearchText] = useState('');
+    const [debouncedSearchText, setDebouncedSearchText] = useState('');
+
+    // ⭐️ NOVO: Ref para manter o foco (como em ClientesPage)
+    const searchInputRef = useRef<HTMLInputElement>(null);
     // Colunas padrão ocultas
     const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>({
         _id: false,
         descricao: false,
     });
 
-    const fetchImoveis = useCallback(async () => {
+    // ⭐️ ATUALIZADO: fetchImoveis agora aceita um termo de busca
+    const fetchImoveis = useCallback(async (search: string = '') => {
         try {
             setLoading(true);
-            const response = await axios.get(API_URL);
 
-            // O backend já retorna os dados formatados
+            // ⭐️ Envia o termo de busca como query parameter
+            const response = await axios.get(API_URL, {
+                params: { search }
+            });
+
             setImoveis(response.data as Imovel[]);
             setError(null);
         } catch (err: any) {
@@ -52,9 +93,28 @@ export const ImoveisPage = () => {
         }
     }, []);
 
+    // ⭐️ NOVO: Efeito para debounce do campo de busca
     useEffect(() => {
-        fetchImoveis();
-    }, [fetchImoveis]);
+        const handler = setTimeout(() => {
+            setDebouncedSearchText(searchText);
+        }, DEBOUNCE_DELAY);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [searchText]);
+
+    // ⭐️ NOVO: Efeito para manter o foco no campo de busca
+    useEffect(() => {
+        if (searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+    });
+
+    // ⭐️ ATUALIZADO: Dispara a busca quando o termo com debounce muda
+    useEffect(() => {
+        fetchImoveis(debouncedSearchText);
+    }, [fetchImoveis, debouncedSearchText]);
 
     const handleOpenCreate = () => {
         setImovelToEdit(null);
@@ -115,7 +175,14 @@ export const ImoveisPage = () => {
         {
             field: 'titulo',
             headerName: 'Título',
-            width: 250
+            width: 250,
+            // ⭐️ ATUALIZADO: Usar renderCell para aplicar o destaque
+            renderCell: (params: GridRenderCellParams<Imovel>) => (
+                <HighlightedText
+                    text={params.row.titulo}
+                    highlight={debouncedSearchText} // Usar o termo com debounce
+                />
+            ),
         },
         {
             field: 'tipo',
@@ -126,7 +193,14 @@ export const ImoveisPage = () => {
         {
             field: 'endereco',
             headerName: 'Endereço',
-            width: 200
+            width: 200,
+            // ⭐️ ATUALIZADO: Usar renderCell para aplicar o destaque
+            renderCell: (params: GridRenderCellParams<Imovel>) => (
+                <HighlightedText
+                    text={params.row.endereco}
+                    highlight={debouncedSearchText} // Usar o termo com debounce
+                />
+            ),
         },
         {
             field: 'valor',
@@ -147,7 +221,14 @@ export const ImoveisPage = () => {
             field: 'descricao',
             headerName: 'Descrição',
             width: 300,
-            hideable: true
+            hideable: true,
+            // ⭐️ ATUALIZADO: Usar renderCell para aplicar o destaque
+            renderCell: (params: GridRenderCellParams<Imovel>) => (
+                <HighlightedText
+                    text={params.row.descricao ?? ''}
+                    highlight={debouncedSearchText} // Usar o termo com debounce
+                />
+            ),
         },
         {
             field: 'actions',
@@ -180,7 +261,7 @@ export const ImoveisPage = () => {
         },
     ];
 
-    if (loading) {
+    if (loading && !debouncedSearchText) { // Apenas mostra o spinner completo na carga inicial
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                 <CircularProgress />
@@ -192,7 +273,11 @@ export const ImoveisPage = () => {
         return (
             <Box sx={{ p: 3 }}>
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-                <Button variant="contained" onClick={fetchImoveis}>
+                {/* ⭐️ CORREÇÃO: Chamar fetchImoveis com o termo de busca atual */}
+                <Button
+                    variant="contained"
+                    onClick={() => fetchImoveis(debouncedSearchText)}
+                >
                     Tentar Novamente
                 </Button>
             </Box>
@@ -213,6 +298,28 @@ export const ImoveisPage = () => {
                     Novo Imóvel
                 </Button>
             </Box>
+
+            {/* ⭐️ NOVO: Campo de busca implementado */}
+            <Box sx={{ mb: 3 }}>
+                <TextField
+                    fullWidth
+                    label="Pesquisar Imóveis por Título, Endereço ou Descrição"
+                    variant="outlined"
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    inputRef={searchInputRef}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                {/* Mostrar CircularProgress se estiver carregando E houver um termo de busca */}
+                                {loading && searchText ? <CircularProgress size={20} /> : <SearchIcon />}
+                            </InputAdornment>
+                        ),
+                    }}
+                    disabled={loading && !searchText}
+                />
+            </Box>
+            {/* Fim do campo de busca */}
 
             <Paper elevation={3} sx={{ height: 600, width: '100%' }}>
                 <DataGrid
