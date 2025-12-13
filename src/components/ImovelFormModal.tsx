@@ -82,17 +82,21 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
         let fieldsToValidate: (keyof ImovelFormData)[] = [];
 
         if (activeStep === 0) {
-            fieldsToValidate = ['titulo', 'tipo', 'endereco', 'valor', 'disponivel'];
-        } else if (activeStep === 1) {
-            fieldsToValidate = ['quartos', 'banheiros'];
+            // Valida apenas os campos obrigatórios para avançar para o Passo 1
+            fieldsToValidate = ['titulo', 'tipo', 'endereco', 'valor', 'disponivel', 'cidade'];
+            // Incluí 'cidade' aqui, pois está no Passo 0 e é bom validá-lo.
         }
+        // Não precisamos de um bloco 'else if (activeStep === 1)'
+        // A validação final antes do submit ocorrerá no 'handleSubmit'.
 
         const isValid = await trigger(fieldsToValidate);
 
         if (isValid) {
             setActiveStep((prevActiveStep) => prevActiveStep + 1);
         } else {
-            console.error("Validação do passo falhou.");
+            // Opcional: Se a validação falhar, você pode resetar o erro para null
+            setError(null);
+            console.error("Validação do passo falhou. Fique no passo atual.");
         }
     };
 
@@ -105,14 +109,8 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
         setError(null);
 
         try {
-            // Prepara os dados para envio (apenas campos obrigatórios do backend)
-            const dadosEnviar = {
-                titulo: data.titulo,
-                tipo: data.tipo,
-                endereco: data.endereco,
-                valor: data.valor,
-                disponivel: data.disponivel,
-            };
+            // Enviando o objeto de dados completo (já corrigido em passos anteriores)
+            const dadosEnviar = data;
 
             if (isEdit && imovelToEdit) {
                 await axios.put(`${API_URL}/${imovelToEdit._id}`, dadosEnviar);
@@ -181,10 +179,21 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                             {loading ? <CircularProgress size={24} /> : (isEdit ? 'Salvar Alterações' : 'Criar Imóvel')}
                         </Button>
                     ) : (
-                        <Button variant="contained" onClick={handleNext} disabled={loading}>
+                        <Button
+                            variant="contained"
+                            // ⭐️ CORREÇÃO CHAVE: Passe o evento de clique para a função
+                            onClick={(e) => {
+                                e.preventDefault(); // IMPEDE o comportamento padrão de submit
+                                e.stopPropagation(); // IMPEDE a propagação para o formulário pai
+                                handleNext(); // APENAS avança o passo
+                            }}
+                            disabled={loading}
+                            type="button" // Mantemos o type="button" como boa prática
+                        >
                             Próximo
                         </Button>
                     )}
+
                 </DialogActions>
             </Box>
         </Dialog>

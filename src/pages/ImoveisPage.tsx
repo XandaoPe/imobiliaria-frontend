@@ -14,19 +14,20 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Imovel, ImovelFormData } from '../types/imovel';
 import { ImovelFormModal } from '../components/ImovelFormModal';
-import SearchIcon from '@mui/icons-material/Search'; // ⭐️ NOVO: SearchIcon
+import SearchIcon from '@mui/icons-material/Search';
 
+// ⭐️ CORREÇÃO: Tipagem de 'text' para aceitar null | undefined
+const HighlightedText: React.FC<{ text: string | null | undefined; highlight: string }> = ({ text, highlight }) => {
 
-const HighlightedText: React.FC<{ text: string; highlight: string }> = ({ text, highlight }) => {
-
-    const textToDisplay = text ?? '';
+    const textToDisplay = text ?? ''; // Garante que é uma string ('') se for null
 
     if (!textToDisplay.trim() || !highlight.trim()) {
         return <>{textToDisplay}</>;
     }
 
     const regex = new RegExp(`(${highlight})`, 'gi');
-    const parts = text.split(regex);
+    // ⭐️ CORREÇÃO: Usar 'textToDisplay' (a string tratada) para o split
+    const parts = textToDisplay.split(regex);
 
     return (
         <Typography component="span" variant="body2">
@@ -225,7 +226,7 @@ export const ImoveisPage = () => {
             // ⭐️ ATUALIZADO: Usar renderCell para aplicar o destaque
             renderCell: (params: GridRenderCellParams<Imovel>) => (
                 <HighlightedText
-                    text={params.row.descricao ?? ''}
+                    text={params.row.descricao} // O componente HighlightedText lida com o 'null'
                     highlight={debouncedSearchText} // Usar o termo com debounce
                 />
             ),
@@ -299,7 +300,7 @@ export const ImoveisPage = () => {
                 </Button>
             </Box>
 
-            {/* ⭐️ NOVO: Campo de busca implementado */}
+            {/* ⭐️ Campo de busca implementado */}
             <Box sx={{ mb: 3 }}>
                 <TextField
                     fullWidth
@@ -349,7 +350,7 @@ export const ImoveisPage = () => {
                 open={openModal}
                 onClose={handleClose}
                 imovelToEdit={imovelToEdit}
-                onSuccess={fetchImoveis}
+                onSuccess={() => fetchImoveis(debouncedSearchText)} // Recarregar com o termo de busca atual
             />
         </Box>
     );
