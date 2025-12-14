@@ -1,8 +1,8 @@
-// src/pages/ImoveisPage.tsx
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { Box, Typography, Button, CircularProgress, Alert, Paper, TextField, InputAdornment } from '@mui/material';
+import {
+    Box, Typography, Button, CircularProgress, Alert, Paper, TextField, InputAdornment, Tooltip, IconButton
+} from '@mui/material';
 import {
     DataGrid,
     GridColDef,
@@ -16,7 +16,7 @@ import { Imovel, ImovelFormData } from '../types/imovel';
 import { ImovelFormModal } from '../components/ImovelFormModal';
 import SearchIcon from '@mui/icons-material/Search';
 
-// ⭐️ CORREÇÃO: Tipagem de 'text' para aceitar null | undefined
+// Componente para Destaque de Texto (HighlightedText)
 const HighlightedText: React.FC<{ text: string | null | undefined; highlight: string }> = ({ text, highlight }) => {
 
     const textToDisplay = text ?? ''; // Garante que é uma string ('') se for null
@@ -26,7 +26,7 @@ const HighlightedText: React.FC<{ text: string | null | undefined; highlight: st
     }
 
     const regex = new RegExp(`(${highlight})`, 'gi');
-    // ⭐️ CORREÇÃO: Usar 'textToDisplay' (a string tratada) para o split
+    // Usar 'textToDisplay' (a string tratada) para o split
     const parts = textToDisplay.split(regex);
 
     return (
@@ -45,7 +45,7 @@ const HighlightedText: React.FC<{ text: string | null | undefined; highlight: st
 };
 // FIM - HighlightedText
 
-// ⚠️ Ajuste a URL base da sua API para Imóveis
+// Ajuste a URL base da sua API para Imóveis
 const API_URL = 'http://localhost:5000/imoveis';
 
 const DEBOUNCE_DELAY = 300;
@@ -58,24 +58,25 @@ export const ImoveisPage = () => {
     const [openModal, setOpenModal] = useState(false);
     const [imovelToEdit, setImovelToEdit] = useState<Imovel | null>(null);
 
-    // ⭐️ NOVO: Estados para a busca e debounce
+    // Estados para a busca e debounce
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
 
-    // ⭐️ NOVO: Ref para manter o foco (como em ClientesPage)
+    // Ref para manter o foco no campo de busca
     const searchInputRef = useRef<HTMLInputElement>(null);
+
     // Colunas padrão ocultas
     const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>({
         _id: false,
         descricao: false,
     });
 
-    // ⭐️ ATUALIZADO: fetchImoveis agora aceita um termo de busca
+    // ATUALIZADO: fetchImoveis agora aceita um termo de busca
     const fetchImoveis = useCallback(async (search: string = '') => {
         try {
             setLoading(true);
 
-            // ⭐️ Envia o termo de busca como query parameter
+            // Envia o termo de busca como query parameter
             const response = await axios.get(API_URL, {
                 params: { search }
             });
@@ -94,7 +95,7 @@ export const ImoveisPage = () => {
         }
     }, []);
 
-    // ⭐️ NOVO: Efeito para debounce do campo de busca
+    // Efeito para debounce do campo de busca
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearchText(searchText);
@@ -105,14 +106,14 @@ export const ImoveisPage = () => {
         };
     }, [searchText]);
 
-    // ⭐️ NOVO: Efeito para manter o foco no campo de busca
+    // Efeito para manter o foco no campo de busca
     useEffect(() => {
         if (searchInputRef.current) {
             searchInputRef.current.focus();
         }
     });
 
-    // ⭐️ ATUALIZADO: Dispara a busca quando o termo com debounce muda
+    // Dispara a busca quando o termo com debounce muda
     useEffect(() => {
         fetchImoveis(debouncedSearchText);
     }, [fetchImoveis, debouncedSearchText]);
@@ -139,7 +140,7 @@ export const ImoveisPage = () => {
 
         try {
             await axios.delete(`${API_URL}/${imovelId}`);
-            fetchImoveis();
+            fetchImoveis(debouncedSearchText); // Recarrega com o termo de busca atual
             alert('Imóvel excluído com sucesso!');
         } catch (err: any) {
             alert(err.response?.data?.message || 'Erro ao excluir imóvel.');
@@ -177,12 +178,25 @@ export const ImoveisPage = () => {
             field: 'titulo',
             headerName: 'Título',
             width: 250,
-            // ⭐️ ATUALIZADO: Usar renderCell para aplicar o destaque
+            // renderCell torna o título clicável para edição e aplica o destaque
             renderCell: (params: GridRenderCellParams<Imovel>) => (
-                <HighlightedText
-                    text={params.row.titulo}
-                    highlight={debouncedSearchText} // Usar o termo com debounce
-                />
+                <Typography
+                    component="span"
+                    variant="body2"
+                    onClick={() => handleOpenEdit(params.row)} // ⬅️ AÇÃO PRINCIPAL
+                    sx={{
+                        cursor: 'pointer', // Indica que é clicável
+                        color: 'primary.main', // Cor de link
+                        '&:hover': {
+                            textDecoration: 'underline' // Sublinha ao passar o mouse
+                        }
+                    }}
+                >
+                    <HighlightedText
+                        text={params.row.titulo}
+                        highlight={debouncedSearchText}
+                    />
+                </Typography>
             ),
         },
         {
@@ -195,7 +209,7 @@ export const ImoveisPage = () => {
             field: 'endereco',
             headerName: 'Endereço',
             width: 200,
-            // ⭐️ ATUALIZADO: Usar renderCell para aplicar o destaque
+            // Usar renderCell para aplicar o destaque
             renderCell: (params: GridRenderCellParams<Imovel>) => (
                 <HighlightedText
                     text={params.row.endereco}
@@ -223,7 +237,7 @@ export const ImoveisPage = () => {
             headerName: 'Descrição',
             width: 300,
             hideable: true,
-            // ⭐️ ATUALIZADO: Usar renderCell para aplicar o destaque
+            // Usar renderCell para aplicar o destaque
             renderCell: (params: GridRenderCellParams<Imovel>) => (
                 <HighlightedText
                     text={params.row.descricao} // O componente HighlightedText lida com o 'null'
@@ -237,25 +251,55 @@ export const ImoveisPage = () => {
             width: 150,
             sortable: false,
             filterable: false,
+            // ⭐️ ATUALIZAÇÃO FINAL: Centralização Vertical e Horizontal
             renderCell: (params: GridRenderCellParams<Imovel>) => {
                 return (
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button
-                            color="primary"
-                            size="small"
-                            startIcon={<EditIcon />}
-                            onClick={() => handleOpenEdit(params.row)}
-                        >
-                            Editar
-                        </Button>
-                        <Button
-                            color="error"
-                            size="small"
-                            startIcon={<DeleteIcon />}
-                            onClick={() => handleDelete(params.row._id, params.row.titulo)}
-                        >
-                            Excluir
-                        </Button>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            gap: 1,
+                            alignItems: 'center', // Centralização Vertical
+                            justifyContent: 'center', // Centralização Horizontal
+                            width: '100%',
+                            height: '100%' // Garante que a Box preencha a altura da célula
+                        }}
+                    >
+
+                        {/* TOOLTIP para EDIÇÃO */}
+                        <Tooltip title="Editar Imóvel" arrow>
+                            <IconButton
+                                color="primary"
+                                size="small"
+                                onClick={() => handleOpenEdit(params.row)}
+                                sx={{
+                                    color: 'white',
+                                    bgcolor: 'primary.main',
+                                    '&:hover': {
+                                        bgcolor: 'primary.dark',
+                                    }
+                                }}
+                            >
+                                <EditIcon />
+                            </IconButton>
+                        </Tooltip>
+
+                        {/* TOOLTIP para EXCLUSÃO */}
+                        <Tooltip title={`Excluir: ${params.row.titulo}`} arrow>
+                            <IconButton
+                                color="error"
+                                size="small"
+                                onClick={() => handleDelete(params.row._id, params.row.titulo)}
+                                sx={{
+                                    color: 'white',
+                                    bgcolor: 'error.main',
+                                    '&:hover': {
+                                        bgcolor: 'error.dark',
+                                    }
+                                }}
+                            >
+                                <DeleteIcon />
+                            </IconButton>
+                        </Tooltip>
                     </Box>
                 );
             },
@@ -274,7 +318,7 @@ export const ImoveisPage = () => {
         return (
             <Box sx={{ p: 3 }}>
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-                {/* ⭐️ CORREÇÃO: Chamar fetchImoveis com o termo de busca atual */}
+                {/* Chamar fetchImoveis com o termo de busca atual */}
                 <Button
                     variant="contained"
                     onClick={() => fetchImoveis(debouncedSearchText)}
@@ -300,7 +344,7 @@ export const ImoveisPage = () => {
                 </Button>
             </Box>
 
-            {/* ⭐️ Campo de busca implementado */}
+            {/* Campo de busca implementado */}
             <Box sx={{ mb: 3 }}>
                 <TextField
                     fullWidth

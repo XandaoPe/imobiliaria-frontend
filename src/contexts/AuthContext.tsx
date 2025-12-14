@@ -5,6 +5,7 @@ import axios from 'axios';
 // 1. Interface para o Payload do Usuário (Tipagem baseada no seu NestJS)
 export interface UsuarioPayload {
     userId: string;
+    nome: string;
     email: string;
     perfil: string;
     empresa: string; // Chave de Multitenancy
@@ -22,26 +23,37 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // 3. Função Auxiliar para Decodificar o Token JWT (Lado do Cliente)
-const decodeToken = (token: string): UsuarioPayload | null => {
+// Esta função é o padrão para decodificar Base64 URL-Safe + UTF-8
+const decodeToken = (token: string) => {
     try {
-        const payloadBase64 = token.split('.')[1];
-        // Decodifica a string Base64 e faz o parse para JSON
-        const decodedPayload = atob(payloadBase64);
-        const payload = JSON.parse(decodedPayload);
+        // 1. Extrai a segunda parte (Payload)
+        const base64Url = token.split('.')[1];
 
-        // Mapeia as propriedades do token para a interface UsuarioPayload
-        return {
-            userId: payload.sub, // 'sub' é geralmente o ID do usuário
-            email: payload.email,
-            perfil: payload.perfil,
-            // Mapeamento flexível caso o backend use 'empresa' ou 'empresaId'
-            empresa: payload.empresa || payload.empresaId,
-        };
-    } catch (error) {
-        console.error('Erro ao decodificar token:', error);
+        // 2. Converte Base64 URL-safe para Base64 padrão
+        // (Troca '-' por '+' e '_' por '/')
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+
+        // 3. Decodifica Base64 e garante o tratamento de UTF-8 (Acentos)
+        const jsonPayload = decodeURIComponent(
+            // a. atob decodifica Base64, resultando em uma string binária (raw)
+            atob(base64)
+                .split('')
+                .map(function (c) {
+                    // b. Mapeia cada caractere binário (byte) para sua representação hexadecimal (%XX)
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                })
+                .join('')
+        );
+
+        // 4. Converte a string JSON (agora com acentos corretos) para objeto
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        console.error('Erro ao decodificar token:', e);
         return null;
     }
 };
+
+// ... O restante do seu AuthContext.tsx continua ...
 
 // 4. Provedor de Autenticação
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -51,6 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         if (token) {
             const payload = decodeToken(token);
+            console.log('Decoded Payload:', payload);   
             if (payload) {
                 setUser(payload);
                 // ⭐️ Configura o cabeçalho padrão do Axios para TODAS as requisições

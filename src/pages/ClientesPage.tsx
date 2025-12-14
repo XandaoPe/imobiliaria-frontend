@@ -1,56 +1,55 @@
-// src/pages/ClientesPage.tsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import axios from 'axios';
-import { Box, Typography, Button, CircularProgress, Alert, Paper, TextField, InputAdornment } from '@mui/material';
+import {
+    Box, Typography, Button, CircularProgress, Alert, Paper,
+    TextField, InputAdornment, Tooltip, IconButton // ⭐️ Adicionado Tooltip e IconButton
+} from '@mui/material';
 import {
     DataGrid,
     GridColDef,
-    GridColumnVisibilityModel
+    GridColumnVisibilityModel,
+    GridRenderCellParams // ⭐️ Adicionado para tipar o renderCell na coluna actions
 } from '@mui/x-data-grid';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { ClienteFormModal } from '../components/ClienteFormModal';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Cliente, normalizeCPF, normalizeStatus } from '../types/cliente'; // ⭐️ IMPORTE O TIPO UNIFICADO
+import { Cliente, normalizeCPF, normalizeStatus } from '../types/cliente';
 import SearchIcon from '@mui/icons-material/Search';
+
 // ⚠️ Ajuste a URL base da sua API
 const API_URL = 'http://localhost:5000/clientes';
+const DEBOUNCE_DELAY = 300;
 
 interface HighlightedTextProps {
     text: string | null | undefined;
     highlight: string;
 }
 
-// ⭐️ NOVO: Componente para Destaque
+// Componente para Destaque (Mantido o original, mas ajustando a tipagem)
 const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) => {
-    if (!text || !highlight) return <>{text}</>;
+    const textToDisplay = text ?? ''; // Garante que é uma string ('') se for null
 
-    const lowerText = text.toLowerCase();
-    const lowerHighlight = highlight.toLowerCase();
-
-    const parts: React.ReactNode[] = [];
-    let lastIndex = 0;
-
-    // Expressão regular para encontrar o termo, ignorando maiúsculas/minúsculas
-    const regex = new RegExp(highlight, 'gi');
-    let match;
-
-    while ((match = regex.exec(text)) !== null) {
-        // Texto antes do destaque
-        parts.push(text.substring(lastIndex, match.index));
-        // Texto destacado
-        parts.push(
-            <span key={match.index} style={{ backgroundColor: '#ffeb3b', fontWeight: 'bold' }}>
-                {match[0]}
-            </span>
-        );
-        lastIndex = regex.lastIndex;
+    if (!textToDisplay.trim() || !highlight.trim()) {
+        return <>{textToDisplay}</>;
     }
 
-    // Texto após o último destaque
-    parts.push(text.substring(lastIndex));
+    const regex = new RegExp(`(${highlight})`, 'gi');
+    const parts = textToDisplay.split(regex);
 
-    return <>{parts}</>;
+    return (
+        <Typography component="span" variant="body2">
+            {parts.map((part, i) =>
+                regex.test(part) ? (
+                    <span key={i} style={{ backgroundColor: '#ffeb3b', fontWeight: 'bold' }}>
+                        {part}
+                    </span>
+                ) : (
+                    <span key={i}>{part}</span>
+                )
+            )}
+        </Typography>
+    );
 };
 
 export const ClientesPage = () => {
@@ -61,30 +60,24 @@ export const ClientesPage = () => {
     const [openModal, setOpenModal] = useState(false);
     const [clienteToEdit, setClienteToEdit] = useState<Cliente | null>(null);
 
-    // ⭐️ NOVO: Estado para o termo de busca
     const [searchText, setSearchText] = useState('');
-
-    // ⭐️ NOVO: Estado para aplicar debounce (reduzir chamadas à API)
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
 
     const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>({
         _id: false,
         cpf: false,
-        observacoes: false,
+        perfil: false,
     });
 
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    // ⭐️ ATUALIZAÇÃO: Receber o termo de busca (debounced)
     const fetchClientes = useCallback(async (search: string) => {
         try {
             setLoading(true);
 
-            // ⭐️ Adiciona o termo de busca como query parameter, se existir
             const url = search ? `${API_URL}?search=${encodeURIComponent(search)}` : API_URL;
             const response = await axios.get(url);
 
-            // ⭐️ Normaliza os dados recebidos do backend
             const clientesNormalizados = response.data.map((cliente: any) => ({
                 ...cliente,
                 status: normalizeStatus(cliente.status || 'ATIVO'),
@@ -94,7 +87,6 @@ export const ClientesPage = () => {
             setClientes(clientesNormalizados as Cliente[]);
             setError(null);
         } catch (err: any) {
-            // ... (tratamento de erro - manter o existente)
             let errorMessage = 'Falha ao carregar clientes.';
             if (err.response) {
                 errorMessage = err.response.data?.message || errorMessage;
@@ -107,14 +99,9 @@ export const ClientesPage = () => {
     }, []);
 
     useEffect(() => {
-        fetchClientes(debouncedSearchText);
-    }, [fetchClientes, debouncedSearchText]);
-
-    // ⭐️ Efeito para aplicar debounce no termo de busca
-    useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearchText(searchText);
-        }, 300); // 300ms de atraso
+        }, DEBOUNCE_DELAY);
 
         return () => {
             clearTimeout(handler);
@@ -122,8 +109,10 @@ export const ClientesPage = () => {
     }, [searchText]);
 
     useEffect(() => {
-        // Foca no campo de entrada sempre que o componente renderiza, se ele existir
-        // Isso garante que o foco não é perdido quando o texto é alterado.
+        fetchClientes(debouncedSearchText);
+    }, [fetchClientes, debouncedSearchText]);
+
+    useEffect(() => {
         if (searchInputRef.current) {
             searchInputRef.current.focus();
         }
@@ -144,22 +133,23 @@ export const ClientesPage = () => {
         setClienteToEdit(null);
     };
 
+    // ⭐️ ATUALIZADO: Lógica de confirmação de exclusão mantida
     const handleDelete = async (clienteId: string, nome: string) => {
-        // ... (manter o existente)
-        if (!window.confirm(`Tem certeza que deseja excluir o cliente ${nome}?`)) {
+        if (!window.confirm(`Tem certeza que deseja excluir o cliente "${nome}"?`)) {
             return;
         }
 
         try {
             await axios.delete(`${API_URL}/${clienteId}`);
-            // ⭐️ ATUALIZAÇÃO: Chamar a busca com o termo atual para manter o filtro
+            // Recarrega com o termo de busca atual
             fetchClientes(debouncedSearchText);
+            alert(`Cliente ${nome} excluído com sucesso!`);
         } catch (err: any) {
             alert(err.response?.data?.message || 'Erro ao excluir cliente.');
         }
     };
 
-    // ⭐️ ATUALIZAÇÃO: Adicionar a função de renderização customizada para destaque
+    // Função de renderização customizada para destaque
     const renderCellWithHighlight = (params: any, field: keyof Cliente) => (
         <HighlightedText
             text={params.row[field]}
@@ -167,7 +157,7 @@ export const ClientesPage = () => {
         />
     );
 
-    // ⭐️ ATUALIZAÇÃO: Mapear as colunas para usar o renderCellWithHighlight
+    // ⭐️ ATUALIZAÇÃO: Mapear as colunas para usar o renderCellWithHighlight e nova coluna de Actions
     const columns: GridColDef[] = useMemo(() => [
         { field: '_id', headerName: 'ID', width: 90 },
         {
@@ -175,81 +165,134 @@ export const ClientesPage = () => {
             headerName: 'Nome Completo',
             width: 250,
             editable: false,
-            renderCell: (params) => renderCellWithHighlight(params, 'nome') // ⭐️ DESTAQUE
+            // Torna o nome clicável para edição e aplica o destaque
+            renderCell: (params) => (
+                <Typography
+                    component="span"
+                    variant="body2"
+                    onClick={() => handleOpenEdit(params.row as Cliente)}
+                    sx={{
+                        cursor: 'pointer',
+                        color: 'primary.main',
+                        '&:hover': {
+                            textDecoration: 'underline'
+                        }
+                    }}
+                >
+                    {renderCellWithHighlight(params, 'nome')}
+                </Typography>
+            ),
         },
         {
             field: 'cpf',
             headerName: 'CPF',
             width: 150,
             editable: false,
-            renderCell: (params) => renderCellWithHighlight(params, 'cpf') // ⭐️ DESTAQUE
+            renderCell: (params) => renderCellWithHighlight(params, 'cpf')
         },
         {
             field: 'email',
             headerName: 'Email',
             width: 200,
             editable: false,
-            renderCell: (params) => renderCellWithHighlight(params, 'email') // ⭐️ DESTAQUE
+            renderCell: (params) => renderCellWithHighlight(params, 'email')
         },
         {
             field: 'telefone',
             headerName: 'Telefone',
             width: 150,
             editable: false,
-            renderCell: (params) => renderCellWithHighlight(params, 'telefone') // ⭐️ DESTAQUE
+            renderCell: (params) => renderCellWithHighlight(params, 'telefone')
         },
         {
             field: 'status',
             headerName: 'Status',
             width: 120,
             editable: false,
-            // ⭐️ ATUALIZAÇÃO: renderCell para destaque
             renderCell: (params) => renderCellWithHighlight(params, 'status'),
-            valueGetter: (value) => value === 'ATIVO' ? 'ATIVO' : 'INATIVO'
+            valueGetter: (value) => value === 'ATIVO' ? 'ATIVO' : 'INATIVO',
+            cellClassName: (params) => {
+                return params.row.status === 'ATIVO' ? 'status-disponivel' : 'status-indisponivel';
+            }
         },
         {
             field: 'perfil',
             headerName: 'Tipo',
             width: 130,
             editable: false,
-            renderCell: (params) => renderCellWithHighlight(params, 'perfil') // ⭐️ DESTAQUE
+            renderCell: (params) => renderCellWithHighlight(params, 'perfil')
         },
         {
             field: 'observacoes',
             headerName: 'Observações',
             width: 200,
             editable: false,
-            renderCell: (params) => renderCellWithHighlight(params, 'observacoes') // ⭐️ DESTAQUE
+            renderCell: (params) => renderCellWithHighlight(params, 'observacoes')
         },
+        // ⭐️ NOVA COLUNA DE AÇÕES COM ESTILIZAÇÃO E CENTRALIZAÇÃO
         {
             field: 'actions',
             headerName: 'Ações',
-            type: 'actions',
             width: 150,
-            getActions: (params) => [
-                <Button
-                    key="edit"
-                    color="primary"
-                    size="small"
-                    startIcon={<EditIcon />}
-                    onClick={() => handleOpenEdit(params.row as Cliente)}
-                >
-                    Editar
-                </Button>,
-                <Button
-                    key="delete"
-                    color="error"
-                    size="small"
-                    startIcon={<DeleteIcon />}
-                    onClick={() => handleDelete(params.row._id, params.row.nome)}
-                >
-                    Excluir
-                </Button>,
-            ],
-        },
-    ], [debouncedSearchText, handleDelete]); // Recria as colunas apenas se o termo de busca ou a função de delete mudar
+            sortable: false,
+            filterable: false,
+            type: 'actions',
+            // ⭐️ ATUALIZAÇÃO: Centralização Vertical e Horizontal
+            renderCell: (params: GridRenderCellParams<Cliente>) => {
+                return (
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            gap: 1,
+                            alignItems: 'center', // Centralização Vertical
+                            justifyContent: 'center', // Centralização Horizontal
+                            width: '100%',
+                            height: '100%'
+                        }}
+                    >
 
-    if (loading) {
+                        {/* TOOLTIP para EDIÇÃO */}
+                        <Tooltip title={`Editar: ${params.row.nome}`} arrow>
+                            <IconButton
+                                color="primary"
+                                size="small"
+                                onClick={() => handleOpenEdit(params.row as Cliente)}
+                                sx={{
+                                    color: 'white',
+                                    bgcolor: 'primary.main',
+                                    '&:hover': {
+                                        bgcolor: 'primary.dark',
+                                    }
+                                }}
+                            >
+                                <EditIcon />
+                            </IconButton>
+                        </Tooltip>
+
+                        {/* TOOLTIP para EXCLUSÃO */}
+                        <Tooltip title={`Excluir: ${params.row.nome}`} arrow>
+                            <IconButton
+                                color="error"
+                                size="small"
+                                onClick={() => handleDelete(params.row._id, params.row.nome)}
+                                sx={{
+                                    color: 'white',
+                                    bgcolor: 'error.main',
+                                    '&:hover': {
+                                        bgcolor: 'error.dark',
+                                    }
+                                }}
+                            >
+                                <DeleteIcon />
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
+                );
+            },
+        },
+    ], [debouncedSearchText, handleDelete]);
+
+    if (loading && !debouncedSearchText) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                 <CircularProgress />
@@ -261,10 +304,9 @@ export const ClientesPage = () => {
         return (
             <Box sx={{ p: 3 }}>
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-                {/* ⭐️ CORREÇÃO: Chamar fetchClientes com o termo de busca atual */}
                 <Button
                     variant="contained"
-                    onClick={() => fetchClientes(debouncedSearchText)} // <--- ALTERAÇÃO AQUI
+                    onClick={() => fetchClientes(debouncedSearchText)}
                 >
                     Tentar Novamente
                 </Button>
@@ -287,14 +329,14 @@ export const ClientesPage = () => {
                 </Button>
             </Box>
 
-            {/* ⭐️ NOVO: Campo de busca */}
+            {/* Campo de busca */}
             <Box sx={{ mb: 3 }}>
                 <TextField
                     fullWidth
-                    label="Pesquisar Clientes"
+                    label="Pesquisar Clientes por Nome, CPF, Email, Telefone ou Observação"
                     variant="outlined"
                     value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)} // Atualiza o estado da busca em tempo real (o debounce fará a chamada)
+                    onChange={(e) => setSearchText(e.target.value)}
                     inputRef={searchInputRef}
                     InputProps={{
                         startAdornment: (
@@ -310,25 +352,33 @@ export const ClientesPage = () => {
 
             <Paper elevation={3} sx={{ height: 600, width: '100%' }}>
                 <DataGrid
-                    // ... (propriedades existentes)
                     rows={clientes}
-                    columns={columns} // Usar as colunas do useMemo
+                    columns={columns}
                     pageSizeOptions={[10, 25, 50]}
                     columnVisibilityModel={columnVisibilityModel}
                     onColumnVisibilityModelChange={(newModel) => setColumnVisibilityModel(newModel)}
                     checkboxSelection
                     disableRowSelectionOnClick
                     getRowId={(row) => row._id}
-                    loading={loading && !!debouncedSearchText} // Exibir loading apenas se estiver buscando
+                    loading={loading && !!debouncedSearchText}
+                    sx={{
+                        // Adicionar estilos para Status (copiado do Imóveis, mas referenciando o status do cliente)
+                        '& .status-disponivel': {
+                            color: 'success.main',
+                            fontWeight: 'bold',
+                        },
+                        '& .status-indisponivel': {
+                            color: 'error.main',
+                            fontWeight: 'bold',
+                        }
+                    }}
                 />
             </Paper>
 
             <ClienteFormModal
-                // ... (props existentes)
                 open={openModal}
                 onClose={handleClose}
                 clienteToEdit={clienteToEdit}
-                // ⭐️ ATUALIZAÇÃO: Chamar a busca com o termo atual após o sucesso
                 onSuccess={() => fetchClientes(debouncedSearchText)}
             />
         </Box>
