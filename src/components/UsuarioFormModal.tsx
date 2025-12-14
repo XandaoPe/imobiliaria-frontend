@@ -1,5 +1,3 @@
-// src/components/UsuarioFormModal.tsx
-
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
@@ -7,18 +5,17 @@ import {
     CircularProgress, Alert, FormControlLabel, Switch, MenuItem, Select, InputLabel, FormControl, Box, Typography
 } from '@mui/material';
 import { useForm, SubmitHandler, Controller } from 'react-hook-form';
+import { useAuth } from '../contexts/AuthContext'; // Importação do seu hook de autenticação
 import {
     Usuario,
-    PerfisEnum,
+    PerfisEnum, // Assumindo que este Enum está definido em types/usuario
     UpdateUsuarioFormData,
     CreateUsuarioFormData
-} from '../types/usuario';
+} from '../types/usuario'; // Assumindo tipagens definidas aqui
 
 const API_URL = 'http://localhost:5000/usuarios';
 
 // O tipo de input agora inclui o campo 'senha' opcional (ou obrigatório na criação)
-// para uso interno do hook-form, mas só será USADO/EXIBIDO na criação.
-// ⚠️ Nota: Mantemos o campo 'senha' no tipo, mas apenas o exibiremos na criação.
 type UsuarioFormInputs = UpdateUsuarioFormData & { senha: string };
 
 interface UsuarioFormModalProps {
@@ -29,16 +26,30 @@ interface UsuarioFormModalProps {
 }
 
 export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClose, usuarioToEdit, onSuccess }) => {
+    // Dados do usuário logado (usado para regras de negócio)
+    const { user } = useAuth();
+
     const isEditing = !!usuarioToEdit;
+
+    // ⭐️ CORREÇÃO DEFINITIVA: 
+    // Garante que o usuário logado (user) e o usuário em edição (usuarioToEdit) existam.
+    // Usa optional chaining (?) e fallback '' antes de chamar .toString() para evitar undefined.
+    const isEditingSelf = isEditing &&
+        !!(usuarioToEdit && user &&
+            usuarioToEdit._id?.toString() === user.userId?.toString());
+    
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // SOLUÇÃO ANTIAUTOFILL: Chave para forçar a remontagem do formulário
+    const [formKey, setFormKey] = useState(0);
 
     const {
         control,
         handleSubmit,
         reset,
         formState: { errors },
-        watch,
+        // watch, // Não utilizado neste componente, pode ser removido
     } = useForm<UsuarioFormInputs>({
         defaultValues: {
             email: '',
@@ -49,26 +60,37 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
         }
     });
 
-    // Resetar o formulário com base no modo (edição ou criação)
+    // Resetar o formulário e forçar a remontagem (para evitar Autofill)
     useEffect(() => {
-        if (usuarioToEdit) {
-            reset({
-                email: usuarioToEdit.email,
-                nome: usuarioToEdit.nome,
-                perfil: usuarioToEdit.perfil,
-                ativo: usuarioToEdit.ativo,
-                senha: '', // Limpa a senha na edição
-            });
-        } else {
-            reset({
-                email: '',
-                nome: '',
-                perfil: PerfisEnum.CORRETOR,
-                ativo: true,
-                senha: '',
-            });
+        if (open) {
+
+            console.log("--- DEBUG MODAL ---");
+            console.log("Usuário Logado ID (user.userId):", user?.userId);
+            console.log("Usuário em Edição ID (usuarioToEdit?._id):", usuarioToEdit?._id);
+            console.log("Resultado da Comparação (isEditingSelf):", isEditingSelf);
+            console.log("--- FIM DEBUG ---");
+
+            setFormKey(prev => prev + 1);
+
+            if (usuarioToEdit) {
+                reset({
+                    email: usuarioToEdit.email,
+                    nome: usuarioToEdit.nome,
+                    perfil: usuarioToEdit.perfil,
+                    ativo: usuarioToEdit.ativo,
+                    senha: '', // Limpa a senha na edição
+                });
+            } else {
+                reset({
+                    email: '',
+                    nome: '',
+                    perfil: PerfisEnum.CORRETOR,
+                    ativo: true,
+                    senha: '',
+                });
+            }
+            setError(null);
         }
-        setError(null);
     }, [usuarioToEdit, reset, open]);
 
     const onSubmit: SubmitHandler<UsuarioFormInputs> = async (data) => {
@@ -78,19 +100,18 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
         let payload: UpdateUsuarioFormData | CreateUsuarioFormData;
 
         if (isEditing) {
-            // 1. EDIÇÃO: Remove a senha do payload, forçando a atualização APENAS dos campos de dados
+            // 1. EDIÇÃO: Cria o payload APENAS com os campos de atualização
             payload = {
+                // Se estiver editando a si mesmo, o email/perfil desabilitado será enviado, 
+                // mas a validação no backend deve ser robusta também.
                 email: data.email,
                 nome: data.nome,
                 perfil: data.perfil,
                 ativo: data.ativo,
             } as UpdateUsuarioFormData;
 
-            // Mesmo que a senha estivesse no watch, ela é IGNORADA aqui,
-            // cumprindo a regra de que este modal não altera senha.
-
         } else {
-            // 2. CRIAÇÃO: A senha é obrigatória (a validação de required fará o trabalho).
+            // 2. CRIAÇÃO: A senha é obrigatória.
             payload = {
                 email: data.email,
                 nome: data.nome,
@@ -102,10 +123,8 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
 
         try {
             if (isEditing) {
-                // PUT: Envia apenas os campos do UpdateUsuarioFormData
                 await axios.put(`${API_URL}/${usuarioToEdit!._id}`, payload);
             } else {
-                // POST: Envia os campos do CreateUsuarioFormData (incluindo senha)
                 await axios.post(API_URL, payload);
             }
 
@@ -129,7 +148,8 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
         <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
             <DialogTitle>{isEditing ? `Editar Usuário: ${usuarioToEdit?.nome}` : 'Novo Usuário'}</DialogTitle>
 
-            <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate autoComplete='off'>
+            {/* A prop key={formKey} força a remontagem e resolve o autofill */}
+            <Box key={formKey} component="form" onSubmit={handleSubmit(onSubmit)} noValidate autoComplete='off'>
                 <DialogContent dividers>
                     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
@@ -168,11 +188,13 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
                                 {...field}
                                 label="E-mail"
                                 fullWidth
-                                autoComplete='off'
+                                autoComplete='off' // Antiautofill
                                 variant="outlined"
                                 margin="normal"
                                 error={!!errors.email}
                                 helperText={errors.email?.message}
+                                // 🔒 REGRA DE NEGÓCIO: Desabilita se estiver editando a si mesmo
+                                disabled={isEditingSelf}
                             />
                         )}
                     />
@@ -195,7 +217,7 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
                                         {...field}
                                         label="Senha"
                                         type="password"
-                                        autoComplete="new-password"
+                                        autoComplete="new-password" // Melhor antiautofill para senhas
                                         fullWidth
                                         variant="outlined"
                                         margin="normal"
@@ -228,6 +250,8 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
                                         labelId="perfil-label"
                                         label="Perfil"
                                         variant="outlined"
+                                        // 🔒 REGRA DE NEGÓCIO: Desabilita se estiver editando a si mesmo
+                                        disabled={isEditingSelf}
                                     >
                                         {Object.values(PerfisEnum).map((perfil) => (
                                             <MenuItem key={perfil} value={perfil}>
@@ -259,6 +283,7 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
                                         mt: isEditing ? 1.5 : 2.5, // Ajusta o alinhamento 
                                         flexShrink: 0
                                     }}
+                                    disabled={isEditingSelf}
                                 />
                             )}
                         />

@@ -1,14 +1,13 @@
-// src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
 
 // 1. Interface para o Payload do Usuário (Tipagem baseada no seu NestJS)
 export interface UsuarioPayload {
-    userId: string;
+    userId: string; // ID do Usuário (Mapeado de 'sub' do JWT)
     nome: string;
     email: string;
     perfil: string;
-    empresa: string; // Chave de Multitenancy
+    empresa: string; // Chave de Multitenancy (Mapeado de 'empresaId' do JWT)
 }
 
 // 2. Interface para o Contexto
@@ -53,8 +52,6 @@ const decodeToken = (token: string) => {
     }
 };
 
-// ... O restante do seu AuthContext.tsx continua ...
-
 // 4. Provedor de Autenticação
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
@@ -62,21 +59,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         if (token) {
-            const payload = decodeToken(token);
-            console.log('Decoded Payload:', payload);   
-            if (payload) {
-                setUser(payload);
+            const payloadDecoded = decodeToken(token); // Nome alterado para evitar confusão
+
+            console.log('Decoded Payload:', payloadDecoded);
+
+            // ⭐️ CORREÇÃO DO MAPEAMENTO AQUI
+            if (payloadDecoded && payloadDecoded.sub) {
+
+                // Mapeia as chaves do JWT (sub, empresaId) para a interface local (userId, empresa)
+                const mappedPayload: UsuarioPayload = {
+                    // Mapeamento essencial para resolver o 'undefined'
+                    userId: payloadDecoded.sub,
+
+                    // Outras propriedades
+                    nome: payloadDecoded.nome || '',
+                    email: payloadDecoded.email || '',
+                    perfil: payloadDecoded.perfil || '',
+                    empresa: payloadDecoded.empresaId || '', // Mapeia empresaId para 'empresa'
+                };
+
+                setUser(mappedPayload);
+
                 // ⭐️ Configura o cabeçalho padrão do Axios para TODAS as requisições
                 axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             } else {
-                // Token inválido, força logout (ex: token alterado manualmente)
+                // Token inválido ou sem ID (sub), força logout
                 logout();
             }
         } else {
             // Limpa o cabeçalho se não houver token
             delete axios.defaults.headers.common['Authorization'];
         }
-    }, [token]);
+    }, [token]); // Dependência de token é importante
 
     // Função chamada após a autenticação bem-sucedida (da LoginPage)
     const login = (jwtToken: string) => {
