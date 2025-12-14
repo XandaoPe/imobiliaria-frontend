@@ -1,14 +1,20 @@
 // src/App.tsx
+
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 
 // Imports da Estrutura
-import { appTheme } from './theme/theme'; // ⭐️ Importar o tema criado
-import { AuthProvider, useAuth } from './contexts/AuthContext'; // ⭐️ O contexto de autenticação
-import { MainLayout } from './layouts/MainLayout'; // ⭐️ O layout principal
-import { LoginPage } from './pages/LoginPage'; // ⭐️ A página de login
+import { appTheme } from './theme/theme';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { MainLayout } from './layouts/MainLayout';
+import { LoginPage } from './pages/LoginPage';
+
+// ⭐️ Importe o componente da página de Usuários
+import { UsuariosPage } from './pages/UsuariosPage';
+
+// Imports de outras páginas
 import { ClientesPage } from './pages/ClientesPage';
 import { ImoveisPage } from './pages/ImoveisPage';
 // import { DashboardPage } from './pages/DashboardPage'; // ⭐️ Crie esta página simples
@@ -33,23 +39,25 @@ const ProtectedRoute = () => {
 // -----------------------------------------------------------
 const App = () => {
   return (
-    <ThemeProvider theme={appTheme}> {/* ⭐️ Aplica o tema MUI */}
-      <CssBaseline /> {/* Reset CSS do MUI */}
+    <ThemeProvider theme={appTheme}>
+      <CssBaseline />
       <BrowserRouter>
-        <AuthProvider> {/* ⭐️ Provedor de autenticação */}
+        <AuthProvider>
           <Routes>
             {/* 1. Rota de Login (Não protegida) */}
             <Route path="/" element={<LoginPage />} />
 
             {/* 2. Rotas Protegidas (Usam o MainLayout) */}
-            {/* O elemento ProtectedRoute renderiza MainLayout com as rotas filhas */}
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<h1>Dash Page Placeholder</h1>} />
-              {/* <Route path="/dashboard" element={<DashboardPage />} /> */}
-              {/* Adicione rotas placeholder aqui */}
+
               {/* ⭐️ Rota Clientes REAL */}
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/imoveis" element={<ImoveisPage />} />
+
+              {/* ⭐️ ROTA DO MÓDULO DE USUÁRIOS */}
+              <Route path="/usuarios" element={<UsuariosPage />} />
+
             </Route>
 
             {/* Rota para qualquer URL não mapeada */}
