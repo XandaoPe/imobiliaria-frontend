@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
-    Box, Typography, Button, CircularProgress, Alert, Paper, TextField, InputAdornment, Tooltip, IconButton
+    Box, Typography, Button, CircularProgress, Alert, Paper, TextField, InputAdornment, Tooltip, IconButton,
+    Menu, MenuItem, ListSubheader // Importações para o menu
 } from '@mui/material';
 import {
     DataGrid,
@@ -15,10 +16,12 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+// ⭐️ NOVO: Ícones para o filtro
+import FilterListIcon from '@mui/icons-material/FilterList';
+import DoneIcon from '@mui/icons-material/Done';
 
-// Importações para o filtro segmentado
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+
+// Remover importações de ToggleButton e ToggleButtonGroup
 
 // Tipagens e Componente de Modal ATUALIZADOS
 import { Usuario, PerfisEnum } from '../types/usuario';
@@ -60,15 +63,12 @@ const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) =>
 
 // Tipos para os Filtros
 type UsuarioPerfilFilter = 'TODOS' | PerfisEnum;
-// O filtro de status pode ser 'TODOS', 'true' (ativo) ou 'false' (inativo).
-// Usamos string para representar o booleano, pois é assim que a query string lida com eles.
 type UsuarioStatusFilter = 'TODOS' | 'true' | 'false';
 
 const API_URL = 'http://localhost:5000/usuarios';
 const DEBOUNCE_DELAY = 300;
 
 export const UsuariosPage = () => {
-    // ... Estados de Usuários, Loading, Erro e Modal (inalterados)
     const [usuarios, setUsuarios] = useState<Usuario[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -79,11 +79,11 @@ export const UsuariosPage = () => {
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
 
-    // Estado para o filtro de perfil
     const [filterPerfil, setFilterPerfil] = useState<UsuarioPerfilFilter>('TODOS');
-
-    // ⭐️ NOVO ESTADO: Filtro de Status
     const [filterStatus, setFilterStatus] = useState<UsuarioStatusFilter>('TODOS');
+
+    // ⭐️ NOVO ESTADO: Âncora para o Menu de Filtro Único
+    const [anchorElFilter, setAnchorElFilter] = useState<null | HTMLElement>(null);
 
     const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -93,30 +93,26 @@ export const UsuariosPage = () => {
         updatedAt: false,
     });
 
-    // Função de busca adaptada para Usuários, Perfil e Status
+    // Função de busca adaptada para Usuários, Perfil e Status (inalterada)
     const fetchUsuarios = useCallback(async (
         search: string = '',
         perfil: UsuarioPerfilFilter = 'TODOS',
-        status: UsuarioStatusFilter = 'TODOS' // ⭐️ NOVO PARÂMETRO
+        status: UsuarioStatusFilter = 'TODOS'
     ) => {
         try {
             setLoading(true);
 
-            // ⭐️ ATUALIZADO: Tipo de params para incluir 'ativo' (string)
             const params: { search?: string; perfil?: PerfisEnum; ativo?: string } = {};
 
             if (search.trim()) {
                 params.search = search;
             }
 
-            // Filtro por Perfil
             if (perfil !== 'TODOS') {
                 params.perfil = perfil as PerfisEnum;
             }
 
-            // ⭐️ NOVO FILTRO: Status (ativo)
             if (status !== 'TODOS') {
-                // Envia 'true' ou 'false' como string para a API
                 params.ativo = status;
             }
 
@@ -139,7 +135,7 @@ export const UsuariosPage = () => {
         }
     }, []);
 
-    // Efeito para debounce do campo de busca
+    // Efeitos de debounce e busca (inalterados, mas agora dependem de filterStatus)
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearchText(searchText);
@@ -150,38 +146,50 @@ export const UsuariosPage = () => {
         };
     }, [searchText]);
 
-    // Dispara a busca quando o termo de busca DEBOUNCED, o perfil de filtro OU o status de filtro muda
     useEffect(() => {
-        // ⭐️ NOVO: Inclui filterStatus no array de dependências e na chamada
         fetchUsuarios(debouncedSearchText, filterPerfil, filterStatus);
     }, [fetchUsuarios, debouncedSearchText, filterPerfil, filterStatus]);
 
-    // Efeito para manter o foco no campo de busca (opcional)
     useEffect(() => {
         if (searchInputRef.current) {
             searchInputRef.current.focus();
         }
     });
 
-    // Handler: Atualiza o perfil de filtro e dispara a busca
-    const handlePerfilChange = (
-        event: React.MouseEvent<HTMLElement>,
-        newPerfil: UsuarioPerfilFilter | null,
-    ) => {
-        if (newPerfil !== null) {
-            setFilterPerfil(newPerfil);
-        }
+    // ⭐️ NOVO HANDLER: Abrir Menu
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+        setAnchorElFilter(event.currentTarget);
     };
 
-    // ⭐️ NOVO HANDLER: Atualiza o status de filtro e dispara a busca
-    const handleStatusChange = (
-        event: React.MouseEvent<HTMLElement>,
-        newStatus: UsuarioStatusFilter | null,
-    ) => {
-        if (newStatus !== null) {
-            setFilterStatus(newStatus);
-        }
+    // ⭐️ NOVO HANDLER: Fechar Menu
+    const handleMenuClose = () => {
+        setAnchorElFilter(null);
     };
+
+    // ⭐️ HANDLER ATUALIZADO: Altera Perfil e fecha o menu
+    const handleSetPerfil = (newPerfil: UsuarioPerfilFilter) => {
+        setFilterPerfil(newPerfil);
+        handleMenuClose();
+    };
+
+    // ⭐️ HANDLER ATUALIZADO: Altera Status e fecha o menu
+    const handleSetStatus = (newStatus: UsuarioStatusFilter) => {
+        setFilterStatus(newStatus);
+        handleMenuClose();
+    };
+
+    // Função auxiliar para obter a descrição do perfil/status para o botão
+    const getFilterSummary = () => {
+        const perfilLabel = filterPerfil === 'TODOS' ? 'Todos Perfis' : getPerfilDisplay(filterPerfil as PerfisEnum);
+        const statusLabel = filterStatus === 'TODOS' ? 'Todos Status' : (filterStatus === 'true' ? 'Ativos' : 'Inativos');
+
+        if (filterPerfil === 'TODOS' && filterStatus === 'TODOS') {
+            return 'Filtros (Nenhum)';
+        }
+
+        // Exemplo: Perfil: Gerente | Status: Ativos
+        return `Perfil: ${perfilLabel.split('.')[0]} | Status: ${statusLabel}`;
+    }
 
     const handleOpenCreate = () => {
         setUsuarioToEdit(null);
@@ -205,7 +213,6 @@ export const UsuariosPage = () => {
 
         try {
             await axios.delete(`${API_URL}/${usuarioId}`);
-            // ⭐️ ATUALIZADO: Recarrega com todos os filtros atuais
             fetchUsuarios(debouncedSearchText, filterPerfil, filterStatus);
             alert('Usuário excluído com sucesso!');
         } catch (err: any) {
@@ -213,7 +220,7 @@ export const UsuariosPage = () => {
         }
     };
 
-    // Mapeamento de Perfis para exibição amigável
+    // Mapeamento de Perfis para exibição amigável (inalterado)
     const getPerfilDisplay = (perfil: PerfisEnum): string => {
         const perfilMap: Record<PerfisEnum, string> = {
             [PerfisEnum.ADM_GERAL]: 'Adm. Geral',
@@ -226,8 +233,6 @@ export const UsuariosPage = () => {
 
     // Definição das colunas da DataGrid (inalteradas)
     const columns: GridColDef<Usuario>[] = [
-        // ... (colunas _id, nome, email, perfil, createdAt)
-
         {
             field: '_id',
             headerName: 'ID',
@@ -357,7 +362,6 @@ export const UsuariosPage = () => {
     }
 
     if (error) {
-        // ... (tratamento de erro inalterado)
         return (
             <Box sx={{ p: 3 }}>
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
@@ -387,8 +391,9 @@ export const UsuariosPage = () => {
                 </Button>
             </Box>
 
-            {/* Área de busca e filtros */}
+            {/* ⭐️ ÁREA DE BUSCA E FILTROS ATUALIZADA */}
             <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+
                 {/* Campo de Busca (inalterado) */}
                 <Box sx={{ flexGrow: 1 }}>
                     <TextField
@@ -409,56 +414,84 @@ export const UsuariosPage = () => {
                     />
                 </Box>
 
-                {/* ToggleButtonGroup para Filtro de Perfil (inalterado) */}
-                <ToggleButtonGroup
-                    value={filterPerfil}
-                    exclusive
-                    onChange={handlePerfilChange}
-                    aria-label="Filtro de Perfil do Usuário"
-                    size="medium"
-                    sx={{ height: 56, borderColor: 'rgba(0, 0, 0, 0.23)' }}
+                {/* ⭐️ NOVO COMPONENTE: Botão de Filtro Único */}
+                <Button
+                    variant="outlined"
+                    onClick={handleMenuOpen}
+                    startIcon={<FilterListIcon />}
+                    sx={{ height: 56, flexShrink: 0 }}
                 >
-                    <ToggleButton value="TODOS" aria-label="Todos os Perfis">
-                        Todos Perfis
-                    </ToggleButton>
-                    <ToggleButton value={PerfisEnum.ADM_GERAL} aria-label="Administrador Geral">
-                        Adm. Geral
-                    </ToggleButton>
-                    <ToggleButton value={PerfisEnum.GERENTE} aria-label="Gerente">
-                        Gerente
-                    </ToggleButton>
-                    <ToggleButton value={PerfisEnum.CORRETOR} aria-label="Corretor">
-                        Corretor
-                    </ToggleButton>
-                    <ToggleButton value={PerfisEnum.SUPORTE} aria-label="Suporte">
-                        Suporte
-                    </ToggleButton>
-                </ToggleButtonGroup>
+                    {getFilterSummary()}
+                </Button>
 
-                {/* ⭐️ NOVO: ToggleButtonGroup para Filtro de Status (Ativo/Inativo/Todos) */}
-                <ToggleButtonGroup
-                    value={filterStatus}
-                    exclusive
-                    onChange={handleStatusChange}
-                    aria-label="Filtro de Status do Usuário"
-                    size="medium"
-                    sx={{ height: 56, borderColor: 'rgba(0, 0, 0, 0.23)' }}
+                {/* ⭐️ NOVO COMPONENTE: Menu Dropdown Único com Subdivisões */}
+                <Menu
+                    anchorEl={anchorElFilter}
+                    open={Boolean(anchorElFilter)}
+                    onClose={handleMenuClose}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                 >
-                    <ToggleButton value="TODOS" aria-label="Todos os Status">
-                        Todos Status
-                    </ToggleButton>
-                    <ToggleButton value="true" aria-label="Usuários Ativos">
-                        Ativo
-                    </ToggleButton>
-                    <ToggleButton value="false" aria-label="Usuários Inativos">
-                        Inativo
-                    </ToggleButton>
-                </ToggleButtonGroup>
+
+                    {/* --- Seção de Filtro por Perfil --- */}
+                    <ListSubheader disableSticky sx={{ fontWeight: 'bold' }}>
+                        Filtrar por Perfil
+                    </ListSubheader>
+
+                    <MenuItem
+                        onClick={() => handleSetPerfil('TODOS')}
+                        selected={filterPerfil === 'TODOS'}
+                    >
+                        {filterPerfil === 'TODOS' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
+                        <Box sx={{ ml: filterPerfil !== 'TODOS' ? '24px' : 0 }}>Todos os Perfis</Box>
+                    </MenuItem>
+
+                    {Object.values(PerfisEnum).map((perfil) => (
+                        <MenuItem
+                            key={perfil}
+                            onClick={() => handleSetPerfil(perfil)}
+                            selected={filterPerfil === perfil}
+                        >
+                            {filterPerfil === perfil && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
+                            <Box sx={{ ml: filterPerfil !== perfil ? '24px' : 0 }}>
+                                {getPerfilDisplay(perfil)}
+                            </Box>
+                        </MenuItem>
+                    ))}
+
+                    {/* --- Seção de Filtro por Status --- */}
+                    <ListSubheader disableSticky sx={{ fontWeight: 'bold', mt: 1 }}>
+                        Filtrar por Status
+                    </ListSubheader>
+
+                    <MenuItem
+                        onClick={() => handleSetStatus('TODOS')}
+                        selected={filterStatus === 'TODOS'}
+                    >
+                        {filterStatus === 'TODOS' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
+                        <Box sx={{ ml: filterStatus !== 'TODOS' ? '24px' : 0 }}>Todos os Status</Box>
+                    </MenuItem>
+                    <MenuItem
+                        onClick={() => handleSetStatus('true')}
+                        selected={filterStatus === 'true'}
+                    >
+                        {filterStatus === 'true' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
+                        <Box sx={{ ml: filterStatus !== 'true' ? '24px' : 0 }}>Ativo</Box>
+                    </MenuItem>
+                    <MenuItem
+                        onClick={() => handleSetStatus('false')}
+                        selected={filterStatus === 'false'}
+                    >
+                        {filterStatus === 'false' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
+                        <Box sx={{ ml: filterStatus !== 'false' ? '24px' : 0 }}>Inativo</Box>
+                    </MenuItem>
+
+                </Menu>
+                {/* Fim da área de busca e filtros */}
 
             </Box>
-            {/* Fim da área de busca e filtros */}
 
-            {/* DataGrid (inalterado, mas usa o novo estado `loading`) */}
+            {/* DataGrid (inalterado) */}
             <Paper elevation={3} sx={{ height: 600, width: '100%' }}>
                 <DataGrid
                     rows={usuarios}
@@ -488,7 +521,7 @@ export const UsuariosPage = () => {
                 open={openModal}
                 onClose={handleClose}
                 usuarioToEdit={usuarioToEdit}
-                onSuccess={() => fetchUsuarios(debouncedSearchText, filterPerfil, filterStatus)} // Recarrega com status
+                onSuccess={() => fetchUsuarios(debouncedSearchText, filterPerfil, filterStatus)}
             />
         </Box>
     );

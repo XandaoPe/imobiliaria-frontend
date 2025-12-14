@@ -23,6 +23,7 @@ const ADMIN_ROLES = [PerfisEnum.ADM_GERAL, PerfisEnum.GERENTE];
 
 // ⭐️ Definição dos Itens de Menu (Sem visibilidade condicional ainda)
 const baseMenuItems = [
+    { text: 'Home', icon: <HomeIcon />, path: '/', requiredRoles: [] as PerfisEnum[] },
     { text: 'Dashboard', icon: <HomeIcon />, path: '/dashboard', requiredRoles: [] as PerfisEnum[] },
     { text: 'Clientes', icon: <GroupIcon />, path: '/clientes', requiredRoles: [] as PerfisEnum[] },
     { text: 'Imóveis', icon: <BusinessIcon />, path: '/imoveis', requiredRoles: [] as PerfisEnum[] },

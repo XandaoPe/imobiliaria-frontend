@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import axios from 'axios';
 import {
     Box, Typography, Button, CircularProgress, Alert, Paper,
-    TextField, InputAdornment, Tooltip, IconButton
+    TextField, InputAdornment, Tooltip, IconButton,
+    Menu, MenuItem, ListSubheader // ⭐️ NOVAS IMPORTAÇÕES para o Menu
 } from '@mui/material';
 import {
     DataGrid,
@@ -17,15 +18,20 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { Cliente, normalizeCPF, normalizeStatus } from '../types/cliente';
 import SearchIcon from '@mui/icons-material/Search';
 
-// ⭐️ NOVAS IMPORTAÇÕES PARA O FILTRO SEGMENTADO
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+// ⚠️ REMOÇÃO: Não precisa mais de ToggleButton e ToggleButtonGroup
+// import ToggleButton from '@mui/material/ToggleButton';
+// import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+
+// ⭐️ NOVOS ÍCONES
+import FilterListIcon from '@mui/icons-material/FilterList';
+import DoneIcon from '@mui/icons-material/Done';
+
 
 // ⚠️ Ajuste a URL base da sua API
 const API_URL = 'http://localhost:5000/clientes';
 const DEBOUNCE_DELAY = 300;
 
-// Tipos para o filtro de status
+// Tipos para o filtro de status (inalterado)
 type StatusFilter = 'TODOS' | 'ATIVO' | 'INATIVO';
 
 interface HighlightedTextProps {
@@ -33,7 +39,7 @@ interface HighlightedTextProps {
     highlight: string;
 }
 
-// Componente para Destaque
+// Componente para Destaque (inalterado)
 const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) => {
     const textToDisplay = text ?? '';
     if (!textToDisplay.trim() || !highlight.trim()) {
@@ -68,8 +74,10 @@ export const ClientesPage = () => {
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
 
-    // ⭐️ NOVO ESTADO: Status de filtro
     const [filterStatus, setFilterStatus] = useState<StatusFilter>('TODOS');
+
+    // ⭐️ NOVO ESTADO: Âncora para o Menu de Filtro Único
+    const [anchorElFilter, setAnchorElFilter] = useState<null | HTMLElement>(null);
 
     const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>({
         _id: false,
@@ -79,22 +87,19 @@ export const ClientesPage = () => {
 
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    // ⭐️ ATUALIZAÇÃO: Receber o termo de busca e o status de filtro
+    // Função de busca (inalterada na lógica)
     const fetchClientes = useCallback(async (search: string, status: StatusFilter) => {
         try {
             setLoading(true);
 
-            // Monta os parâmetros de consulta
             const params: { search?: string; status?: string } = {};
             if (search) {
                 params.search = search;
             }
-            // Envia o status para a API, exceto se for 'TODOS'
             if (status !== 'TODOS') {
-                params.status = status; // A API deve esperar 'ATIVO' ou 'INATIVO'
+                params.status = status;
             }
 
-            // Faz a requisição com os parâmetros
             const response = await axios.get(API_URL, { params });
 
             const clientesNormalizados = response.data.map((cliente: any) => ({
@@ -117,7 +122,7 @@ export const ClientesPage = () => {
         }
     }, []);
 
-    // Efeito para debounce do campo de busca
+    // Efeitos de Debounce e Busca (inalterados)
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearchText(searchText);
@@ -128,10 +133,9 @@ export const ClientesPage = () => {
         };
     }, [searchText]);
 
-    // Efeito para buscar clientes quando o termo de busca OU o status de filtro muda
     useEffect(() => {
         fetchClientes(debouncedSearchText, filterStatus);
-    }, [fetchClientes, debouncedSearchText, filterStatus]); // Depende do debouncedSearchText E do filterStatus
+    }, [fetchClientes, debouncedSearchText, filterStatus]);
 
     useEffect(() => {
         if (searchInputRef.current) {
@@ -139,15 +143,33 @@ export const ClientesPage = () => {
         }
     });
 
-    // ⭐️ NOVO HANDLER: Atualiza o status e dispara a busca via useEffect
-    const handleStatusChange = (
-        event: React.MouseEvent<HTMLElement>,
-        newStatus: StatusFilter | null,
-    ) => {
-        if (newStatus !== null) {
-            setFilterStatus(newStatus);
-        }
+    // ⭐️ NOVO HANDLER: Abrir Menu
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+        setAnchorElFilter(event.currentTarget);
     };
+
+    // ⭐️ NOVO HANDLER: Fechar Menu
+    const handleMenuClose = () => {
+        setAnchorElFilter(null);
+    };
+
+    // ⭐️ HANDLER ATUALIZADO: Altera Status e fecha o menu
+    const handleSetStatus = (newStatus: StatusFilter) => {
+        setFilterStatus(newStatus);
+        handleMenuClose();
+    };
+
+    // Função auxiliar para obter a descrição do status para o botão
+    const getFilterSummary = () => {
+        const statusMap: Record<StatusFilter, string> = {
+            'TODOS': 'Todos Status',
+            'ATIVO': 'Ativos',
+            'INATIVO': 'Inativos',
+        };
+        const statusLabel = statusMap[filterStatus] || 'Status';
+
+        return filterStatus === 'TODOS' ? 'Filtros (Status: Todos)' : `Filtros (Status: ${statusLabel})`;
+    }
 
     const handleOpenCreate = () => {
         setClienteToEdit(null);
@@ -171,7 +193,6 @@ export const ClientesPage = () => {
 
         try {
             await axios.delete(`${API_URL}/${clienteId}`);
-            // Recarrega com o termo de busca e o status atuais
             fetchClientes(debouncedSearchText, filterStatus);
             alert(`Cliente ${nome} excluído com sucesso!`);
         } catch (err: any) {
@@ -354,7 +375,7 @@ export const ClientesPage = () => {
                 </Button>
             </Box>
 
-            {/* ⭐️ NOVO: Área de busca e filtros */}
+            {/* ⭐️ ÁREA DE BUSCA E FILTROS ATUALIZADA */}
             <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
                 <Box sx={{ flexGrow: 1 }}>
                     <TextField
@@ -375,27 +396,57 @@ export const ClientesPage = () => {
                     />
                 </Box>
 
-                {/* ⭐️ NOVO COMPONENTE: ToggleButtonGroup para Filtro de Status */}
-                <ToggleButtonGroup
-                    value={filterStatus}
-                    exclusive
-                    onChange={handleStatusChange}
-                    aria-label="Filtro de Status do Cliente"
-                    size="medium"
-                    sx={{ height: 56, borderColor: 'rgba(0, 0, 0, 0.23)' }} // Altura para alinhar com o TextField
+                {/* ⭐️ NOVO COMPONENTE: Botão de Filtro Único */}
+                <Button
+                    variant="outlined"
+                    onClick={handleMenuOpen}
+                    startIcon={<FilterListIcon />}
+                    sx={{ height: 56, flexShrink: 0 }} // Alinha com o TextField
                 >
-                    <ToggleButton value="TODOS" aria-label="Todos">
-                        Todos
-                    </ToggleButton>
-                    <ToggleButton value="ATIVO" aria-label="Ativos">
-                        Ativos
-                    </ToggleButton>
-                    <ToggleButton value="INATIVO" aria-label="Inativos">
-                        Inativos
-                    </ToggleButton>
-                </ToggleButtonGroup>
+                    {getFilterSummary()}
+                </Button>
+
+                {/* ⭐️ NOVO COMPONENTE: Menu Dropdown Único para Status */}
+                <Menu
+                    anchorEl={anchorElFilter}
+                    open={Boolean(anchorElFilter)}
+                    onClose={handleMenuClose}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                >
+
+                    <ListSubheader disableSticky sx={{ fontWeight: 'bold' }}>
+                        Filtrar por Status
+                    </ListSubheader>
+
+                    <MenuItem
+                        onClick={() => handleSetStatus('TODOS')}
+                        selected={filterStatus === 'TODOS'}
+                    >
+                        {filterStatus === 'TODOS' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
+                        <Box sx={{ ml: filterStatus !== 'TODOS' ? '24px' : 0 }}>Todos os Status</Box>
+                    </MenuItem>
+
+                    <MenuItem
+                        onClick={() => handleSetStatus('ATIVO')}
+                        selected={filterStatus === 'ATIVO'}
+                    >
+                        {filterStatus === 'ATIVO' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
+                        <Box sx={{ ml: filterStatus !== 'ATIVO' ? '24px' : 0 }}>Ativos</Box>
+                    </MenuItem>
+
+                    <MenuItem
+                        onClick={() => handleSetStatus('INATIVO')}
+                        selected={filterStatus === 'INATIVO'}
+                    >
+                        {filterStatus === 'INATIVO' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
+                        <Box sx={{ ml: filterStatus !== 'INATIVO' ? '24px' : 0 }}>Inativos</Box>
+                    </MenuItem>
+
+                </Menu>
+                {/* Fim da área de busca e filtros */}
+
             </Box>
-            {/* Fim da área de busca e filtros */}
 
             <Paper elevation={3} sx={{ height: 600, width: '100%' }}>
                 <DataGrid
@@ -407,7 +458,6 @@ export const ClientesPage = () => {
                     checkboxSelection
                     disableRowSelectionOnClick
                     getRowId={(row) => row._id}
-                    // Mostrar loading apenas se houver busca ou filtro
                     loading={loading}
                     sx={{
                         '& .status-disponivel': {

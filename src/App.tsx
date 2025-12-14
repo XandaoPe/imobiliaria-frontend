@@ -17,6 +17,8 @@ import { UsuariosPage } from './pages/UsuariosPage';
 // Imports de outras páginas
 import { ClientesPage } from './pages/ClientesPage';
 import { ImoveisPage } from './pages/ImoveisPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { HomePage } from './pages/HomePage';
 // import { DashboardPage } from './pages/DashboardPage'; // ⭐️ Crie esta página simples
 
 // -----------------------------------------------------------
@@ -45,12 +47,12 @@ const App = () => {
         <AuthProvider>
           <Routes>
             {/* 1. Rota de Login (Não protegida) */}
-            <Route path="/" element={<LoginPage />} />
+            {/* <Route path="/" element={<LoginPage />} /> */}
 
             {/* 2. Rotas Protegidas (Usam o MainLayout) */}
             <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<h1>Dash Page Placeholder</h1>} />
-
+              <Route path="/" element={<HomePage />} /> {/* <-- HOME PAGE */}
+              <Route path="/dashboard" element={<DashboardPage />} /> 
               {/* ⭐️ Rota Clientes REAL */}
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/imoveis" element={<ImoveisPage />} />

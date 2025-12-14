@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
-    Box, Typography, Button, CircularProgress, Alert, Paper, TextField, InputAdornment, Tooltip, IconButton
+    Box, Typography, Button, CircularProgress, Alert, Paper, TextField, InputAdornment, Tooltip, IconButton, Menu, MenuItem
 } from '@mui/material';
 import {
     DataGrid,
@@ -13,10 +13,10 @@ import HouseSidingIcon from '@mui/icons-material/HouseSiding';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
+// ⭐️ NOVO: Importação para o ícone de filtro
+import FilterListIcon from '@mui/icons-material/FilterList';
 
-// ⭐️ NOVO: Importações para o filtro segmentado
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+// Removemos a importação de ToggleButton e ToggleButtonGroup
 
 import { Imovel, ImovelFormData } from '../types/imovel';
 import { ImovelFormModal } from '../components/ImovelFormModal';
@@ -51,7 +51,7 @@ const HighlightedText: React.FC<{ text: string | null | undefined; highlight: st
 // FIM - HighlightedText
 
 // Tipos para o filtro de status do Imóvel
-type ImovelStatusFilter = 'TODOS' | 'DISPONIVEL' | 'INDISPONIVEL'; // <-- NOVO
+type ImovelStatusFilter = 'TODOS' | 'DISPONIVEL' | 'INDISPONIVEL';
 
 const API_URL = 'http://localhost:5000/imoveis';
 
@@ -68,7 +68,9 @@ export const ImoveisPage = () => {
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
 
-    // ⭐️ NOVO ESTADO: Status de filtro do imóvel
+    // Estado para o Menu de Filtro
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null); // <-- NOVO
+
     const [filterStatus, setFilterStatus] = useState<ImovelStatusFilter>('TODOS');
 
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -78,8 +80,18 @@ export const ImoveisPage = () => {
         descricao: false,
     });
 
-    // ATUALIZADO: fetchImoveis agora aceita status de filtro
-    const fetchImoveis = useCallback(async (search: string = '', status: ImovelStatusFilter = 'TODOS') => { // <-- ATUALIZADO
+    // Função para obter o label amigável do status (usado no botão)
+    const getStatusLabel = (status: ImovelStatusFilter): string => {
+        switch (status) {
+            case 'TODOS': return 'Todos os Status';
+            case 'DISPONIVEL': return 'Disponíveis';
+            case 'INDISPONIVEL': return 'Indisponíveis';
+            default: return 'Filtro de Status';
+        }
+    }
+
+
+    const fetchImoveis = useCallback(async (search: string = '', status: ImovelStatusFilter = 'TODOS') => {
         try {
             setLoading(true);
 
@@ -87,13 +99,13 @@ export const ImoveisPage = () => {
             if (search) {
                 params.search = search;
             }
-            // ⭐️ Envia o status para a API, exceto se for 'TODOS'
+            // Envia o status para a API, exceto se for 'TODOS'
             if (status !== 'TODOS') {
                 params.status = status;
             }
 
             const response = await axios.get(API_URL, {
-                params: params // <-- ATUALIZADO
+                params: params
             });
 
             setImoveis(response.data as Imovel[]);
@@ -123,8 +135,8 @@ export const ImoveisPage = () => {
 
     // Dispara a busca quando o termo de busca OU o status de filtro muda
     useEffect(() => {
-        fetchImoveis(debouncedSearchText, filterStatus); // <-- ATUALIZADO
-    }, [fetchImoveis, debouncedSearchText, filterStatus]); // <-- ATUALIZADO
+        fetchImoveis(debouncedSearchText, filterStatus);
+    }, [fetchImoveis, debouncedSearchText, filterStatus]);
 
     // Efeito para manter o foco no campo de busca
     useEffect(() => {
@@ -133,14 +145,18 @@ export const ImoveisPage = () => {
         }
     });
 
-    // ⭐️ NOVO HANDLER: Atualiza o status e dispara a busca (via useEffect)
-    const handleStatusChange = (
-        event: React.MouseEvent<HTMLElement>,
-        newStatus: ImovelStatusFilter | null,
-    ) => {
-        if (newStatus !== null) {
-            setFilterStatus(newStatus);
-        }
+    // Handlers para o Menu de Filtro
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => { // <-- NOVO
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleMenuClose = () => { // <-- NOVO
+        setAnchorEl(null);
+    };
+
+    const handleStatusChange = (status: ImovelStatusFilter) => { // <-- ATUALIZADO
+        setFilterStatus(status);
+        handleMenuClose();
     };
 
     const handleOpenCreate = () => {
@@ -250,10 +266,10 @@ export const ImoveisPage = () => {
             field: 'disponivel',
             headerName: 'Status',
             width: 130,
-            // ⭐️ O status na tela será "Disponível" ou "Indisponível"
+            // O status na tela será "Disponível" ou "Indisponível"
             valueGetter: (value, row) => row.disponivel ? "Disponível" : "Indisponível",
             cellClassName: (params) => {
-                // ⭐️ Classe para cor condicional
+                // Classe para cor condicional
                 return params.row.disponivel ? 'status-disponivel' : 'status-indisponivel';
             }
         },
@@ -327,7 +343,7 @@ export const ImoveisPage = () => {
         },
     ];
 
-    if (loading && !debouncedSearchText && filterStatus === 'TODOS') { // Adicionado 'filterStatus'
+    if (loading && !debouncedSearchText && filterStatus === 'TODOS') {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                 <CircularProgress />
@@ -341,7 +357,7 @@ export const ImoveisPage = () => {
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
                 <Button
                     variant="contained"
-                    onClick={() => fetchImoveis(debouncedSearchText, filterStatus)} // <-- ATUALIZADO
+                    onClick={() => fetchImoveis(debouncedSearchText, filterStatus)}
                 >
                     Tentar Novamente
                 </Button>
@@ -364,7 +380,7 @@ export const ImoveisPage = () => {
                 </Button>
             </Box>
 
-            {/* ⭐️ NOVO: Área de busca e filtros */}
+            {/* ⭐️ ÁREA DE BUSCA E FILTROS ATUALIZADA */}
             <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
                 <Box sx={{ flexGrow: 1 }}>
                     <TextField
@@ -385,26 +401,53 @@ export const ImoveisPage = () => {
                     />
                 </Box>
 
-                {/* ⭐️ NOVO COMPONENTE: ToggleButtonGroup para Filtro de Status */}
-                <ToggleButtonGroup
-                    value={filterStatus}
-                    exclusive
-                    onChange={handleStatusChange}
-                    aria-label="Filtro de Status do Imóvel"
-                    size="medium"
-                    sx={{ height: 56, borderColor: 'rgba(0, 0, 0, 0.23)' }}
+                {/* ⭐️ NOVO: Botão e Menu para Filtro de Status (Escondido) */}
+                <Tooltip title={`Status Atual: ${getStatusLabel(filterStatus)}`} arrow>
+                    <Button
+                        variant="outlined"
+                        onClick={handleMenuOpen}
+                        startIcon={<FilterListIcon />}
+                        sx={{ height: 56, flexShrink: 0 }} // Para ter a mesma altura do TextField
+                    >
+                        {getStatusLabel(filterStatus)}
+                    </Button>
+                </Tooltip>
+
+                <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleMenuClose}
+                    // Posiciona o menu abaixo do botão
+                    anchorOrigin={{
+                        vertical: 'bottom',
+                        horizontal: 'right',
+                    }}
+                    transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'right',
+                    }}
                 >
-                    <ToggleButton value="TODOS" aria-label="Todos">
-                        Todos
-                    </ToggleButton>
-                    {/* O valor do ToggleButton deve ser o valor que o backend espera no query param */}
-                    <ToggleButton value="DISPONIVEL" aria-label="Disponíveis">
+                    <MenuItem
+                        onClick={() => handleStatusChange('TODOS')}
+                        selected={filterStatus === 'TODOS'}
+                    >
+                        Todos os Status
+                    </MenuItem>
+                    <MenuItem
+                        onClick={() => handleStatusChange('DISPONIVEL')}
+                        selected={filterStatus === 'DISPONIVEL'}
+                    >
                         Disponíveis
-                    </ToggleButton>
-                    <ToggleButton value="INDISPONIVEL" aria-label="Indisponíveis">
+                    </MenuItem>
+                    <MenuItem
+                        onClick={() => handleStatusChange('INDISPONIVEL')}
+                        selected={filterStatus === 'INDISPONIVEL'}
+                    >
                         Indisponíveis
-                    </ToggleButton>
-                </ToggleButtonGroup>
+                    </MenuItem>
+                </Menu>
+                {/* Fim do Botão e Menu de Filtro */}
+
             </Box>
             {/* Fim da área de busca e filtros */}
 
@@ -436,7 +479,7 @@ export const ImoveisPage = () => {
                 open={openModal}
                 onClose={handleClose}
                 imovelToEdit={imovelToEdit}
-                onSuccess={() => fetchImoveis(debouncedSearchText, filterStatus)} // <-- ATUALIZADO
+                onSuccess={() => fetchImoveis(debouncedSearchText, filterStatus)}
             />
         </Box>
     );
