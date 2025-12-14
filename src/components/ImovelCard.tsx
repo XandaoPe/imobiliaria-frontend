@@ -1,10 +1,18 @@
-// src/components/ImovelCard.tsx
 import React from 'react';
 import {
-    Card, CardContent, CardMedia, Typography, Chip, Box
+    Card, CardContent, CardMedia, Typography, Chip, Box,
+    Tooltip // Componente Tooltip Importado
 } from '@mui/material';
-import { Imovel } from '../types/imovel'; // Certifique-se de que o tipo Imovel está correto
-import { BathtubOutlined, BedOutlined, DriveEtaOutlined, SquareFootOutlined } from '@mui/icons-material';
+import { Imovel } from '../types/imovel';
+// Ícones Específicos e Tooltips
+import {
+    BathtubOutlined,
+    BedOutlined,
+    DriveEtaOutlined,
+    HomeWorkOutlined,    // Ícone para Área Construída
+    LandscapeOutlined,   // Ícone para Área do Terreno
+    ListAltOutlined,     // Ícone para Descrição
+} from '@mui/icons-material';
 
 // URL base para as fotos (a mesma que você usou no ImovelPhotosStep)
 const PHOTO_BASE_URL = 'http://localhost:5000/uploads/imoveis';
@@ -35,6 +43,12 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick }) => {
 
     const statusColor = imovel.disponivel ? 'success' : 'error';
     const statusLabel = imovel.disponivel ? 'Disponível' : 'Indisponível';
+
+    // Define o texto para a garagem (número de vagas ou 'Sim')
+    const garagemDisplay = typeof imovel.garagem === 'number' && imovel.garagem > 0
+        ? `${imovel.garagem}`
+        : 'Sim';
+
 
     return (
         <Card
@@ -76,41 +90,67 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick }) => {
 
                 {/* Ícones de Características */}
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 1 }}>
+
+                    {/* Quartos */}
                     {imovel.quartos && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                            <BedOutlined sx={{ fontSize: 18, mr: 0.5 }} />
-                            <Typography variant="body2">{imovel.quartos}</Typography>
-                        </Box>
+                        <Tooltip title="Número de Quartos" arrow>
+                            <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                                <BedOutlined sx={{ fontSize: 18, mr: 0.5 }} />
+                                <Typography variant="body2">{imovel.quartos}</Typography>
+                            </Box>
+                        </Tooltip>
                     )}
+
+                    {/* Banheiros */}
                     {imovel.banheiros && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                            <BathtubOutlined sx={{ fontSize: 18, mr: 0.5 }} />
-                            <Typography variant="body2">{imovel.banheiros}</Typography>
-                        </Box>
+                        <Tooltip title="Número de Banheiros" arrow>
+                            <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                                <BathtubOutlined sx={{ fontSize: 18, mr: 0.5 }} />
+                                <Typography variant="body2">{imovel.banheiros}</Typography>
+                            </Box>
+                        </Tooltip>
                     )}
-                    {imovel.area_terreno && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                            <BathtubOutlined sx={{ fontSize: 18, mr: 0.5 }} />
-                            <Typography variant="body2">{imovel.area_terreno}</Typography>
-                        </Box>
-                    )}
-                    {imovel.area_construida && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                            <BathtubOutlined sx={{ fontSize: 18, mr: 0.5 }} />
-                            <Typography variant="body2">{imovel.area_construida}</Typography>
-                        </Box>
-                    )}
+
+                    {/* Garagem */}
                     {imovel.garagem && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                            <DriveEtaOutlined sx={{ fontSize: 18, mr: 0.5 }} />
-                            <Typography variant="body2">{imovel.garagem}</Typography>
-                        </Box>
+                        <Tooltip title="Vagas de Garagem" arrow>
+                            <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                                <DriveEtaOutlined sx={{ fontSize: 18, mr: 0.5 }} />
+                                <Typography variant="body2">{garagemDisplay}</Typography>
+                            </Box>
+                        </Tooltip>
                     )}
+
+                    {/* Área Terreno - ÍCONE LandscapeOutlined */}
+                    {imovel.area_terreno && (
+                        <Tooltip title="Área Total do Terreno (m²)" arrow>
+                            <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                                <LandscapeOutlined sx={{ fontSize: 18, mr: 0.5 }} />
+                                <Typography variant="body2">{imovel.area_terreno} m²</Typography>
+                            </Box>
+                        </Tooltip>
+                    )}
+
+                    {/* Área Construida - ÍCONE HomeWorkOutlined */}
+                    {imovel.area_construida && (
+                        <Tooltip title="Área Construída (m²)" arrow>
+                            <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                                <HomeWorkOutlined sx={{ fontSize: 18, mr: 0.5 }} />
+                                <Typography variant="body2">{imovel.area_construida} m²</Typography>
+                            </Box>
+                        </Tooltip>
+                    )}
+
+                    {/* Descrição - ÍCONE ListAltOutlined e Truncamento de Texto */}
                     {imovel.descricao && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                            <SquareFootOutlined sx={{ fontSize: 18, mr: 0.5 }} />
-                            <Typography variant="body2">{imovel.descricao} m²</Typography>
-                        </Box>
+                        <Tooltip title="Detalhes/Descrição" arrow>
+                            <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                                <ListAltOutlined sx={{ fontSize: 18, mr: 0.5 }} />
+                                <Typography variant="body2">
+                                    {imovel.descricao.length > 30 ? `${imovel.descricao.substring(0, 30)}...` : imovel.descricao}
+                                </Typography>
+                            </Box>
+                        </Tooltip>
                     )}
                 </Box>
             </CardContent>

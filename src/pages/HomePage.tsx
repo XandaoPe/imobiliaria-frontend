@@ -125,31 +125,37 @@ export const HomePage: React.FC = () => {
                     Nenhum imóvel encontrado com o status "{filter === 'DISPONIVEIS' ? 'Disponível' : filter === 'INDISPONIVEIS' ? 'Indisponível' : 'Todos'}".
                 </Alert>
             ) : (
+                
                 <Box
                     sx={{
                         display: 'flex',
                         flexWrap: 'wrap',
                         gap: 3, // Espaçamento entre os cards
+
                         // Responsividade para os Cards:
-                        // O cálculo `calc(X - Gap)` é necessário para garantir que o gap não quebre a linha.
                         '& > div': {
                             // 1 coluna (xs)
-                            flex: '1 1 100%',
+                            // Utilizamos 'flex: 0 0 100%' para que o card não cresça e ocupe mais que o necessário
+                            flex: '0 0 100%',
                             // 2 colunas (sm)
                             '@media (min-width: 600px)': {
-                                flex: '1 1 calc(50% - 12px)', // 12px = metade do gap de 3 (3 * 8px = 24px)
+                                // MUDANÇA: flex-grow agora é 0 (não cresce)
+                                flex: '0 0 calc(50% - 12px)',
                             },
                             // 3 colunas (md)
                             '@media (min-width: 960px)': {
-                                flex: '1 1 calc(33.333% - 16px)', // 16px = (2/3) do gap de 3
+                                // MUDANÇA: flex-grow agora é 0 (não cresce)
+                                flex: '0 0 calc(33.333% - 16px)',
                             },
                             // 4 colunas (lg)
                             '@media (min-width: 1280px)': {
-                                flex: '1 1 calc(25% - 18px)', // 18px = (3/4) do gap de 3
+                                // MUDANÇA: flex-grow agora é 0 (não cresce)
+                                flex: '0 0 calc(25% - 18px)',
                             },
                         },
                     }}
                 >
+
                     {filteredImoveis.map((imovel) => (
                         <Box key={imovel._id}>
                             <ImovelCard imovel={imovel} onClick={handleCardClick} />
