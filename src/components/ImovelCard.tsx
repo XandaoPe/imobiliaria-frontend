@@ -88,6 +88,18 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick }) => {
                             <Typography variant="body2">{imovel.banheiros}</Typography>
                         </Box>
                     )}
+                    {imovel.area_terreno && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                            <BathtubOutlined sx={{ fontSize: 18, mr: 0.5 }} />
+                            <Typography variant="body2">{imovel.area_terreno}</Typography>
+                        </Box>
+                    )}
+                    {imovel.area_construida && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                            <BathtubOutlined sx={{ fontSize: 18, mr: 0.5 }} />
+                            <Typography variant="body2">{imovel.area_construida}</Typography>
+                        </Box>
+                    )}
                     {imovel.garagem && (
                         <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
                             <DriveEtaOutlined sx={{ fontSize: 18, mr: 0.5 }} />

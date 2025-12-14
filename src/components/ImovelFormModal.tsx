@@ -45,7 +45,7 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
     // Valores padrão completos para o formulário
     const defaultValues: ImovelFormData = {
         titulo: '', tipo: 'CASA', endereco: '', valor: 0, disponivel: true,
-        cidade: '', descricao: null, detalhes: null, quartos: null, banheiros: null, garagem: false,
+        cidade: '', descricao: null, detalhes: null, quartos: null, banheiros: null, area_terreno: null, area_construida:null, garagem: false,
     };
 
     const {
@@ -72,6 +72,8 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                     detalhes: imovelToEdit.detalhes || null,
                     quartos: imovelToEdit.quartos || null,
                     banheiros: imovelToEdit.banheiros || null,
+                    area_terreno: imovelToEdit.area_terreno || null,
+                    area_construida: imovelToEdit.area_construida || null,
                     garagem: imovelToEdit.garagem ?? false,
                 });
                 setCurrentImovel(imovelToEdit);

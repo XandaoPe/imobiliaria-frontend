@@ -17,6 +17,8 @@ export interface ImovelFormData {
     detalhes: string | null;
     quartos: number | null;
     banheiros: number | null;
+    area_terreno: number | null;
+    area_construida: number | null;
     garagem: boolean;
 }
 
@@ -110,6 +112,28 @@ export const imovelValidationSchema = yup.object().shape({
         .typeError('Banheiros deve ser um número.')
         .min(0, 'O número de banheiros não pode ser negativo.')
         .integer('O número de banheiros deve ser um número inteiro.')
+        .default(null)
+        .transform((value, originalValue) =>
+            originalValue === '' || originalValue === undefined ? null : value
+        ),
+
+    area_terreno: yup
+        .number()
+        .nullable()
+        .typeError('Área do Terreno deve ser um número.')
+        .min(0, 'Área do Terreno não pode ser negativo.')
+        .integer('Área do Terreno deve ser um número inteiro.')
+        .default(null)
+        .transform((value, originalValue) =>
+            originalValue === '' || originalValue === undefined ? null : value
+        ),
+
+    area_construida: yup
+        .number()
+        .nullable()
+        .typeError('Área Construída deve ser um número.')
+        .min(0, 'Área Construida não pode ser negativo.')
+        .integer('Área Construída deve ser um número inteiro.')
         .default(null)
         .transform((value, originalValue) =>
             originalValue === '' || originalValue === undefined ? null : value

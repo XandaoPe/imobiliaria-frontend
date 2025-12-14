@@ -21,7 +21,7 @@ interface DadosPrincipaisStepProps {
 
 export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ control, errors }) => {
     return (
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
             {/* Título */}
             <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' } }}>
                 <Controller
