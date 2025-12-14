@@ -12,21 +12,26 @@ import {
 import HouseSidingIcon from '@mui/icons-material/HouseSiding';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import SearchIcon from '@mui/icons-material/Search';
+
+// ⭐️ NOVO: Importações para o filtro segmentado
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+
 import { Imovel, ImovelFormData } from '../types/imovel';
 import { ImovelFormModal } from '../components/ImovelFormModal';
-import SearchIcon from '@mui/icons-material/Search';
+
 
 // Componente para Destaque de Texto (HighlightedText)
 const HighlightedText: React.FC<{ text: string | null | undefined; highlight: string }> = ({ text, highlight }) => {
 
-    const textToDisplay = text ?? ''; // Garante que é uma string ('') se for null
+    const textToDisplay = text ?? '';
 
     if (!textToDisplay.trim() || !highlight.trim()) {
         return <>{textToDisplay}</>;
     }
 
     const regex = new RegExp(`(${highlight})`, 'gi');
-    // Usar 'textToDisplay' (a string tratada) para o split
     const parts = textToDisplay.split(regex);
 
     return (
@@ -45,7 +50,9 @@ const HighlightedText: React.FC<{ text: string | null | undefined; highlight: st
 };
 // FIM - HighlightedText
 
-// Ajuste a URL base da sua API para Imóveis
+// Tipos para o filtro de status do Imóvel
+type ImovelStatusFilter = 'TODOS' | 'DISPONIVEL' | 'INDISPONIVEL'; // <-- NOVO
+
 const API_URL = 'http://localhost:5000/imoveis';
 
 const DEBOUNCE_DELAY = 300;
@@ -58,27 +65,35 @@ export const ImoveisPage = () => {
     const [openModal, setOpenModal] = useState(false);
     const [imovelToEdit, setImovelToEdit] = useState<Imovel | null>(null);
 
-    // Estados para a busca e debounce
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
 
-    // Ref para manter o foco no campo de busca
+    // ⭐️ NOVO ESTADO: Status de filtro do imóvel
+    const [filterStatus, setFilterStatus] = useState<ImovelStatusFilter>('TODOS');
+
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    // Colunas padrão ocultas
     const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>({
         _id: false,
         descricao: false,
     });
 
-    // ATUALIZADO: fetchImoveis agora aceita um termo de busca
-    const fetchImoveis = useCallback(async (search: string = '') => {
+    // ATUALIZADO: fetchImoveis agora aceita status de filtro
+    const fetchImoveis = useCallback(async (search: string = '', status: ImovelStatusFilter = 'TODOS') => { // <-- ATUALIZADO
         try {
             setLoading(true);
 
-            // Envia o termo de busca como query parameter
+            const params: { search?: string; status?: string } = {};
+            if (search) {
+                params.search = search;
+            }
+            // ⭐️ Envia o status para a API, exceto se for 'TODOS'
+            if (status !== 'TODOS') {
+                params.status = status;
+            }
+
             const response = await axios.get(API_URL, {
-                params: { search }
+                params: params // <-- ATUALIZADO
             });
 
             setImoveis(response.data as Imovel[]);
@@ -106,6 +121,11 @@ export const ImoveisPage = () => {
         };
     }, [searchText]);
 
+    // Dispara a busca quando o termo de busca OU o status de filtro muda
+    useEffect(() => {
+        fetchImoveis(debouncedSearchText, filterStatus); // <-- ATUALIZADO
+    }, [fetchImoveis, debouncedSearchText, filterStatus]); // <-- ATUALIZADO
+
     // Efeito para manter o foco no campo de busca
     useEffect(() => {
         if (searchInputRef.current) {
@@ -113,10 +133,15 @@ export const ImoveisPage = () => {
         }
     });
 
-    // Dispara a busca quando o termo com debounce muda
-    useEffect(() => {
-        fetchImoveis(debouncedSearchText);
-    }, [fetchImoveis, debouncedSearchText]);
+    // ⭐️ NOVO HANDLER: Atualiza o status e dispara a busca (via useEffect)
+    const handleStatusChange = (
+        event: React.MouseEvent<HTMLElement>,
+        newStatus: ImovelStatusFilter | null,
+    ) => {
+        if (newStatus !== null) {
+            setFilterStatus(newStatus);
+        }
+    };
 
     const handleOpenCreate = () => {
         setImovelToEdit(null);
@@ -140,7 +165,7 @@ export const ImoveisPage = () => {
 
         try {
             await axios.delete(`${API_URL}/${imovelId}`);
-            fetchImoveis(debouncedSearchText); // Recarrega com o termo de busca atual
+            fetchImoveis(debouncedSearchText, filterStatus); // Recarrega com os filtros atuais
             alert('Imóvel excluído com sucesso!');
         } catch (err: any) {
             alert(err.response?.data?.message || 'Erro ao excluir imóvel.');
@@ -178,17 +203,16 @@ export const ImoveisPage = () => {
             field: 'titulo',
             headerName: 'Título',
             width: 250,
-            // renderCell torna o título clicável para edição e aplica o destaque
             renderCell: (params: GridRenderCellParams<Imovel>) => (
                 <Typography
                     component="span"
                     variant="body2"
-                    onClick={() => handleOpenEdit(params.row)} // ⬅️ AÇÃO PRINCIPAL
+                    onClick={() => handleOpenEdit(params.row)}
                     sx={{
-                        cursor: 'pointer', // Indica que é clicável
-                        color: 'primary.main', // Cor de link
+                        cursor: 'pointer',
+                        color: 'primary.main',
                         '&:hover': {
-                            textDecoration: 'underline' // Sublinha ao passar o mouse
+                            textDecoration: 'underline'
                         }
                     }}
                 >
@@ -209,11 +233,10 @@ export const ImoveisPage = () => {
             field: 'endereco',
             headerName: 'Endereço',
             width: 200,
-            // Usar renderCell para aplicar o destaque
             renderCell: (params: GridRenderCellParams<Imovel>) => (
                 <HighlightedText
                     text={params.row.endereco}
-                    highlight={debouncedSearchText} // Usar o termo com debounce
+                    highlight={debouncedSearchText}
                 />
             ),
         },
@@ -227,8 +250,10 @@ export const ImoveisPage = () => {
             field: 'disponivel',
             headerName: 'Status',
             width: 130,
+            // ⭐️ O status na tela será "Disponível" ou "Indisponível"
             valueGetter: (value, row) => row.disponivel ? "Disponível" : "Indisponível",
             cellClassName: (params) => {
+                // ⭐️ Classe para cor condicional
                 return params.row.disponivel ? 'status-disponivel' : 'status-indisponivel';
             }
         },
@@ -237,11 +262,10 @@ export const ImoveisPage = () => {
             headerName: 'Descrição',
             width: 300,
             hideable: true,
-            // Usar renderCell para aplicar o destaque
             renderCell: (params: GridRenderCellParams<Imovel>) => (
                 <HighlightedText
-                    text={params.row.descricao} // O componente HighlightedText lida com o 'null'
-                    highlight={debouncedSearchText} // Usar o termo com debounce
+                    text={params.row.descricao}
+                    highlight={debouncedSearchText}
                 />
             ),
         },
@@ -251,21 +275,19 @@ export const ImoveisPage = () => {
             width: 150,
             sortable: false,
             filterable: false,
-            // ⭐️ ATUALIZAÇÃO FINAL: Centralização Vertical e Horizontal
             renderCell: (params: GridRenderCellParams<Imovel>) => {
                 return (
                     <Box
                         sx={{
                             display: 'flex',
                             gap: 1,
-                            alignItems: 'center', // Centralização Vertical
-                            justifyContent: 'center', // Centralização Horizontal
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             width: '100%',
-                            height: '100%' // Garante que a Box preencha a altura da célula
+                            height: '100%'
                         }}
                     >
 
-                        {/* TOOLTIP para EDIÇÃO */}
                         <Tooltip title="Editar Imóvel" arrow>
                             <IconButton
                                 color="primary"
@@ -283,7 +305,6 @@ export const ImoveisPage = () => {
                             </IconButton>
                         </Tooltip>
 
-                        {/* TOOLTIP para EXCLUSÃO */}
                         <Tooltip title={`Excluir: ${params.row.titulo}`} arrow>
                             <IconButton
                                 color="error"
@@ -306,7 +327,7 @@ export const ImoveisPage = () => {
         },
     ];
 
-    if (loading && !debouncedSearchText) { // Apenas mostra o spinner completo na carga inicial
+    if (loading && !debouncedSearchText && filterStatus === 'TODOS') { // Adicionado 'filterStatus'
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                 <CircularProgress />
@@ -318,10 +339,9 @@ export const ImoveisPage = () => {
         return (
             <Box sx={{ p: 3 }}>
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-                {/* Chamar fetchImoveis com o termo de busca atual */}
                 <Button
                     variant="contained"
-                    onClick={() => fetchImoveis(debouncedSearchText)}
+                    onClick={() => fetchImoveis(debouncedSearchText, filterStatus)} // <-- ATUALIZADO
                 >
                     Tentar Novamente
                 </Button>
@@ -344,27 +364,49 @@ export const ImoveisPage = () => {
                 </Button>
             </Box>
 
-            {/* Campo de busca implementado */}
-            <Box sx={{ mb: 3 }}>
-                <TextField
-                    fullWidth
-                    label="Pesquisar Imóveis por Título, Endereço ou Descrição"
-                    variant="outlined"
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    inputRef={searchInputRef}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                {/* Mostrar CircularProgress se estiver carregando E houver um termo de busca */}
-                                {loading && searchText ? <CircularProgress size={20} /> : <SearchIcon />}
-                            </InputAdornment>
-                        ),
-                    }}
-                    disabled={loading && !searchText}
-                />
+            {/* ⭐️ NOVO: Área de busca e filtros */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+                <Box sx={{ flexGrow: 1 }}>
+                    <TextField
+                        fullWidth
+                        label="Pesquisar Imóveis por Título, Endereço ou Descrição"
+                        variant="outlined"
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        inputRef={searchInputRef}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    {loading && searchText ? <CircularProgress size={20} /> : <SearchIcon />}
+                                </InputAdornment>
+                            ),
+                        }}
+                        disabled={loading && !searchText}
+                    />
+                </Box>
+
+                {/* ⭐️ NOVO COMPONENTE: ToggleButtonGroup para Filtro de Status */}
+                <ToggleButtonGroup
+                    value={filterStatus}
+                    exclusive
+                    onChange={handleStatusChange}
+                    aria-label="Filtro de Status do Imóvel"
+                    size="medium"
+                    sx={{ height: 56, borderColor: 'rgba(0, 0, 0, 0.23)' }}
+                >
+                    <ToggleButton value="TODOS" aria-label="Todos">
+                        Todos
+                    </ToggleButton>
+                    {/* O valor do ToggleButton deve ser o valor que o backend espera no query param */}
+                    <ToggleButton value="DISPONIVEL" aria-label="Disponíveis">
+                        Disponíveis
+                    </ToggleButton>
+                    <ToggleButton value="INDISPONIVEL" aria-label="Indisponíveis">
+                        Indisponíveis
+                    </ToggleButton>
+                </ToggleButtonGroup>
             </Box>
-            {/* Fim do campo de busca */}
+            {/* Fim da área de busca e filtros */}
 
             <Paper elevation={3} sx={{ height: 600, width: '100%' }}>
                 <DataGrid
@@ -394,7 +436,7 @@ export const ImoveisPage = () => {
                 open={openModal}
                 onClose={handleClose}
                 imovelToEdit={imovelToEdit}
-                onSuccess={() => fetchImoveis(debouncedSearchText)} // Recarregar com o termo de busca atual
+                onSuccess={() => fetchImoveis(debouncedSearchText, filterStatus)} // <-- ATUALIZADO
             />
         </Box>
     );

@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import axios from 'axios';
 import {
     Box, Typography, Button, CircularProgress, Alert, Paper,
-    TextField, InputAdornment, Tooltip, IconButton // ⭐️ Adicionado Tooltip e IconButton
+    TextField, InputAdornment, Tooltip, IconButton
 } from '@mui/material';
 import {
     DataGrid,
     GridColDef,
     GridColumnVisibilityModel,
-    GridRenderCellParams // ⭐️ Adicionado para tipar o renderCell na coluna actions
+    GridRenderCellParams
 } from '@mui/x-data-grid';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { ClienteFormModal } from '../components/ClienteFormModal';
@@ -17,23 +17,28 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { Cliente, normalizeCPF, normalizeStatus } from '../types/cliente';
 import SearchIcon from '@mui/icons-material/Search';
 
+// ⭐️ NOVAS IMPORTAÇÕES PARA O FILTRO SEGMENTADO
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+
 // ⚠️ Ajuste a URL base da sua API
 const API_URL = 'http://localhost:5000/clientes';
 const DEBOUNCE_DELAY = 300;
+
+// Tipos para o filtro de status
+type StatusFilter = 'TODOS' | 'ATIVO' | 'INATIVO';
 
 interface HighlightedTextProps {
     text: string | null | undefined;
     highlight: string;
 }
 
-// Componente para Destaque (Mantido o original, mas ajustando a tipagem)
+// Componente para Destaque
 const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) => {
-    const textToDisplay = text ?? ''; // Garante que é uma string ('') se for null
-
+    const textToDisplay = text ?? '';
     if (!textToDisplay.trim() || !highlight.trim()) {
         return <>{textToDisplay}</>;
     }
-
     const regex = new RegExp(`(${highlight})`, 'gi');
     const parts = textToDisplay.split(regex);
 
@@ -63,6 +68,9 @@ export const ClientesPage = () => {
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
 
+    // ⭐️ NOVO ESTADO: Status de filtro
+    const [filterStatus, setFilterStatus] = useState<StatusFilter>('TODOS');
+
     const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>({
         _id: false,
         cpf: false,
@@ -71,12 +79,23 @@ export const ClientesPage = () => {
 
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    const fetchClientes = useCallback(async (search: string) => {
+    // ⭐️ ATUALIZAÇÃO: Receber o termo de busca e o status de filtro
+    const fetchClientes = useCallback(async (search: string, status: StatusFilter) => {
         try {
             setLoading(true);
 
-            const url = search ? `${API_URL}?search=${encodeURIComponent(search)}` : API_URL;
-            const response = await axios.get(url);
+            // Monta os parâmetros de consulta
+            const params: { search?: string; status?: string } = {};
+            if (search) {
+                params.search = search;
+            }
+            // Envia o status para a API, exceto se for 'TODOS'
+            if (status !== 'TODOS') {
+                params.status = status; // A API deve esperar 'ATIVO' ou 'INATIVO'
+            }
+
+            // Faz a requisição com os parâmetros
+            const response = await axios.get(API_URL, { params });
 
             const clientesNormalizados = response.data.map((cliente: any) => ({
                 ...cliente,
@@ -98,6 +117,7 @@ export const ClientesPage = () => {
         }
     }, []);
 
+    // Efeito para debounce do campo de busca
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearchText(searchText);
@@ -108,15 +128,26 @@ export const ClientesPage = () => {
         };
     }, [searchText]);
 
+    // Efeito para buscar clientes quando o termo de busca OU o status de filtro muda
     useEffect(() => {
-        fetchClientes(debouncedSearchText);
-    }, [fetchClientes, debouncedSearchText]);
+        fetchClientes(debouncedSearchText, filterStatus);
+    }, [fetchClientes, debouncedSearchText, filterStatus]); // Depende do debouncedSearchText E do filterStatus
 
     useEffect(() => {
         if (searchInputRef.current) {
             searchInputRef.current.focus();
         }
     });
+
+    // ⭐️ NOVO HANDLER: Atualiza o status e dispara a busca via useEffect
+    const handleStatusChange = (
+        event: React.MouseEvent<HTMLElement>,
+        newStatus: StatusFilter | null,
+    ) => {
+        if (newStatus !== null) {
+            setFilterStatus(newStatus);
+        }
+    };
 
     const handleOpenCreate = () => {
         setClienteToEdit(null);
@@ -133,7 +164,6 @@ export const ClientesPage = () => {
         setClienteToEdit(null);
     };
 
-    // ⭐️ ATUALIZADO: Lógica de confirmação de exclusão mantida
     const handleDelete = async (clienteId: string, nome: string) => {
         if (!window.confirm(`Tem certeza que deseja excluir o cliente "${nome}"?`)) {
             return;
@@ -141,15 +171,14 @@ export const ClientesPage = () => {
 
         try {
             await axios.delete(`${API_URL}/${clienteId}`);
-            // Recarrega com o termo de busca atual
-            fetchClientes(debouncedSearchText);
+            // Recarrega com o termo de busca e o status atuais
+            fetchClientes(debouncedSearchText, filterStatus);
             alert(`Cliente ${nome} excluído com sucesso!`);
         } catch (err: any) {
             alert(err.response?.data?.message || 'Erro ao excluir cliente.');
         }
     };
 
-    // Função de renderização customizada para destaque
     const renderCellWithHighlight = (params: any, field: keyof Cliente) => (
         <HighlightedText
             text={params.row[field]}
@@ -157,7 +186,6 @@ export const ClientesPage = () => {
         />
     );
 
-    // ⭐️ ATUALIZAÇÃO: Mapear as colunas para usar o renderCellWithHighlight e nova coluna de Actions
     const columns: GridColDef[] = useMemo(() => [
         { field: '_id', headerName: 'ID', width: 90 },
         {
@@ -165,7 +193,6 @@ export const ClientesPage = () => {
             headerName: 'Nome Completo',
             width: 250,
             editable: false,
-            // Torna o nome clicável para edição e aplica o destaque
             renderCell: (params) => (
                 <Typography
                     component="span"
@@ -229,7 +256,6 @@ export const ClientesPage = () => {
             editable: false,
             renderCell: (params) => renderCellWithHighlight(params, 'observacoes')
         },
-        // ⭐️ NOVA COLUNA DE AÇÕES COM ESTILIZAÇÃO E CENTRALIZAÇÃO
         {
             field: 'actions',
             headerName: 'Ações',
@@ -237,15 +263,14 @@ export const ClientesPage = () => {
             sortable: false,
             filterable: false,
             type: 'actions',
-            // ⭐️ ATUALIZAÇÃO: Centralização Vertical e Horizontal
             renderCell: (params: GridRenderCellParams<Cliente>) => {
                 return (
                     <Box
                         sx={{
                             display: 'flex',
                             gap: 1,
-                            alignItems: 'center', // Centralização Vertical
-                            justifyContent: 'center', // Centralização Horizontal
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             width: '100%',
                             height: '100%'
                         }}
@@ -292,7 +317,7 @@ export const ClientesPage = () => {
         },
     ], [debouncedSearchText, handleDelete]);
 
-    if (loading && !debouncedSearchText) {
+    if (loading && !debouncedSearchText && filterStatus === 'TODOS') {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                 <CircularProgress />
@@ -306,7 +331,7 @@ export const ClientesPage = () => {
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
                 <Button
                     variant="contained"
-                    onClick={() => fetchClientes(debouncedSearchText)}
+                    onClick={() => fetchClientes(debouncedSearchText, filterStatus)}
                 >
                     Tentar Novamente
                 </Button>
@@ -329,26 +354,48 @@ export const ClientesPage = () => {
                 </Button>
             </Box>
 
-            {/* Campo de busca */}
-            <Box sx={{ mb: 3 }}>
-                <TextField
-                    fullWidth
-                    label="Pesquisar Clientes por Nome, CPF, Email, Telefone ou Observação"
-                    variant="outlined"
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    inputRef={searchInputRef}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                {loading && searchText ? <CircularProgress size={20} /> : <SearchIcon />}
-                            </InputAdornment>
-                        ),
-                    }}
-                    disabled={loading && !searchText}
-                />
+            {/* ⭐️ NOVO: Área de busca e filtros */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+                <Box sx={{ flexGrow: 1 }}>
+                    <TextField
+                        fullWidth
+                        label="Pesquisar Clientes por Nome, CPF, Email, Telefone ou Observação"
+                        variant="outlined"
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        inputRef={searchInputRef}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    {loading && searchText ? <CircularProgress size={20} /> : <SearchIcon />}
+                                </InputAdornment>
+                            ),
+                        }}
+                        disabled={loading && !searchText}
+                    />
+                </Box>
+
+                {/* ⭐️ NOVO COMPONENTE: ToggleButtonGroup para Filtro de Status */}
+                <ToggleButtonGroup
+                    value={filterStatus}
+                    exclusive
+                    onChange={handleStatusChange}
+                    aria-label="Filtro de Status do Cliente"
+                    size="medium"
+                    sx={{ height: 56, borderColor: 'rgba(0, 0, 0, 0.23)' }} // Altura para alinhar com o TextField
+                >
+                    <ToggleButton value="TODOS" aria-label="Todos">
+                        Todos
+                    </ToggleButton>
+                    <ToggleButton value="ATIVO" aria-label="Ativos">
+                        Ativos
+                    </ToggleButton>
+                    <ToggleButton value="INATIVO" aria-label="Inativos">
+                        Inativos
+                    </ToggleButton>
+                </ToggleButtonGroup>
             </Box>
-            {/* Fim do campo de busca */}
+            {/* Fim da área de busca e filtros */}
 
             <Paper elevation={3} sx={{ height: 600, width: '100%' }}>
                 <DataGrid
@@ -360,9 +407,9 @@ export const ClientesPage = () => {
                     checkboxSelection
                     disableRowSelectionOnClick
                     getRowId={(row) => row._id}
-                    loading={loading && !!debouncedSearchText}
+                    // Mostrar loading apenas se houver busca ou filtro
+                    loading={loading}
                     sx={{
-                        // Adicionar estilos para Status (copiado do Imóveis, mas referenciando o status do cliente)
                         '& .status-disponivel': {
                             color: 'success.main',
                             fontWeight: 'bold',
@@ -379,7 +426,7 @@ export const ClientesPage = () => {
                 open={openModal}
                 onClose={handleClose}
                 clienteToEdit={clienteToEdit}
-                onSuccess={() => fetchClientes(debouncedSearchText)}
+                onSuccess={() => fetchClientes(debouncedSearchText, filterStatus)}
             />
         </Box>
     );
