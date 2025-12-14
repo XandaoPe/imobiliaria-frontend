@@ -30,7 +30,7 @@ type ImovelState = Imovel | null;
 
 const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovelToEdit, onSuccess }) => {
     const isEdit = !!imovelToEdit;
-    const { token } = useAuth(); // Usado para o componente de fotos
+    const { user } = useAuth(); // Usado para o componente de fotos
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);

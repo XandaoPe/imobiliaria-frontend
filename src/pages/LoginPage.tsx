@@ -23,7 +23,7 @@ export const LoginPage = () => {
 
     // Se já estiver autenticado, redireciona imediatamente
     if (isAuthenticated) {
-        return <Navigate to="/dashboard" replace />;
+        return <Navigate to="/home" replace />;
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -49,8 +49,8 @@ export const LoginPage = () => {
             if (token) {
                 // 3. Salva o token no contexto e localStorage (chama o login do AuthContext)
                 login(token);
-                // 4. Redireciona para o Dashboard
-                navigate('/dashboard');
+                // 4. Redireciona para o home
+                navigate('/home');
             }
         } catch (err: any) {
             // Trata erros de requisição ou credenciais

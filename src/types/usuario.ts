@@ -39,3 +39,7 @@ export interface UpdateUsuarioFormData {
     perfil: PerfisEnum;
     ativo: boolean;
 }
+
+export interface UsuarioLogado extends Usuario {
+    token: string;
+}

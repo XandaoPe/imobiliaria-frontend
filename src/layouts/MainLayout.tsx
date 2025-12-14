@@ -8,27 +8,31 @@ import { Outlet, Link as RouterLink } from 'react-router-dom';
 import HomeIcon from '@mui/icons-material/Home';
 import GroupIcon from '@mui/icons-material/Group'; // Clientes
 import BusinessIcon from '@mui/icons-material/Business'; // Imóveis
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'; // Ícone para Usuários (Mais específico que GroupIcon para ADM)
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'; // Ícone para Usuários
+import LocationCityIcon from '@mui/icons-material/LocationCity'; // ⭐️ NOVO: Ícone para Empresas
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 
 // ⭐️ Importações de Autenticação e Tipagem
 import { useAuth } from '../contexts/AuthContext';
-import { PerfisEnum } from '../types/usuario'; // Assume que esta tipagem está correta
+import { PerfisEnum } from '../types/usuario';
 
 const drawerWidth = 240;
 
-// ⭐️ Perfis que têm acesso ao módulo de Usuários
-const ADMIN_ROLES = [PerfisEnum.ADM_GERAL, PerfisEnum.GERENTE];
+// ⭐️ Perfis que têm acesso aos módulos
+const ADMIN_GERAL_ROLE = [PerfisEnum.ADM_GERAL]; // ⭐️ NOVO: Apenas ADM_GERAL
+const USER_ADMIN_ROLES = [PerfisEnum.ADM_GERAL, PerfisEnum.GERENTE];
 
-// ⭐️ Definição dos Itens de Menu (Sem visibilidade condicional ainda)
+// ⭐️ Definição dos Itens de Menu (Com visibilidade condicional)
 const baseMenuItems = [
-    { text: 'Home', icon: <HomeIcon />, path: '/', requiredRoles: [] as PerfisEnum[] },
+    { text: 'Home', icon: <HomeIcon />, path: '/home', requiredRoles: [] as PerfisEnum[] },
     { text: 'Dashboard', icon: <HomeIcon />, path: '/dashboard', requiredRoles: [] as PerfisEnum[] },
     { text: 'Clientes', icon: <GroupIcon />, path: '/clientes', requiredRoles: [] as PerfisEnum[] },
     { text: 'Imóveis', icon: <BusinessIcon />, path: '/imoveis', requiredRoles: [] as PerfisEnum[] },
-    // ⭐️ NOVO ITEM: Usuários
-    { text: 'Usuários', icon: <AdminPanelSettingsIcon />, path: '/usuarios', requiredRoles: ADMIN_ROLES },
+    // ⭐️ ITEM ADICIONADO: Empresas (Apenas ADM_GERAL)
+    { text: 'Empresas', icon: <LocationCityIcon />, path: '/empresas', requiredRoles: ADMIN_GERAL_ROLE },
+    // Item Usuários (ADM_GERAL e GERENTE)
+    { text: 'Usuários', icon: <AdminPanelSettingsIcon />, path: '/usuarios', requiredRoles: USER_ADMIN_ROLES },
     // Adicione Agendamentos, Contratos e Relatórios aqui
 ];
 
@@ -40,18 +44,19 @@ export const MainLayout = () => {
         setMobileOpen(!mobileOpen);
     };
 
-    // ⭐️ Função de verificação de permissão
+    // Função de verificação de permissão
     const hasPermission = (requiredRoles: PerfisEnum[]) => {
-        // Se não houver roles requeridas, o item é visível.
+        // Se não houver roles requeridas, o item é visível (ex: Home, Dashboard).
         if (requiredRoles.length === 0) return true;
-        // Se o usuário não estiver carregado, esconde (deve ser tratado pelo PrivateRoute)
+
+        // Se o usuário não estiver carregado, esconde
         if (!user) return false;
 
         // Verifica se o perfil do usuário logado está na lista de perfis requeridos
         return requiredRoles.includes(user.perfil as PerfisEnum);
     };
 
-    // ⭐️ Conteúdo do Drawer (Aplicando a lógica condicional)
+    // Conteúdo do Drawer (Aplicando a lógica condicional)
     const drawer = (
         <div>
             <Toolbar sx={{ backgroundColor: 'primary.main' }}>
@@ -61,21 +66,14 @@ export const MainLayout = () => {
             </Toolbar>
             <Divider />
             <List>
-                {/* ⭐️ Mapeia os itens e aplica o filtro de permissão */}
+                {/* Mapeia os itens e aplica o filtro de permissão */}
                 {baseMenuItems.map((item) => (
                     hasPermission(item.requiredRoles) && (
                         <ListItem key={item.text} disablePadding>
                             <ListItemButton
                                 component={RouterLink}
                                 to={item.path}
-                                // Estilo para destacar o item ativo
-                                sx={{
-                                    '&.active': {
-                                        backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                                        borderLeft: '4px solid #1976d2',
-                                        fontWeight: 'bold'
-                                    }
-                                }}
+                                onClick={handleDrawerToggle} 
                             >
                                 <ListItemIcon>{item.icon}</ListItemIcon>
                                 <ListItemText primary={item.text} />

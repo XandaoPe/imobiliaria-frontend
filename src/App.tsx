@@ -11,15 +11,15 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { MainLayout } from './layouts/MainLayout';
 import { LoginPage } from './pages/LoginPage';
 
-// ⭐️ Importe o componente da página de Usuários
+// ⭐️ Importe os componentes das páginas
 import { UsuariosPage } from './pages/UsuariosPage';
+import { EmpresasPage } from './pages/EmpresasPage'; // ⭐️ NOVO: Importe a página de empresas
 
 // Imports de outras páginas
 import { ClientesPage } from './pages/ClientesPage';
 import { ImoveisPage } from './pages/ImoveisPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { HomePage } from './pages/HomePage';
-// import { DashboardPage } from './pages/DashboardPage'; // ⭐️ Crie esta página simples
 
 // -----------------------------------------------------------
 // Componente de Rota Protegida (Redireciona se não estiver autenticado)
@@ -46,24 +46,25 @@ const App = () => {
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            {/* 1. Rota de Login (Não protegida) */}
-            {/* <Route path="/" element={<LoginPage />} /> */}
 
-            {/* 2. Rotas Protegidas (Usam o MainLayout) */}
+            <Route path="/" element={<LoginPage />} />
+
             <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<HomePage />} /> {/* <-- HOME PAGE */}
-              <Route path="/dashboard" element={<DashboardPage />} /> 
-              {/* ⭐️ Rota Clientes REAL */}
+              <Route path="/home" element={<HomePage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/imoveis" element={<ImoveisPage />} />
 
-              {/* ⭐️ ROTA DO MÓDULO DE USUÁRIOS */}
+              {/* ⭐️ NOVA ROTA: Empresas (Protegida pelo MainLayout e permissão de menu) */}
+              <Route path="/empresas" element={<EmpresasPage />} />
+
+              {/* ROTA DO MÓDULO DE USUÁRIOS */}
               <Route path="/usuarios" element={<UsuariosPage />} />
 
             </Route>
 
-            {/* Rota para qualquer URL não mapeada */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            {/* Rota para qualquer URL não mapeada (redireciona para o login/home se não for "/") */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>

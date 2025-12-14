@@ -26,7 +26,8 @@ interface UploadPreview {
 }
 
 const ImovelPhotosStep: React.FC<ImovelPhotosStepProps> = ({ imovelId, currentPhotos, onPhotosUpdate }) => {
-    const { token } = useAuth();
+    const { user } = useAuth();
+    const token = user?.token || null;
     const [uploading, setUploading] = useState(false);
     const [progress, setProgress] = useState(0);
     const [error, setError] = useState<string | null>(null);

@@ -56,7 +56,8 @@ const getTipoDisplay = (tipo: string): string => {
 // --- Componente Principal ---
 // ⚠️ Exportação corrigida: Apenas um 'export const'
 export const DashboardPage: React.FC = () => {
-    const { token } = useAuth();
+    const { user } = useAuth();
+    const token = user?.token || null;
     const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

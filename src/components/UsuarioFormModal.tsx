@@ -36,7 +36,7 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
     // Usa optional chaining (?) e fallback '' antes de chamar .toString() para evitar undefined.
     const isEditingSelf = isEditing &&
         !!(usuarioToEdit && user &&
-            usuarioToEdit._id?.toString() === user.userId?.toString());
+            usuarioToEdit._id?.toString() === user._id?.toString());
     
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -65,7 +65,7 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
         if (open) {
 
             console.log("--- DEBUG MODAL ---");
-            console.log("Usuário Logado ID (user.userId):", user?.userId);
+            console.log("Usuário Logado ID (user.userId):", user?._id);
             console.log("Usuário em Edição ID (usuarioToEdit?._id):", usuarioToEdit?._id);
             console.log("Resultado da Comparação (isEditingSelf):", isEditingSelf);
             console.log("--- FIM DEBUG ---");

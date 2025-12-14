@@ -14,7 +14,8 @@ const API_URL = 'http://localhost:5000/imoveis';
 type FilterStatus = 'TODOS' | 'DISPONIVEIS' | 'INDISPONIVEIS';
 
 export const HomePage: React.FC = () => {
-    const { token } = useAuth();
+    const { user } = useAuth();
+    const token = user?.token || null;
     const [imoveis, setImoveis] = useState<Imovel[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -125,7 +126,7 @@ export const HomePage: React.FC = () => {
                     Nenhum imóvel encontrado com o status "{filter === 'DISPONIVEIS' ? 'Disponível' : filter === 'INDISPONIVEIS' ? 'Indisponível' : 'Todos'}".
                 </Alert>
             ) : (
-                
+
                 <Box
                     sx={{
                         display: 'flex',
