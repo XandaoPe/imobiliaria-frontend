@@ -7,7 +7,8 @@ import {
     Button, MenuItem, Alert, CircularProgress,
     Box,
 } from '@mui/material';
-import { Cliente, ClienteFormData, clienteValidationSchema, normalizeCPF, normalizeStatus } from '../types/cliente';
+// IMPORTAÇÃO ATUALIZADA: normalizeTelefone deve estar aqui
+import { Cliente, ClienteFormData, clienteValidationSchema, normalizeCPF, normalizeStatus, normalizeTelefone } from '../types/cliente';
 import axios from 'axios';
 
 interface ClienteFormModalProps {
@@ -30,7 +31,7 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
         telefone: null,
         email: '',
         observacoes: null,
-        status: 'ATIVO', // ⭐️ Definindo ATIVO como padrão
+        status: 'ATIVO',
     };
 
     const {
@@ -38,30 +39,12 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
         control,
         reset,
         formState: { errors },
-        setValue
     } = useForm<ClienteFormData>({
         resolver: yupResolver(clienteValidationSchema),
         defaultValues,
     });
 
-    useEffect(() => {
-        if (isEdit && clienteToEdit) {
-            // ⭐️ Normaliza os dados do cliente vindo do backend
-            reset({
-                nome: clienteToEdit.nome || '',
-                cpf: normalizeCPF(clienteToEdit.cpf || ''), // Remove formatação do CPF
-                telefone: clienteToEdit.telefone || null,
-                email: clienteToEdit.email || '',
-                observacoes: clienteToEdit.observacoes || null,
-                status: normalizeStatus(clienteToEdit.status || 'ATIVO'), // Normaliza status
-            });
-        } else {
-            reset(defaultValues);
-        }
-        setError(null);
-    }, [isEdit, clienteToEdit, reset]);
-
-    // ⭐️ Função para formatar CPF para exibição (opcional)
+    // Função para formatar CPF para exibição
     const formatCPF = (cpf: string): string => {
         const cleaned = cpf.replace(/\D/g, '');
         if (cleaned.length <= 3) return cleaned;
@@ -70,17 +53,52 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
         return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
     };
 
+    // ⭐️ NOVA FUNÇÃO: Máscara para Telefone (pode ser fixo/celular)
+    const formatTelefone = (telefone: string | null): string => {
+        if (!telefone) return '';
+        const cleaned = telefone.replace(/\D/g, '');
+
+        // (XX) XXXX-XXXX (10 dígitos: fixo ou celular antigo)
+        if (cleaned.length <= 10) {
+            return cleaned.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').trim();
+        }
+
+        // (XX) XXXXX-XXXX (11 dígitos: celular com 9º dígito)
+        if (cleaned.length > 10) {
+            return cleaned.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim();
+        }
+
+        return cleaned;
+    };
+
+    useEffect(() => {
+        if (isEdit && clienteToEdit) {
+            reset({
+                nome: clienteToEdit.nome || '',
+                // Passa o telefone LIMPO para o reset para que o Controller aplique a máscara
+                cpf: normalizeCPF(clienteToEdit.cpf || ''),
+                telefone: normalizeTelefone(clienteToEdit.telefone || null), // Garante que o valor inicial é limpo (só dígitos)
+                email: clienteToEdit.email || '',
+                observacoes: clienteToEdit.observacoes || null,
+                status: normalizeStatus(clienteToEdit.status || 'ATIVO'),
+            });
+        } else {
+            reset(defaultValues);
+        }
+        setError(null);
+    }, [isEdit, clienteToEdit, reset]);
+
     const onSubmit: SubmitHandler<ClienteFormData> = async (data) => {
         setLoading(true);
         setError(null);
 
         try {
-            // ⭐️ Garante que o CPF está limpo (sem formatação)
+            // ⭐️ Normaliza o telefone antes de enviar, caso o usuário tenha digitado sem a máscara
             const dadosEnviar = {
                 ...data,
                 cpf: normalizeCPF(data.cpf),
                 status: normalizeStatus(data.status),
-                telefone: data.telefone || null,
+                telefone: normalizeTelefone(data.telefone), // Envia apenas dígitos ou null
                 observacoes: data.observacoes || null,
             };
 
@@ -115,7 +133,8 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                         sx={{
                             display: 'grid',
                             gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                            gap: 2
+                            gap: 2,
+                            mb: 2, // Adicionei margem inferior para separar do campo observações
                         }}
                     >
                         <Box>
@@ -146,9 +165,8 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                                             {...field}
                                             value={formattedValue}
                                             onChange={(e) => {
-                                                // Remove formatação para armazenar
                                                 const rawValue = normalizeCPF(e.target.value);
-                                                field.onChange(rawValue);
+                                                field.onChange(rawValue); // Armazena apenas dígitos
                                             }}
                                             label="CPF"
                                             fullWidth
@@ -157,7 +175,7 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                                             helperText={errors.cpf?.message}
                                             disabled={isEdit}
                                             inputProps={{
-                                                maxLength: 14 // Permite formatação visual
+                                                maxLength: 14
                                             }}
                                         />
                                     );
@@ -183,21 +201,32 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                             />
                         </Box>
 
+                        {/* ⭐️ CAMPO TELEFONE CORRIGIDO COM MÁSCARA */}
                         <Box>
                             <Controller
                                 name="telefone"
                                 control={control}
-                                render={({ field }) => (
-                                    <TextField
-                                        {...field}
-                                        label="Telefone"
-                                        fullWidth
-                                        error={!!errors.telefone}
-                                        helperText={errors.telefone?.message}
-                                        value={field.value || ''}
-                                        onChange={(e) => field.onChange(e.target.value || null)}
-                                    />
-                                )}
+                                render={({ field }) => {
+                                    const formattedValue = formatTelefone(field.value || ''); // Aplica a máscara para exibição
+                                    return (
+                                        <TextField
+                                            {...field}
+                                            label="Telefone (DDD)"
+                                            fullWidth
+                                            error={!!errors.telefone}
+                                            helperText={errors.telefone?.message}
+                                            value={formattedValue} // Exibe o valor formatado
+                                            onChange={(e) => {
+                                                const rawValue = normalizeTelefone(e.target.value); // Limpa para gravação
+                                                field.onChange(rawValue); // Armazena o valor limpo (só dígitos)
+                                            }}
+                                            inputProps={{
+                                                // 15 caracteres: (99) 99999-9999
+                                                maxLength: 15
+                                            }}
+                                        />
+                                    );
+                                }}
                             />
                         </Box>
 
@@ -221,25 +250,29 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                                 )}
                             />
                         </Box>
-
-                        <Box sx={{ gridColumn: { xs: '1', sm: '1 / span 2' } }}>
-                            <Controller
-                                name="observacoes"
-                                control={control}
-                                render={({ field }) => (
-                                    <TextField
-                                        {...field}
-                                        label="Observações"
-                                        fullWidth
-                                        multiline
-                                        rows={3}
-                                        value={field.value || ''}
-                                        onChange={(e) => field.onChange(e.target.value || null)}
-                                    />
-                                )}
-                            />
-                        </Box>
+                        {/* Box vazio para alinhar o status na primeira coluna quando o grid for 2x2 */}
+                        <Box sx={{ display: { xs: 'none', sm: 'block' } }}></Box>
                     </Box>
+
+                    {/* Observações - Mantido */}
+                    <Box sx={{ gridColumn: { xs: '1', sm: '1 / span 2' } }}>
+                        <Controller
+                            name="observacoes"
+                            control={control}
+                            render={({ field }) => (
+                                <TextField
+                                    {...field}
+                                    label="Observações"
+                                    fullWidth
+                                    multiline
+                                    rows={3}
+                                    value={field.value || ''}
+                                    onChange={(e) => field.onChange(e.target.value || null)}
+                                />
+                            )}
+                        />
+                    </Box>
+
                 </DialogContent>
 
                 <DialogActions>

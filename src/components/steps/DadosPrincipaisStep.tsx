@@ -13,6 +13,8 @@ import {
     Typography,
 } from '@mui/material';
 import { ImovelFormData } from '../../types/imovel';
+// ⭐️ Importar o novo componente de máscara
+import { CurrencyFormatInput } from '../CurrencyFormatInput';
 
 interface DadosPrincipaisStepProps {
     control: Control<ImovelFormData>;
@@ -22,7 +24,7 @@ interface DadosPrincipaisStepProps {
 export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ control, errors }) => {
     return (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
-            {/* Título */}
+            {/* Título (inalterado) */}
             <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' } }}>
                 <Controller
                     name="titulo"
@@ -41,7 +43,7 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                 />
             </Box>
 
-            {/* Tipo */}
+            {/* Tipo (inalterado) */}
             <Box>
                 <Controller
                     name="tipo"
@@ -69,37 +71,25 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                 />
             </Box>
 
-            {/* Valor */}
+            {/* ⭐️ Valor (CAMPO ATUALIZADO COM MÁSCARA) */}
             <Box>
                 <Controller
                     name="valor"
                     control={control}
                     render={({ field }) => (
-                        <TextField
-                            {...field}
+                        <CurrencyFormatInput
+                            name={field.name}
                             label="Valor (R$)"
-                            fullWidth
-                            required
-                            type="number"
+                            value={field.value} // RHF passa o valor numérico
+                            onChange={field.onChange} // RHF recebe o valor numérico de volta
                             error={!!errors.valor}
                             helperText={errors.valor?.message}
-                            margin="normal"
-                            InputProps={{
-                                inputProps: {
-                                    min: 0,
-                                    step: 0.01
-                                }
-                            }}
-                            onChange={(e) => {
-                                const value = parseFloat(e.target.value);
-                                field.onChange(isNaN(value) ? 0 : value);
-                            }}
                         />
                     )}
                 />
             </Box>
 
-            {/* Endereço */}
+            {/* Endereço (inalterado) */}
             <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' } }}>
                 <Controller
                     name="endereco"
@@ -120,25 +110,25 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                 />
             </Box>
 
-            {/* Cidade */}
+            {/* Cidade (inalterado) */}
             <Box>
                 <Controller
                     name="cidade"
                     control={control}
-                    defaultValue="" // Adicione defaultValue
+                    defaultValue=""
                     render={({ field }) => (
                         <TextField
                             {...field}
                             label="Cidade"
                             fullWidth
                             margin="normal"
-                            value={field.value || ''} // Garante que não seja undefined
+                            value={field.value || ''}
                         />
                     )}
                 />
             </Box>
 
-            {/* Disponibilidade */}
+            {/* Disponibilidade (inalterado) */}
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Controller
                     name="disponivel"

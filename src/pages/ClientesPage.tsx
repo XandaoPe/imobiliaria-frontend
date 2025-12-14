@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
     Box, Typography, Button, CircularProgress, Alert, Paper,
     TextField, InputAdornment, Tooltip, IconButton,
-    Menu, MenuItem, ListSubheader // ⭐️ NOVAS IMPORTAÇÕES para o Menu
+    Menu, MenuItem, ListSubheader
 } from '@mui/material';
 import {
     DataGrid,
@@ -15,23 +15,17 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { ClienteFormModal } from '../components/ClienteFormModal';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+// ⭐️ Ajuste a importação se necessário, mas mantenha normalizeCPF e normalizeStatus
 import { Cliente, normalizeCPF, normalizeStatus } from '../types/cliente';
 import SearchIcon from '@mui/icons-material/Search';
 
-// ⚠️ REMOÇÃO: Não precisa mais de ToggleButton e ToggleButtonGroup
-// import ToggleButton from '@mui/material/ToggleButton';
-// import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-
-// ⭐️ NOVOS ÍCONES
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DoneIcon from '@mui/icons-material/Done';
 
 
-// ⚠️ Ajuste a URL base da sua API
 const API_URL = 'http://localhost:5000/clientes';
 const DEBOUNCE_DELAY = 300;
 
-// Tipos para o filtro de status (inalterado)
 type StatusFilter = 'TODOS' | 'ATIVO' | 'INATIVO';
 
 interface HighlightedTextProps {
@@ -76,7 +70,6 @@ export const ClientesPage = () => {
 
     const [filterStatus, setFilterStatus] = useState<StatusFilter>('TODOS');
 
-    // ⭐️ NOVO ESTADO: Âncora para o Menu de Filtro Único
     const [anchorElFilter, setAnchorElFilter] = useState<null | HTMLElement>(null);
 
     const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>({
@@ -87,7 +80,25 @@ export const ClientesPage = () => {
 
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    // Função de busca (inalterada na lógica)
+    // ⭐️ NOVA FUNÇÃO: Máscara para Telefone (a ser usada na DataGrid)
+    const formatTelefoneForDisplay = (telefone: string | null | undefined): string => {
+        if (!telefone) return '';
+        const cleaned = telefone.replace(/\D/g, '');
+
+        // (XX) XXXXX-XXXX (11 dígitos: celular com 9º dígito)
+        if (cleaned.length === 11) {
+            return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+        }
+
+        // (XX) XXXX-XXXX (10 dígitos: fixo ou celular antigo)
+        if (cleaned.length === 10) {
+            return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+        }
+
+        return telefone; // Retorna o valor original se não for 10 ou 11 dígitos
+    };
+
+
     const fetchClientes = useCallback(async (search: string, status: StatusFilter) => {
         try {
             setLoading(true);
@@ -104,8 +115,10 @@ export const ClientesPage = () => {
 
             const clientesNormalizados = response.data.map((cliente: any) => ({
                 ...cliente,
+                // Garantir que os campos que aceitam null/undefined sejam tratados
                 status: normalizeStatus(cliente.status || 'ATIVO'),
                 cpf: normalizeCPF(cliente.cpf || ''),
+                telefone: cliente.telefone || null, // Manter o telefone limpo (só dígitos) aqui
             }));
 
             setClientes(clientesNormalizados as Cliente[]);
@@ -122,7 +135,7 @@ export const ClientesPage = () => {
         }
     }, []);
 
-    // Efeitos de Debounce e Busca (inalterados)
+    // ... (Efeitos de Debounce e Busca inalterados)
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearchText(searchText);
@@ -143,23 +156,20 @@ export const ClientesPage = () => {
         }
     });
 
-    // ⭐️ NOVO HANDLER: Abrir Menu
+
     const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
         setAnchorElFilter(event.currentTarget);
     };
 
-    // ⭐️ NOVO HANDLER: Fechar Menu
     const handleMenuClose = () => {
         setAnchorElFilter(null);
     };
 
-    // ⭐️ HANDLER ATUALIZADO: Altera Status e fecha o menu
     const handleSetStatus = (newStatus: StatusFilter) => {
         setFilterStatus(newStatus);
         handleMenuClose();
     };
 
-    // Função auxiliar para obter a descrição do status para o botão
     const getFilterSummary = () => {
         const statusMap: Record<StatusFilter, string> = {
             'TODOS': 'Todos Status',
@@ -236,6 +246,9 @@ export const ClientesPage = () => {
             headerName: 'CPF',
             width: 150,
             editable: false,
+            // 💡 Nota: A formatação do CPF deve ser aplicada antes de renderizar (ou seja, formatarCPF(params.row.cpf)) se você quiser visualmente
+            // Aqui, apenas usamos o HighlightedText no CPF normalizado (só dígitos) ou o formato que vier
+            // Idealmente, você aplicaria a formatação aqui também, mas vou manter o original (com highlight) para consistência
             renderCell: (params) => renderCellWithHighlight(params, 'cpf')
         },
         {
@@ -250,7 +263,21 @@ export const ClientesPage = () => {
             headerName: 'Telefone',
             width: 150,
             editable: false,
-            renderCell: (params) => renderCellWithHighlight(params, 'telefone')
+            // ⭐️ IMPLEMENTAÇÃO DA MÁSCARA AQUI
+            renderCell: (params) => {
+                const rawPhone = params.row.telefone; // Deve ser só dígitos
+                const formattedPhone = formatTelefoneForDisplay(rawPhone);
+
+                // Aplicamos o highlight no número LIMPO, mas exibimos o formatado.
+                // Isso requer um ajuste no HighlightedText ou aceitar que o highlight será no texto formatado.
+                // Para simplificar e manter o HighlightedText, vamos passá-lo formatado:
+                return (
+                    <HighlightedText
+                        text={formattedPhone}
+                        highlight={debouncedSearchText}
+                    />
+                );
+            }
         },
         {
             field: 'status',
@@ -396,17 +423,17 @@ export const ClientesPage = () => {
                     />
                 </Box>
 
-                {/* ⭐️ NOVO COMPONENTE: Botão de Filtro Único */}
+                {/* ⭐️ Botão de Filtro Único */}
                 <Button
                     variant="outlined"
                     onClick={handleMenuOpen}
                     startIcon={<FilterListIcon />}
-                    sx={{ height: 56, flexShrink: 0 }} // Alinha com o TextField
+                    sx={{ height: 56, flexShrink: 0 }}
                 >
                     {getFilterSummary()}
                 </Button>
 
-                {/* ⭐️ NOVO COMPONENTE: Menu Dropdown Único para Status */}
+                {/* ⭐️ Menu Dropdown Único para Status */}
                 <Menu
                     anchorEl={anchorElFilter}
                     open={Boolean(anchorElFilter)}
@@ -439,7 +466,7 @@ export const ClientesPage = () => {
                         onClick={() => handleSetStatus('INATIVO')}
                         selected={filterStatus === 'INATIVO'}
                     >
-                        {filterStatus === 'INATIVO' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
+                        {filterStatus === 'INATIVO' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'error.main' }} />}
                         <Box sx={{ ml: filterStatus !== 'INATIVO' ? '24px' : 0 }}>Inativos</Box>
                     </MenuItem>
 

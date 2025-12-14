@@ -28,6 +28,13 @@ export const normalizeCPF = (cpf: string): string => {
     return cpf.replace(/\D/g, '');
 };
 
+// ⭐️ NOVA FUNÇÃO: Remove todos os caracteres não numéricos do telefone
+export const normalizeTelefone = (telefone: string | null): string | null => {
+    if (!telefone) return null;
+    const cleaned = telefone.replace(/\D/g, '');
+    return cleaned === '' ? null : cleaned;
+};
+
 // Função para normalizar status (converte para maiúsculas)
 export const normalizeStatus = (status: string): 'ATIVO' | 'INATIVO' => {
     const upperStatus = status.toUpperCase();
@@ -47,7 +54,11 @@ export const clienteValidationSchema = yup.object().shape({
     telefone: yup
         .string()
         .nullable()
-        .transform((value) => value === '' ? null : value) // Converte string vazia para null
+        .transform((value) => normalizeTelefone(value)) // Normaliza aqui também para validar
+        .test('is-valid-phone', 'Número de telefone inválido. Deve ter 10 ou 11 dígitos (com DDD).', (value) => {
+            if (!value) return true; // Permite nulo/vazio
+            return value.length === 10 || value.length === 11;
+        })
         .default(null),
 
     email: yup
