@@ -20,6 +20,7 @@ import { ClientesPage } from './pages/ClientesPage';
 import { ImoveisPage } from './pages/ImoveisPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { HomePage } from './pages/HomePage';
+import { LandingPage } from './pages/LandingPage';
 
 // -----------------------------------------------------------
 // Componente de Rota Protegida (Redireciona se não estiver autenticado)
@@ -47,7 +48,10 @@ const App = () => {
         <AuthProvider>
           <Routes>
 
-            <Route path="/" element={<LoginPage />} />
+            {/* ⭐️ ROTA PÚBLICA 1: LANDING PAGE (Página principal) */}
+            <Route path="/" element={<LandingPage />} />
+            {/* ⭐️ ROTA PÚBLICA 2: LOGIN PAGE (Movida para /login) */}
+            <Route path="/login" element={<LoginPage />} />
 
             <Route element={<ProtectedRoute />}>
               <Route path="/home" element={<HomePage />} />
@@ -55,12 +59,10 @@ const App = () => {
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/imoveis" element={<ImoveisPage />} />
 
-              {/* ⭐️ NOVA ROTA: Empresas (Protegida pelo MainLayout e permissão de menu) */}
+              {/* NOVA ROTA: Empresas (Protegida pelo MainLayout e permissão de menu) */}
               <Route path="/empresas" element={<EmpresasPage />} />
-
               {/* ROTA DO MÓDULO DE USUÁRIOS */}
               <Route path="/usuarios" element={<UsuariosPage />} />
-
             </Route>
 
             {/* Rota para qualquer URL não mapeada (redireciona para o login/home se não for "/") */}

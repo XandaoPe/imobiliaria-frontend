@@ -73,7 +73,7 @@ export const MainLayout = () => {
                             <ListItemButton
                                 component={RouterLink}
                                 to={item.path}
-                                onClick={handleDrawerToggle} 
+                                onClick={handleDrawerToggle}
                             >
                                 <ListItemIcon>{item.icon}</ListItemIcon>
                                 <ListItemText primary={item.text} />
@@ -96,7 +96,7 @@ export const MainLayout = () => {
     );
 
     return (
-        <Box sx={{ display: 'flex' }}>
+        <Box sx={{ display: 'flex', height: '100vh' }}>
             <CssBaseline />
 
             {/* AppBar (Topo) */}
@@ -164,7 +164,8 @@ export const MainLayout = () => {
                     p: 3,
                     width: { sm: `calc(100% - ${drawerWidth}px)` },
                     backgroundColor: 'background.default',
-                    minHeight: '100vh',
+                    height: '100vh',
+                    overflowY: 'auto',
                 }}
             >
                 <Toolbar />

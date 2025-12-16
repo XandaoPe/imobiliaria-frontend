@@ -81,7 +81,7 @@ export const HomePage: React.FC = () => {
 
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                 <CircularProgress />
             </Box>
         );
@@ -89,14 +89,14 @@ export const HomePage: React.FC = () => {
 
     if (error) {
         return (
-            <Box sx={{ p: 3 }}>
+            <Box sx={{ p: 3, flexGrow: 1 }}>
                 <Alert severity="error">{error}</Alert>
             </Box>
         );
     }
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: 3, flexGrow: 1 }}>
             <Typography variant="h4" component="h1" gutterBottom>
                 Catálogo de Imóveis
             </Typography>
