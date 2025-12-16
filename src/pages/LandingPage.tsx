@@ -1,9 +1,11 @@
 // src/pages/LandingPage.tsx
 
-import React from 'react';
+import React, { useState } from 'react'; // ❗ Importar useState
 import { Box, Typography, Button, Container, AppBar, Toolbar, Stack } from '@mui/material';
 import { styled } from '@mui/system';
 import { useNavigate } from 'react-router-dom';
+// ❗ Importar a nova modal
+import { RegistroMasterModal } from '../components/RegistroMasterModal';
 
 // Estilização do Conteúdo Principal com a Imagem de Fundo (Simulada)
 const HeroSection = styled(Box)(({ theme }) => ({
@@ -21,6 +23,8 @@ const HeroSection = styled(Box)(({ theme }) => ({
 
 export const LandingPage: React.FC = () => {
     const navigate = useNavigate();
+    // ❗ Novo estado para controlar a abertura da modal de registro
+    const [openRegistroModal, setOpenRegistroModal] = useState(false);
 
     const handleLoginClick = () => {
         // Redireciona para a página de Login
@@ -28,9 +32,21 @@ export const LandingPage: React.FC = () => {
     };
 
     const handleCadastroClick = () => {
-        // Por enquanto, apenas exibe um alerta, pois a rota de cadastro não está implementada
-        alert('Funcionalidade de Cadastro de Administração em breve!');
+        // ❗ Abre a modal de Registro Master
+        setOpenRegistroModal(true);
     };
+
+    // ❗ Função chamada ao fechar a modal ou após sucesso
+    const handleCloseRegistroModal = () => {
+        setOpenRegistroModal(false);
+    }
+
+    // ❗ Função chamada apenas após o sucesso do registro (POST no backend)
+    const handleRegistroSuccess = () => {
+        // Exibe feedback e navega para o login
+        alert('Administração criada com sucesso! Utilize seu email e senha para fazer login.');
+        navigate('/login');
+    }
 
     return (
         <Box sx={{ flexGrow: 1 }}>
@@ -46,7 +62,7 @@ export const LandingPage: React.FC = () => {
                     </Typography>
                     <Button
                         color="inherit"
-                        onClick={handleCadastroClick}
+                        onClick={handleCadastroClick} // ❗ Abre a modal
                         sx={{
                             mr: 1,
                             border: '1px solid white',
@@ -93,7 +109,7 @@ export const LandingPage: React.FC = () => {
                             variant="contained"
                             size="large"
                             color="primary"
-                            onClick={handleCadastroClick}
+                            onClick={handleCadastroClick} // ❗ Abre a modal
                             sx={{ padding: '12px 30px', fontSize: '1.1rem' }}
                         >
                             Comece Agora (Grátis por 7 dias)
@@ -102,10 +118,12 @@ export const LandingPage: React.FC = () => {
                 </Container>
             </HeroSection>
 
-            {/* Você pode adicionar outras seções aqui (Recursos, Depoimentos, etc.) */}
-            {/* <Box sx={{ p: 5, backgroundColor: 'background.paper', textAlign: 'center' }}>
-                <Typography variant="h4" color="primary">Nossos Recursos</Typography>
-            </Box> */}
+            {/* 3. Modal de Registro Master */}
+            <RegistroMasterModal
+                open={openRegistroModal}
+                onClose={handleCloseRegistroModal}
+                onSuccess={handleRegistroSuccess}
+            />
 
         </Box>
     );
