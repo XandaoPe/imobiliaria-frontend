@@ -64,12 +64,6 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
     useEffect(() => {
         if (open) {
 
-            console.log("--- DEBUG MODAL ---");
-            console.log("Usuário Logado ID (user.userId):", user?._id);
-            console.log("Usuário em Edição ID (usuarioToEdit?._id):", usuarioToEdit?._id);
-            console.log("Resultado da Comparação (isEditingSelf):", isEditingSelf);
-            console.log("--- FIM DEBUG ---");
-
             setFormKey(prev => prev + 1);
 
             if (usuarioToEdit) {

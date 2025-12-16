@@ -1,23 +1,47 @@
-// src/pages/LoginPage.tsx
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import { useNavigate, Navigate } from 'react-router-dom';
 import {
-    Box, Paper, Typography, TextField, Button, CircularProgress, Alert
+    Box,
+    Paper,
+    Typography,
+    TextField,
+    Button,
+    CircularProgress,
+    Alert,
+    FormControl,        // Para o Select
+    InputLabel,         // Para o Label do Select
+    Select,             // O Dropdown
+    MenuItem,           // As opções do Dropdown
+    SelectChangeEvent   // Tipo para o evento de mudança do Select
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 
 // ⚠️ IMPORTANTE: Ajuste a URL base da sua API NestJS
-// Se estiver rodando localmente (padrão)
 const API_URL = 'http://localhost:5000/auth/login';
 
+// Interface para o objeto de empresa retornado pelo backend
+interface EmpresaOption {
+    id: string;
+    nome: string; // Esperamos que o backend retorne o nome agora
+}
+
 export const LoginPage = () => {
+    // Estado de Credenciais
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [empresaId, setEmpresaId] = useState('692e3daf42fe36202c44aa15');
+
+    // Estado do Fluxo de Login
+    const [empresaId, setEmpresaId] = useState('');                   // ID selecionado
+    const [empresas, setEmpresas] = useState<EmpresaOption[]>([]);   // Lista de opções
+    const [etapa, setEtapa] = useState<'credenciais' | 'selecao'>('credenciais'); // Controle da Etapa
+
+    // Estado da UI
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Hooks
     const { login, isAuthenticated } = useAuth();
     const navigate = useNavigate();
 
@@ -31,25 +55,38 @@ export const LoginPage = () => {
         setError('');
         setLoading(true);
 
-        console.log('Tentando logar com:', { email, password, empresaId });
-        console.log('Logar e', e);
+        // ⭐️ O payload só inclui o empresaId se estivermos na Etapa de Seleção
+        const payload = {
+            email,
+            senha: password,
+            empresaId: etapa === 'selecao' ? empresaId : undefined
+        };
 
         try {
             // 1. Faz a requisição POST para o endpoint de login do NestJS
-            const response = await axios.post(API_URL, {
-                // ⭐️ Chaves enviadas pelo frontend
-                email: email, // Deve ser 'email'
-                senha: password, // ⭐️ Ajuste: Deve ser 'senha' (se seu DTO usa 'senha')
-                empresaId: empresaId
-            });
+            const response = await axios.post(API_URL, payload);
 
-            // 2. Assumindo que sua API retorna o token no campo 'access_token'
+            if (response.data.requiresSelection) {
+                // ⭐️ ETAPA 1: O backend retornou a lista de empresas e requiresSelection = true
+
+                // Salva a lista de empresas e avança a etapa
+                setEmpresas(response.data.empresas);
+                setEtapa('selecao');
+
+                // Se houver apenas uma empresa, já a pré-seleciona para o próximo envio
+                if (response.data.empresas.length === 1) {
+                    setEmpresaId(response.data.empresas[0].id);
+                }
+
+                setLoading(false);
+                return;
+            }
+
+            // ⭐️ ETAPA 2 FINALIZADA: O backend retornou o Token
             const token = response.data.access_token;
 
             if (token) {
-                // 3. Salva o token no contexto e localStorage (chama o login do AuthContext)
                 login(token);
-                // 4. Redireciona para o home
                 navigate('/home');
             }
         } catch (err: any) {
@@ -57,7 +94,7 @@ export const LoginPage = () => {
             let errorMessage = 'Falha na conexão ou erro desconhecido.';
 
             if (err.response) {
-                // Erros HTTP (400, 401, etc.)
+                // Exemplo: 401 Unauthorized, 400 Bad Request
                 errorMessage = err.response.data?.message || err.message;
             }
 
@@ -67,6 +104,11 @@ export const LoginPage = () => {
         }
     };
 
+    // Handler para mudança no dropdown de empresa
+    const handleEmpresaChange = (event: SelectChangeEvent) => {
+        setEmpresaId(event.target.value as string);
+    };
+
     return (
         <Box
             sx={{
@@ -74,7 +116,7 @@ export const LoginPage = () => {
                 justifyContent: 'center',
                 alignItems: 'center',
                 minHeight: '100vh',
-                backgroundColor: 'background.default' // Usa a cor de fundo definida no tema
+                backgroundColor: 'background.default'
             }}
         >
             <Paper
@@ -89,51 +131,79 @@ export const LoginPage = () => {
             >
                 <LockOutlinedIcon color="primary" sx={{ m: 1 }} />
                 <Typography component="h1" variant="h5">
-                    Acesso ao Sistema
+                    {etapa === 'credenciais' ? 'Acesso ao Sistema' : 'Selecione a Empresa'}
                 </Typography>
+
                 <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3, width: '100%' }}>
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        label="E-mail"
-                        autoComplete="email"
-                        autoFocus
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        label="Senha"
-                        type="password"
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
-                    {/* ⭐️ NOVO CAMPO: Temporário para o ID da Empresa */}
-                    <TextField
-                        margin="normal"
-                        required
-                        fullWidth
-                        label="ID da Empresa (TESTE)"
-                        value={empresaId}
-                        onChange={(e) => setEmpresaId(e.target.value)}
-                    />
+
+                    {/* ⭐️ Renderiza Campos de Credenciais SOMENTE na Etapa 1 */}
+                    {etapa === 'credenciais' && (
+                        <>
+                            <TextField
+                                margin="normal"
+                                required
+                                fullWidth
+                                label="E-mail"
+                                autoComplete="email"
+                                autoFocus
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                            />
+                            <TextField
+                                margin="normal"
+                                required
+                                fullWidth
+                                label="Senha"
+                                type="password"
+                                autoComplete="current-password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
+                        </>
+                    )}
+
+                    {/* ⭐️ Renderiza o Dropdown SOMENTE na Etapa 2 */}
+                    {etapa === 'selecao' && (
+                        <FormControl fullWidth margin="normal" required>
+                            <InputLabel id="empresa-select-label">Empresa</InputLabel>
+                            <Select
+                                labelId="empresa-select-label"
+                                value={empresaId}
+                                label="Empresa"
+                                onChange={handleEmpresaChange}
+                            >
+                                <MenuItem value="">
+                                    <em>Selecione uma empresa</em>
+                                </MenuItem>
+                                {empresas.map((emp) => (
+                                    <MenuItem key={emp.id} value={emp.id}>
+                                        {emp.nome}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    )}
+
                     {error && (
                         <Alert severity="error" sx={{ mt: 2, width: '100%' }}>
                             {error}
                         </Alert>
                     )}
+
                     <Button
                         type="submit"
                         fullWidth
                         variant="contained"
                         sx={{ mt: 3, mb: 2 }}
-                        disabled={loading}
+                        // Desabilita se estiver carregando OU se estiver na etapa de seleção e nenhuma empresa for escolhida
+                        disabled={loading || (etapa === 'selecao' && !empresaId)}
                     >
-                        {loading ? <CircularProgress size={24} color="inherit" /> : 'Entrar'}
+                        {loading
+                            ? <CircularProgress size={24} color="inherit" />
+                            : etapa === 'credenciais'
+                                ? 'Próximo'
+                                : 'Entrar'
+                        }
                     </Button>
                 </Box>
             </Paper>
