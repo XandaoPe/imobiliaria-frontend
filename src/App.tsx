@@ -50,6 +50,22 @@ const PublicRoute = ({ children }: { children: React.JSX.Element }) => {
   return children;
 };
 
+const HomeRouterWrapper = () => {
+  const { isAuthenticated } = useAuth();
+
+  if (isAuthenticated) {
+    // Se logado, envolve a Home no MainLayout (Menu + Conteúdo)
+    return (
+      <MainLayout>
+        <HomePage />
+      </MainLayout>
+    );
+  }
+
+  // Se visitante, renderiza apenas a página (Vitrine limpa)
+  return <HomePage />;
+};
+
 const App = () => {
   return (
     <ThemeProvider theme={appTheme}>
@@ -79,9 +95,18 @@ const App = () => {
               }
             />
 
+            {/* --- ROTA HÍBRIDA (Home) --- */}
+            {/* Se logado, renderiza dentro do ProtectedRoute (com Layout/Menu) */}
+            {/* Se deslogado, renderiza puramente a HomePage (Vitrine) */}
+            <Route
+              path="/home"
+              element={
+                <HomeRouterWrapper />
+              }
+            />
+
             {/* --- ROTAS PROTEGIDAS (Necessitam Login) --- */}
             <Route element={<ProtectedRoute />}>
-              <Route path="/home" element={<HomePage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/imoveis" element={<ImoveisPage />} />

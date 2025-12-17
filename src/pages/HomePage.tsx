@@ -29,14 +29,19 @@ export const HomePage: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.get(API_URL, {
-                headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+            // Lógica de URL Dinâmica
+            const url = token
+                ? 'http://localhost:5000/imoveis'
+                : 'http://localhost:5000/imoveis/publico';
+
+            const response = await axios.get(url, {
+                // Só envia o header se o token existir
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
+
             setImoveis(response.data);
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Falha ao carregar a lista de imóveis.';
-            setError(errorMessage);
-            console.error("Erro ao buscar imóveis:", err);
+            setError('Falha ao carregar imóveis.');
         } finally {
             setLoading(false);
         }
@@ -101,24 +106,25 @@ export const HomePage: React.FC = () => {
                 Catálogo de Imóveis
             </Typography>
 
-            {/* Filtros de Status */}
-            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-start' }}>
-                <ToggleButtonGroup
-                    value={filter}
-                    exclusive
-                    onChange={handleFilterChange}
-                    aria-label="Status do Imóvel"
-                    size="small"
-                >
-                    <ToggleButton value="TODOS">Todos ({imoveis.length})</ToggleButton>
-                    <ToggleButton value="DISPONIVEIS" color="success">
-                        Disponíveis ({imoveis.filter(i => i.disponivel).length})
-                    </ToggleButton>
-                    <ToggleButton value="INDISPONIVEIS" color="error">
-                        Indisponíveis ({imoveis.filter(i => !i.disponivel).length})
-                    </ToggleButton>
-                </ToggleButtonGroup>
-            </Box>
+            {user && (
+                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-start' }}>
+                    <ToggleButtonGroup
+                        value={filter}
+                        exclusive
+                        onChange={handleFilterChange}
+                        aria-label="Status do Imóvel"
+                        size="small"
+                    >
+                        <ToggleButton value="TODOS">Todos ({imoveis.length})</ToggleButton>
+                        <ToggleButton value="DISPONIVEIS" color="success">
+                            Disponíveis ({imoveis.filter(i => i.disponivel).length})
+                        </ToggleButton>
+                        <ToggleButton value="INDISPONIVEIS" color="error">
+                            Indisponíveis ({imoveis.filter(i => !i.disponivel).length})
+                        </ToggleButton>
+                    </ToggleButtonGroup>
+                </Box>
+            )}
 
             {/* Listagem dos Imóveis (Usando Box com Flexbox para Layout Responsivo) */}
             {filteredImoveis.length === 0 ? (

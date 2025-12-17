@@ -109,11 +109,12 @@ export const LandingPage: React.FC = () => {
                             variant="contained"
                             size="large"
                             color="primary"
-                            onClick={handleCadastroClick} // ❗ Abre a modal
+                            onClick={() => navigate('/home')} // Agora aponta para a Home
                             sx={{ padding: '12px 30px', fontSize: '1.1rem' }}
                         >
-                            Comece Agora (Grátis por 7 dias)
+                            Ver Imóveis Disponíveis
                         </Button>
+                        
                     </Stack>
                 </Container>
             </HeroSection>

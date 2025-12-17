@@ -68,6 +68,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     useEffect(() => {
+        // Configura o interceptor do Axios
+        const interceptor = axios.interceptors.response.use(
+            (response) => response, // Se a resposta for OK, não faz nada
+            (error) => {
+                // Verifica se o erro é 401 (Unauthorized)
+                if (error.response && error.response.status === 401) {
+                    console.warn("Token inválido ou expirado. Deslogando...");
+                    logout();
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        // Limpa o interceptor quando o componente for desmontado
+        return () => {
+            axios.interceptors.response.eject(interceptor);
+        };
+    }, []);
+
+    useEffect(() => {
         if (token) {
             const payloadDecoded = decodeToken(token);
 

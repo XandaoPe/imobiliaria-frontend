@@ -4,39 +4,40 @@ import React from 'react';
 import { Box, AppBar, Toolbar, Typography, IconButton, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider, CssBaseline } from '@mui/material';
 import { Outlet, Link as RouterLink } from 'react-router-dom';
 
-// ⭐️ Ícones de Navegação
+// Ícones de Navegação
 import HomeIcon from '@mui/icons-material/Home';
-import GroupIcon from '@mui/icons-material/Group'; // Clientes
-import BusinessIcon from '@mui/icons-material/Business'; // Imóveis
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'; // Ícone para Usuários
-import LocationCityIcon from '@mui/icons-material/LocationCity'; // ⭐️ NOVO: Ícone para Empresas
+import GroupIcon from '@mui/icons-material/Group';
+import BusinessIcon from '@mui/icons-material/Business';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import LocationCityIcon from '@mui/icons-material/LocationCity';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 
-// ⭐️ Importações de Autenticação e Tipagem
+// Importações de Autenticação e Tipagem
 import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
 
 const drawerWidth = 240;
 
-// ⭐️ Perfis que têm acesso aos módulos
-const ADMIN_GERAL_ROLE = [PerfisEnum.ADM_GERAL]; // ⭐️ NOVO: Apenas ADM_GERAL
+// ⭐️ NOVA INTERFACE: Permite que o componente aceite conteúdo interno (children)
+interface MainLayoutProps {
+    children?: React.ReactNode;
+}
+
+const ADMIN_GERAL_ROLE = [PerfisEnum.ADM_GERAL];
 const USER_ADMIN_ROLES = [PerfisEnum.ADM_GERAL, PerfisEnum.GERENTE];
 
-// ⭐️ Definição dos Itens de Menu (Com visibilidade condicional)
 const baseMenuItems = [
     { text: 'Home', icon: <HomeIcon />, path: '/home', requiredRoles: [] as PerfisEnum[] },
     { text: 'Dashboard', icon: <HomeIcon />, path: '/dashboard', requiredRoles: [] as PerfisEnum[] },
     { text: 'Clientes', icon: <GroupIcon />, path: '/clientes', requiredRoles: [] as PerfisEnum[] },
     { text: 'Imóveis', icon: <BusinessIcon />, path: '/imoveis', requiredRoles: [] as PerfisEnum[] },
-    // ⭐️ ITEM ADICIONADO: Empresas (Apenas ADM_GERAL)
     { text: 'Empresas', icon: <LocationCityIcon />, path: '/empresas', requiredRoles: ADMIN_GERAL_ROLE },
-    // Item Usuários (ADM_GERAL e GERENTE)
     { text: 'Usuários', icon: <AdminPanelSettingsIcon />, path: '/usuarios', requiredRoles: USER_ADMIN_ROLES },
-    // Adicione Agendamentos, Contratos e Relatórios aqui
 ];
 
-export const MainLayout = () => {
+// ⭐️ APLICANDO A INTERFACE: Adicionado ({ children })
+export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const { logout, user } = useAuth();
     const [mobileOpen, setMobileOpen] = React.useState(false);
 
@@ -44,19 +45,12 @@ export const MainLayout = () => {
         setMobileOpen(!mobileOpen);
     };
 
-    // Função de verificação de permissão
     const hasPermission = (requiredRoles: PerfisEnum[]) => {
-        // Se não houver roles requeridas, o item é visível (ex: Home, Dashboard).
         if (requiredRoles.length === 0) return true;
-
-        // Se o usuário não estiver carregado, esconde
         if (!user) return false;
-
-        // Verifica se o perfil do usuário logado está na lista de perfis requeridos
         return requiredRoles.includes(user.perfil as PerfisEnum);
     };
 
-    // Conteúdo do Drawer (Aplicando a lógica condicional)
     const drawer = (
         <div>
             <Toolbar sx={{ backgroundColor: 'primary.main' }}>
@@ -66,7 +60,6 @@ export const MainLayout = () => {
             </Toolbar>
             <Divider />
             <List>
-                {/* Mapeia os itens e aplica o filtro de permissão */}
                 {baseMenuItems.map((item) => (
                     hasPermission(item.requiredRoles) && (
                         <ListItem key={item.text} disablePadding>
@@ -84,7 +77,6 @@ export const MainLayout = () => {
             </List>
             <Divider />
             <List>
-                {/* Item Sair */}
                 <ListItem disablePadding onClick={logout}>
                     <ListItemButton>
                         <ListItemIcon><LogoutIcon color="error" /></ListItemIcon>
@@ -99,7 +91,6 @@ export const MainLayout = () => {
         <Box sx={{ display: 'flex', height: '100vh' }}>
             <CssBaseline />
 
-            {/* AppBar (Topo) */}
             <AppBar
                 position="fixed"
                 sx={{
@@ -124,13 +115,11 @@ export const MainLayout = () => {
                 </Toolbar>
             </AppBar>
 
-            {/* Sidebar (Drawer) */}
             <Box
                 component="nav"
                 sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
                 aria-label="mailbox folders"
             >
-                {/* Drawer para Mobile e Desktop (com o conteúdo 'drawer' definido acima) */}
                 <Drawer
                     variant="temporary"
                     open={mobileOpen}
@@ -156,7 +145,6 @@ export const MainLayout = () => {
                 </Drawer>
             </Box>
 
-            {/* Conteúdo Principal */}
             <Box
                 component="main"
                 sx={{
@@ -169,7 +157,11 @@ export const MainLayout = () => {
                 }}
             >
                 <Toolbar />
-                <Outlet />
+
+                {/* ⭐️ LOGICA DE CONTEÚDO: 
+                    Se passarmos algo por props (como na Home), renderiza o conteúdo.
+                    Se não, usa o Outlet do React Router. */}
+                {children ? children : <Outlet />}
             </Box>
         </Box>
     );
