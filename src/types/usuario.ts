@@ -10,7 +10,7 @@ export enum PerfisEnum {
 
 // Interface de dados que vem do backend (Mongoose Document)
 export interface Usuario {
-    _id: string;
+    id: string;
     email: string;
     nome: string;
     perfil: PerfisEnum;

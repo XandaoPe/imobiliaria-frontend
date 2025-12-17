@@ -1,47 +1,34 @@
-// src/pages/UsuariosPage.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import axios from 'axios';
 import {
-    Box, Typography, Button, CircularProgress, Alert, Paper, TextField, InputAdornment, Tooltip, IconButton,
-    Menu, MenuItem, ListSubheader // Importações para o menu
+    Box, Typography, Button, CircularProgress, Paper, TextField, InputAdornment, IconButton, Menu, MenuItem, ListSubheader
 } from '@mui/material';
 import {
     DataGrid,
     GridColDef,
     GridColumnVisibilityModel,
-    GridRenderCellParams
+    GridRenderCellParams,
+    GridRowSelectionModel,
+    GridRowId
 } from '@mui/x-data-grid';
+
 // Ícones
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-// ⭐️ NOVO: Ícones para o filtro
 import FilterListIcon from '@mui/icons-material/FilterList';
-import DoneIcon from '@mui/icons-material/Done';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 
-
-// Remover importações de ToggleButton e ToggleButtonGroup
-
-// Tipagens e Componente de Modal ATUALIZADOS
+// Contexto, Tipagens e Componentes
+import { useAuth } from '../contexts/AuthContext';
 import { Usuario, PerfisEnum } from '../types/usuario';
 import { UsuarioFormModal } from '../components/UsuarioFormModal';
+import api from '../services/api';
 
-
-// --- Componente HighlightedText (Reutilizado) ---
-interface HighlightedTextProps {
-    text: string | null | undefined;
-    highlight: string;
-}
-
-const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) => {
-
+// --- Componente de Destaque de Texto ---
+const HighlightedText: React.FC<{ text: string | null | undefined; highlight: string }> = ({ text, highlight }) => {
     const textToDisplay = text ?? '';
-
-    if (!textToDisplay.trim() || !highlight.trim()) {
-        return <>{textToDisplay}</>;
-    }
-
+    if (!textToDisplay.trim() || !highlight.trim()) return <>{textToDisplay}</>;
     const regex = new RegExp(`(${highlight})`, 'gi');
     const parts = textToDisplay.split(regex);
 
@@ -49,9 +36,7 @@ const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) =>
         <Typography component="span" variant="body2">
             {parts.map((part, i) =>
                 regex.test(part) ? (
-                    <span key={i} style={{ backgroundColor: '#ffeb3b', fontWeight: 'bold' }}>
-                        {part}
-                    </span>
+                    <span key={i} style={{ backgroundColor: '#ffeb3b', fontWeight: 'bold' }}>{part}</span>
                 ) : (
                     <span key={i}>{part}</span>
                 )
@@ -59,16 +44,14 @@ const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) =>
         </Typography>
     );
 };
-// FIM - HighlightedText
 
-// Tipos para os Filtros
 type UsuarioPerfilFilter = 'TODOS' | PerfisEnum;
 type UsuarioStatusFilter = 'TODOS' | 'true' | 'false';
 
-const API_URL = 'http://localhost:5000/usuarios';
 const DEBOUNCE_DELAY = 300;
 
 export const UsuariosPage = () => {
+    const { user: usuarioLogado } = useAuth();
     const [usuarios, setUsuarios] = useState<Usuario[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -81,19 +64,26 @@ export const UsuariosPage = () => {
 
     const [filterPerfil, setFilterPerfil] = useState<UsuarioPerfilFilter>('TODOS');
     const [filterStatus, setFilterStatus] = useState<UsuarioStatusFilter>('TODOS');
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-    // ⭐️ NOVO ESTADO: Âncora para o Menu de Filtro Único
-    const [anchorElFilter, setAnchorElFilter] = useState<null | HTMLElement>(null);
+    // FIX v7: O estado agora usa 'include' e um Set para os IDs
+    const [selectionModel, setSelectionModel] = useState<GridRowSelectionModel>({
+        type: 'include',
+        ids: new Set<GridRowId>([])
+    });
 
     const searchInputRef = useRef<HTMLInputElement>(null);
 
     const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>({
-        _id: false,
         createdAt: false,
         updatedAt: false,
     });
 
-    // Função de busca adaptada para Usuários, Perfil e Status (inalterada)
+    // Helper para contagem usando .size do Set
+    const selectedCount = selectionModel.ids instanceof Set ? selectionModel.ids.size : 0;
+
+    const getFilterLabel = () => (filterPerfil === 'TODOS' && filterStatus === 'TODOS' ? 'Filtros' : 'Filtrado');
+
     const fetchUsuarios = useCallback(async (
         search: string = '',
         perfil: UsuarioPerfilFilter = 'TODOS',
@@ -101,118 +91,50 @@ export const UsuariosPage = () => {
     ) => {
         try {
             setLoading(true);
+            const params: any = {};
+            if (search.trim()) params.search = search;
+            if (perfil !== 'TODOS') params.perfil = perfil;
+            if (status !== 'TODOS') params.ativo = status;
 
-            const params: { search?: string; perfil?: PerfisEnum; ativo?: string } = {};
+            const response = await api.get('/usuarios', { params });
+            const dataFormatted = (response.data as any[]).map(u => ({
+                ...u,
+                id: u.id || u._id
+            }));
 
-            if (search.trim()) {
-                params.search = search;
-            }
-
-            if (perfil !== 'TODOS') {
-                params.perfil = perfil as PerfisEnum;
-            }
-
-            if (status !== 'TODOS') {
-                params.ativo = status;
-            }
-
-            const response = await axios.get(API_URL, {
-                params: params
-            });
-
-            setUsuarios(response.data as Usuario[]);
+            setUsuarios(dataFormatted);
             setError(null);
         } catch (err: any) {
-            let errorMessage = 'Falha ao carregar usuários.';
-            if (err.response) {
-                errorMessage = err.response.data?.message || errorMessage;
-            }
-            setError(errorMessage);
-            console.error("Erro ao buscar usuários:", err);
-            setUsuarios([]);
+            setError(err.response?.data?.message || 'Falha ao carregar usuários.');
         } finally {
             setLoading(false);
         }
     }, []);
 
-    // Efeitos de debounce e busca (inalterados, mas agora dependem de filterStatus)
     useEffect(() => {
-        const handler = setTimeout(() => {
-            setDebouncedSearchText(searchText);
-        }, DEBOUNCE_DELAY);
-
-        return () => {
-            clearTimeout(handler);
-        };
+        const handler = setTimeout(() => setDebouncedSearchText(searchText), DEBOUNCE_DELAY);
+        return () => clearTimeout(handler);
     }, [searchText]);
 
     useEffect(() => {
         fetchUsuarios(debouncedSearchText, filterPerfil, filterStatus);
     }, [fetchUsuarios, debouncedSearchText, filterPerfil, filterStatus]);
 
-    useEffect(() => {
-        if (searchInputRef.current) {
-            searchInputRef.current.focus();
-        }
-    });
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
+    const handleMenuClose = () => setAnchorEl(null);
 
-    // ⭐️ NOVO HANDLER: Abrir Menu
-    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-        setAnchorElFilter(event.currentTarget);
-    };
-
-    // ⭐️ NOVO HANDLER: Fechar Menu
-    const handleMenuClose = () => {
-        setAnchorElFilter(null);
-    };
-
-    // ⭐️ HANDLER ATUALIZADO: Altera Perfil e fecha o menu
-    const handleSetPerfil = (newPerfil: UsuarioPerfilFilter) => {
-        setFilterPerfil(newPerfil);
-        handleMenuClose();
-    };
-
-    // ⭐️ HANDLER ATUALIZADO: Altera Status e fecha o menu
-    const handleSetStatus = (newStatus: UsuarioStatusFilter) => {
-        setFilterStatus(newStatus);
-        handleMenuClose();
-    };
-
-    // Função auxiliar para obter a descrição do perfil/status para o botão
-    const getFilterSummary = () => {
-        const perfilLabel = filterPerfil === 'TODOS' ? 'Todos Perfis' : getPerfilDisplay(filterPerfil as PerfisEnum);
-        const statusLabel = filterStatus === 'TODOS' ? 'Todos Status' : (filterStatus === 'true' ? 'Ativos' : 'Inativos');
-
-        if (filterPerfil === 'TODOS' && filterStatus === 'TODOS') {
-            return 'Filtros (Nenhum)';
-        }
-
-        // Exemplo: Perfil: Gerente | Status: Ativos
-        return `Perfil: ${perfilLabel.split('.')[0]} | Status: ${statusLabel}`;
-    }
-
-    const handleOpenCreate = () => {
-        setUsuarioToEdit(null);
-        setOpenModal(true);
-    };
-
-    const handleOpenEdit = (usuario: Usuario) => {
-        setUsuarioToEdit(usuario);
-        setOpenModal(true);
-    };
-
-    const handleClose = () => {
-        setOpenModal(false);
-        setUsuarioToEdit(null);
-    };
+    const handleOpenCreate = () => { setUsuarioToEdit(null); setOpenModal(true); };
+    const handleOpenEdit = (usuario: Usuario) => { setUsuarioToEdit(usuario); setOpenModal(true); };
 
     const handleDelete = async (usuarioId: string, nome: string) => {
-        if (!window.confirm(`Tem certeza que deseja excluir o usuário: "${nome}"?`)) {
+        const idLogado = (usuarioLogado as any)?.id || (usuarioLogado as any)?._id;
+        if (usuarioId === idLogado) {
+            alert("Operação negada: Você não pode excluir sua própria conta.");
             return;
         }
-
+        if (!window.confirm(`Deseja realmente excluir o usuário "${nome}"?`)) return;
         try {
-            await axios.delete(`${API_URL}/${usuarioId}`);
+            await api.delete(`/usuarios/${usuarioId}`);
             fetchUsuarios(debouncedSearchText, filterPerfil, filterStatus);
             alert('Usuário excluído com sucesso!');
         } catch (err: any) {
@@ -220,306 +142,148 @@ export const UsuariosPage = () => {
         }
     };
 
-    // Mapeamento de Perfis para exibição amigável (inalterado)
-    const getPerfilDisplay = (perfil: PerfisEnum): string => {
-        const perfilMap: Record<PerfisEnum, string> = {
-            [PerfisEnum.ADM_GERAL]: 'Adm. Geral',
-            [PerfisEnum.GERENTE]: 'Gerente',
-            [PerfisEnum.CORRETOR]: 'Corretor',
-            [PerfisEnum.SUPORTE]: 'Suporte',
-        };
-        return perfilMap[perfil] || perfil;
+    const handleBulkDelete = async () => {
+        // Converte Set para Array para processamento e envio à API
+        const idsSelecionados = Array.from(selectionModel.ids || []) as string[];
+
+        if (idsSelecionados.length === 0) return;
+
+        const idLogado = (usuarioLogado as any)?.id || (usuarioLogado as any)?._id;
+        if (idsSelecionados.includes(idLogado)) {
+            alert("Operação negada: Sua seleção contém sua própria conta logada.");
+            return;
+        }
+
+        if (!window.confirm(`Deseja realmente excluir os ${idsSelecionados.length} usuários selecionados?`)) return;
+
+        try {
+            await api.post('/usuarios/delete-batch', { ids: idsSelecionados });
+            // Reseta para o formato correto do v7
+            setSelectionModel({ type: 'include', ids: new Set() });
+            fetchUsuarios(debouncedSearchText, filterPerfil, filterStatus);
+            alert('Usuários excluídos com sucesso!');
+        } catch (err: any) {
+            alert(err.response?.data?.message || 'Erro na exclusão em massa.');
+        }
     };
 
-    // Definição das colunas da DataGrid (inalteradas)
     const columns: GridColDef<Usuario>[] = [
-        {
-            field: '_id',
-            headerName: 'ID',
-            width: 90,
-            hideable: true
-        },
         {
             field: 'nome',
             headerName: 'Nome',
-            width: 250,
+            flex: 1,
             renderCell: (params: GridRenderCellParams<Usuario>) => (
                 <Typography
                     component="span"
                     variant="body2"
                     onClick={() => handleOpenEdit(params.row)}
-                    sx={{
-                        cursor: 'pointer',
-                        color: 'primary.main',
-                        '&:hover': {
-                            textDecoration: 'underline'
-                        }
-                    }}
+                    sx={{ cursor: 'pointer', color: 'primary.main', '&:hover': { textDecoration: 'underline' } }}
                 >
-                    <HighlightedText
-                        text={params.row.nome}
-                        highlight={debouncedSearchText}
-                    />
+                    <HighlightedText text={params.row.nome} highlight={debouncedSearchText} />
                 </Typography>
             ),
         },
         {
             field: 'email',
             headerName: 'Email',
-            width: 250,
+            flex: 1,
             renderCell: (params: GridRenderCellParams<Usuario>) => (
-                <HighlightedText
-                    text={params.row.email}
-                    highlight={debouncedSearchText}
-                />
+                <HighlightedText text={params.row.email} highlight={debouncedSearchText} />
             ),
         },
-        {
-            field: 'perfil',
-            headerName: 'Perfil',
-            width: 150,
-            valueGetter: (value, row) => getPerfilDisplay(row.perfil)
-        },
+        { field: 'perfil', headerName: 'Perfil', width: 150, valueGetter: (_, row) => row.perfil?.replace('_', ' ') || '' },
         {
             field: 'ativo',
             headerName: 'Status',
             width: 130,
-            valueGetter: (value, row) => row.ativo ? "Ativo" : "Inativo",
-            cellClassName: (params) => {
-                return params.row.ativo ? 'status-ativo' : 'status-inativo';
-            }
-        },
-        {
-            field: 'createdAt',
-            headerName: 'Criação',
-            width: 180,
-            hideable: true,
-            valueGetter: (value, row) => new Date(row.createdAt).toLocaleDateString('pt-BR')
+            renderCell: (params) => (
+                <Typography variant="body2"
+                    sx={{
+                        fontWeight: 'bold',
+                        color: params.row.ativo ? 'success.main' : 'error.main',
+                        display: 'flex',
+                        alignItems: 'center',
+                        height: '100%',
+                    }}>
+                    {params.row.ativo ? 'Ativo' : 'Inativo'}
+                </Typography>
+            )
         },
         {
             field: 'actions',
             headerName: 'Ações',
-            width: 150,
+            width: 120,
             sortable: false,
-            filterable: false,
             renderCell: (params: GridRenderCellParams<Usuario>) => {
+                const idLinha = (params.row as any).id || (params.row as any)._id;
+                const idLogado = (usuarioLogado as any)?.id || (usuarioLogado as any)?._id;
+                const ehAutoExclusao = idLinha === idLogado;
                 return (
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            gap: 1,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '100%',
-                            height: '100%'
-                        }}
-                    >
-                        <Tooltip title="Editar Usuário" arrow>
-                            <IconButton
-                                color="primary"
-                                size="small"
-                                onClick={() => handleOpenEdit(params.row)}
-                                sx={{
-                                    color: 'white',
-                                    bgcolor: 'primary.main',
-                                    '&:hover': {
-                                        bgcolor: 'primary.dark',
-                                    }
-                                }}
-                            >
-                                <EditIcon />
-                            </IconButton>
-                        </Tooltip>
-
-                        <Tooltip title={`Excluir: ${params.row.nome}`} arrow>
-                            <IconButton
-                                color="error"
-                                size="small"
-                                onClick={() => handleDelete(params.row._id, params.row.nome)}
-                                sx={{
-                                    color: 'white',
-                                    bgcolor: 'error.main',
-                                    '&:hover': {
-                                        bgcolor: 'error.dark',
-                                    }
-                                }}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
-                        </Tooltip>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <IconButton size="small" onClick={() => handleOpenEdit(params.row)} color="primary"><EditIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={() => handleDelete(idLinha, params.row.nome)} disabled={ehAutoExclusao} color="error"><DeleteIcon fontSize="small" /></IconButton>
                     </Box>
                 );
             },
         },
     ];
 
-    if (loading && !debouncedSearchText && filterPerfil === 'TODOS' && filterStatus === 'TODOS') {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
-
-    if (error) {
-        return (
-            <Box sx={{ p: 3 }}>
-                <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-                <Button
-                    variant="contained"
-                    onClick={() => fetchUsuarios(debouncedSearchText, filterPerfil, filterStatus)}
-                >
-                    Tentar Novamente
-                </Button>
-            </Box>
-        );
-    }
-
     return (
-        <Box>
-            {/* Cabeçalho e Botão Novo (inalterados) */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h4" component="h1">
-                    Gerenciamento de Usuários
-                </Typography>
-                <Button
-                    variant="contained"
-                    startIcon={<PersonAddIcon />}
-                    onClick={handleOpenCreate}
-                >
-                    Novo Usuário
-                </Button>
-            </Box>
-
-            {/* ⭐️ ÁREA DE BUSCA E FILTROS ATUALIZADA */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
-
-                {/* Campo de Busca (inalterado) */}
-                <Box sx={{ flexGrow: 1 }}>
-                    <TextField
-                        fullWidth
-                        label="Pesquisar Usuários por Nome ou Email"
-                        variant="outlined"
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                        inputRef={searchInputRef}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    {loading && searchText ? <CircularProgress size={20} /> : <SearchIcon />}
-                                </InputAdornment>
-                            ),
-                        }}
-                        disabled={loading && !searchText}
-                    />
-                </Box>
-
-                {/* ⭐️ NOVO COMPONENTE: Botão de Filtro Único */}
-                <Button
-                    variant="outlined"
-                    onClick={handleMenuOpen}
-                    startIcon={<FilterListIcon />}
-                    sx={{ height: 56, flexShrink: 0 }}
-                >
-                    {getFilterSummary()}
-                </Button>
-
-                {/* ⭐️ NOVO COMPONENTE: Menu Dropdown Único com Subdivisões */}
-                <Menu
-                    anchorEl={anchorElFilter}
-                    open={Boolean(anchorElFilter)}
-                    onClose={handleMenuClose}
-                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                >
-
-                    {/* --- Seção de Filtro por Perfil --- */}
-                    <ListSubheader disableSticky sx={{ fontWeight: 'bold' }}>
-                        Filtrar por Perfil
-                    </ListSubheader>
-
-                    <MenuItem
-                        onClick={() => handleSetPerfil('TODOS')}
-                        selected={filterPerfil === 'TODOS'}
-                    >
-                        {filterPerfil === 'TODOS' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
-                        <Box sx={{ ml: filterPerfil !== 'TODOS' ? '24px' : 0 }}>Todos os Perfis</Box>
-                    </MenuItem>
-
-                    {Object.values(PerfisEnum).map((perfil) => (
-                        <MenuItem
-                            key={perfil}
-                            onClick={() => handleSetPerfil(perfil)}
-                            selected={filterPerfil === perfil}
+        <Box sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                <Typography variant="h5" fontWeight="bold">Gestão de Usuários</Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    {selectedCount > 0 && (
+                        <Button
+                            variant="contained"
+                            color="error"
+                            startIcon={<DeleteSweepIcon />}
+                            onClick={handleBulkDelete}
                         >
-                            {filterPerfil === perfil && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
-                            <Box sx={{ ml: filterPerfil !== perfil ? '24px' : 0 }}>
-                                {getPerfilDisplay(perfil)}
-                            </Box>
-                        </MenuItem>
-                    ))}
-
-                    {/* --- Seção de Filtro por Status --- */}
-                    <ListSubheader disableSticky sx={{ fontWeight: 'bold', mt: 1 }}>
-                        Filtrar por Status
-                    </ListSubheader>
-
-                    <MenuItem
-                        onClick={() => handleSetStatus('TODOS')}
-                        selected={filterStatus === 'TODOS'}
-                    >
-                        {filterStatus === 'TODOS' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
-                        <Box sx={{ ml: filterStatus !== 'TODOS' ? '24px' : 0 }}>Todos os Status</Box>
-                    </MenuItem>
-                    <MenuItem
-                        onClick={() => handleSetStatus('true')}
-                        selected={filterStatus === 'true'}
-                    >
-                        {filterStatus === 'true' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
-                        <Box sx={{ ml: filterStatus !== 'true' ? '24px' : 0 }}>Ativo</Box>
-                    </MenuItem>
-                    <MenuItem
-                        onClick={() => handleSetStatus('false')}
-                        selected={filterStatus === 'false'}
-                    >
-                        {filterStatus === 'false' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
-                        <Box sx={{ ml: filterStatus !== 'false' ? '24px' : 0 }}>Inativo</Box>
-                    </MenuItem>
-
-                </Menu>
-                {/* Fim da área de busca e filtros */}
-
+                            Excluir ({selectedCount})
+                        </Button>
+                    )}
+                    <Button variant="contained" startIcon={<PersonAddIcon />} onClick={handleOpenCreate}>Novo Usuário</Button>
+                </Box>
             </Box>
 
-            {/* DataGrid (inalterado) */}
-            <Paper elevation={3} sx={{ height: 600, width: '100%' }}>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <TextField
+                    fullWidth
+                    label="Pesquisar..."
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    inputRef={searchInputRef}
+                    InputProps={{
+                        startAdornment: <InputAdornment position="start">{loading ? <CircularProgress size={20} /> : <SearchIcon />}</InputAdornment>,
+                    }}
+                />
+                <Button variant="outlined" onClick={handleMenuOpen} startIcon={<FilterListIcon />}>{getFilterLabel()}</Button>
+                <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+                    <ListSubheader>Perfil</ListSubheader>
+                    <MenuItem onClick={() => { setFilterPerfil('TODOS'); handleMenuClose(); }}>Todos</MenuItem>
+                    {Object.values(PerfisEnum).map(p => <MenuItem key={p} onClick={() => { setFilterPerfil(p); handleMenuClose(); }}>{p}</MenuItem>)}
+                </Menu>
+            </Box>
+
+            <Paper elevation={2} sx={{ height: 600, width: '100%' }}>
                 <DataGrid
                     rows={usuarios}
                     columns={columns}
-                    pageSizeOptions={[10, 25, 50]}
-                    columnVisibilityModel={columnVisibilityModel}
-                    onColumnVisibilityModelChange={(newModel) => setColumnVisibilityModel(newModel)}
+                    loading={loading}
                     checkboxSelection
                     disableRowSelectionOnClick
-                    getRowId={(row) => row._id}
-                    loading={loading}
-                    sx={{
-                        '& .status-ativo': {
-                            color: 'success.main',
-                            fontWeight: 'bold',
-                        },
-                        '& .status-inativo': {
-                            color: 'error.main',
-                            fontWeight: 'bold',
-                        }
-                    }}
+                    onRowSelectionModelChange={(newModel) => setSelectionModel(newModel)}
+                    rowSelectionModel={selectionModel}
+                    columnVisibilityModel={columnVisibilityModel}
+                    onColumnVisibilityModelChange={(newModel) => setColumnVisibilityModel(newModel)}
+                    getRowId={(row) => row.id}
                 />
             </Paper>
 
-            {/* Modal de Formulário */}
             <UsuarioFormModal
                 open={openModal}
-                onClose={handleClose}
+                onClose={() => setOpenModal(false)}
                 usuarioToEdit={usuarioToEdit}
                 onSuccess={() => fetchUsuarios(debouncedSearchText, filterPerfil, filterStatus)}
             />

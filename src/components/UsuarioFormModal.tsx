@@ -12,6 +12,7 @@ import {
     UpdateUsuarioFormData,
     CreateUsuarioFormData
 } from '../types/usuario'; // Assumindo tipagens definidas aqui
+import api from '../services/api';
 
 const API_URL = 'http://localhost:5000/usuarios';
 
@@ -36,7 +37,7 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
     // Usa optional chaining (?) e fallback '' antes de chamar .toString() para evitar undefined.
     const isEditingSelf = isEditing &&
         !!(usuarioToEdit && user &&
-            usuarioToEdit._id?.toString() === user._id?.toString());
+            usuarioToEdit.id?.toString() === user.id?.toString());
     
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -117,9 +118,20 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
 
         try {
             if (isEditing) {
-                await axios.put(`${API_URL}/${usuarioToEdit!._id}`, payload);
+                if (isEditing) {
+                    // Tenta pegar .id, se não houver, tenta ._id
+                    const idParaEnvio = usuarioToEdit?.id || (usuarioToEdit as any)?._id;
+
+                    if (!idParaEnvio) {
+                        setError("ID do usuário não encontrado para edição.");
+                        setLoading(false);
+                        return;
+                    }
+
+                    await api.put(`/usuarios/${idParaEnvio}`, payload);
+                }
             } else {
-                await axios.post(API_URL, payload);
+                await api.post('/usuarios', payload);
             }
 
             onSuccess();

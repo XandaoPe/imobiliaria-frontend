@@ -73,15 +73,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             if (payloadDecoded && payloadDecoded.sub) {
 
-                // ⭐️ CORREÇÃO 2: Criar o objeto UsuarioLogado COMPLETO
-                // O objeto UsuarioLogado precisa de todas as propriedades da interface Usuario
-                // (_id, nome, email, perfil, ativo, createdAt, updatedAt) + token.
-                // Como o JWT só tem um subconjunto, precisamos adicionar as propriedades faltantes (ou default)
-                // e o token para satisfazer a interface.
-
                 const usuarioLogado: UsuarioLogado = {
-                    // Mapeamento das propriedades do JWT para a interface UsuarioLogado (que herda de Usuario)
-                    _id: payloadDecoded.sub, // Mapeia 'sub' para '_id'
+                    id: payloadDecoded.sub, // Mapeia 'sub' para '_id'
                     nome: payloadDecoded.nome,
                     email: payloadDecoded.email,
                     perfil: payloadDecoded.perfil,

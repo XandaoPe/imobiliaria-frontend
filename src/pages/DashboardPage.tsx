@@ -1,267 +1,140 @@
 // src/pages/DashboardPage.tsx
+
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
 import {
-    Box, Typography, Paper, Alert, CircularProgress, LinearProgress
+    Box, Typography, Paper, Alert, CircularProgress, LinearProgress, Divider
 } from '@mui/material';
-import { House, AttachMoney, CheckCircle, Cancel } from '@mui/icons-material';
-import { Imovel } from '../types/imovel'; // Importa o tipo Imovel
-import { useAuth } from '../contexts/AuthContext'; // ⭐️ Verifique o caminho real
+import {
+    House, AttachMoney, CheckCircle, Group,
+    Person, AssignmentInd
+} from '@mui/icons-material';
 
-// --- Componente auxiliar para exibir um Cartão de Métrica Simples ---
-interface MetricCardProps {
-    title: string;
-    value: string | number;
-    icon: React.ReactElement;
-    color: string;
-}
+import api from '../services/api'; // Use sua instância configurada do axios
+import { Imovel } from '../types/imovel';
+import { Usuario } from '../types/usuario';
 
-const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, color }) => (
-    <Paper elevation={3} sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2, height: '100%' }}>
-        <Box sx={{ color: color, fontSize: 40, display: 'flex' }}>{icon}</Box>
-        <Box>
-            <Typography variant="subtitle2" color="textSecondary">{title}</Typography>
-            <Typography variant="h5" fontWeight="bold">{value}</Typography>
-        </Box>
-    </Paper>
-);
-
-// --- Tipos e Constantes ---
+// ⭐️ 1. DEFINIÇÃO DA INTERFACE (Localmente na página)
+// Ela define o "formato" do objeto que vai guardar os cálculos do dashboard
 interface DashboardMetrics {
     totalImoveis: number;
     valorTotalImoveis: number;
-    disponiveis: number;
-    indisponiveis: number;
+    imoveisDisponiveis: number;
+    totalUsuarios: number;
+    usuariosAtivos: number;
+    totalClientes: number; // Métrica nova vinda do seu novo backend
     tipoCounts: Record<string, number>;
+    perfilCounts: Record<string, number>;
 }
 
-const API_URL = 'http://localhost:5000/imoveis';
-
-// Função para formatar o valor como moeda
-const formatCurrency = (value: number): string => {
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-};
-
-// Função para obter o label amigável do tipo
-const getTipoDisplay = (tipo: string): string => {
-    const tipoMap: Record<string, string> = {
-        'CASA': 'Casas',
-        'APARTAMENTO': 'Apartamentos',
-        'TERRENO': 'Terrenos',
-        'COMERCIAL': 'Comerciais'
-    };
-    return tipoMap[tipo] || tipo;
-};
-
-// --- Componente Principal ---
-// ⚠️ Exportação corrigida: Apenas um 'export const'
 export const DashboardPage: React.FC = () => {
-    const { user } = useAuth();
-    const token = user?.token || null;
+    // ⭐️ 2. ESTADO TIPADO COM A INTERFACE
     const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const aggregateData = (imoveis: Imovel[]): DashboardMetrics => {
-        const initialMetrics: DashboardMetrics = {
-            totalImoveis: 0,
-            valorTotalImoveis: 0,
-            disponiveis: 0,
-            indisponiveis: 0,
-            tipoCounts: {}
-        };
-
-        return imoveis.reduce((acc, imovel) => {
-            acc.totalImoveis += 1;
-            acc.valorTotalImoveis += imovel.valor || 0;
-
-            if (imovel.disponivel) {
-                acc.disponiveis += 1;
-            } else {
-                acc.indisponiveis += 1;
-            }
-
-            const tipo = imovel.tipo || 'OUTRO';
-            acc.tipoCounts[tipo] = (acc.tipoCounts[tipo] || 0) + 1;
-
-            return acc;
-        }, initialMetrics);
-    };
-
-    const fetchImoveisData = useCallback(async () => {
+    const fetchAllData = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.get(API_URL, {
-                headers: { 'Authorization': token ? `Bearer ${token}` : '' }
-            });
+            // ⭐️ 3. CHAMADA ÀS 3 ROTAS (Inclusive a de clientes que você postou)
+            const [resImoveis, resUsuarios, resClientes] = await Promise.all([
+                api.get('/imoveis'),
+                api.get('/usuarios'),
+                api.get('/clientes') // Esta rota agora funciona com seu novo Controller
+            ]);
 
-            const imoveis = response.data as Imovel[];
-            const aggregatedMetrics = aggregateData(imoveis);
-            setMetrics(aggregatedMetrics);
+            const imoveis: Imovel[] = resImoveis.data;
+            const usuarios: Usuario[] = resUsuarios.data;
+            const clientes = resClientes.data;
 
+            // ⭐️ 4. PROCESSAMENTO DOS DADOS (Agregação)
+            const aggregated: DashboardMetrics = {
+                totalImoveis: imoveis.length,
+                valorTotalImoveis: imoveis.reduce((acc, cur) => acc + (cur.valor || 0), 0),
+                imoveisDisponiveis: imoveis.filter(i => i.disponivel).length,
+                totalUsuarios: usuarios.length,
+                usuariosAtivos: usuarios.filter(u => u.ativo).length,
+                totalClientes: clientes.length,
+                tipoCounts: imoveis.reduce((acc: any, cur) => {
+                    acc[cur.tipo] = (acc[cur.tipo] || 0) + 1;
+                    return acc;
+                }, {}),
+                perfilCounts: usuarios.reduce((acc: any, cur) => {
+                    acc[cur.perfil] = (acc[cur.perfil] || 0) + 1;
+                    return acc;
+                }, {})
+            };
+
+            setMetrics(aggregated);
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Falha ao carregar dados do dashboard.';
-            setError(errorMessage);
-            console.error("Erro ao buscar dados do dashboard:", err);
+            setError('Erro ao carregar os dados consolidados do dashboard.');
+            console.error(err);
         } finally {
             setLoading(false);
         }
-    }, [token]);
+    }, []);
 
-    useEffect(() => {
-        fetchImoveisData();
-    }, [fetchImoveisData]);
+    useEffect(() => { fetchAllData(); }, [fetchAllData]);
 
-
-    if (loading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
-
-    if (error) {
-        return (
-            <Box sx={{ p: 3 }}>
-                <Alert severity="error">{error}</Alert>
-            </Box>
-        );
-    }
-
+    if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>;
+    if (error) return <Alert severity="error" sx={{ m: 3 }}>{error}</Alert>;
     if (!metrics) return null;
 
-    // --- Renderização do Dashboard (Layout com Box e Flexbox para simular o Grid) ---
     return (
         <Box sx={{ p: 3 }}>
-            <Typography variant="h4" component="h1" gutterBottom>
-                Dashboard de Imóveis
-            </Typography>
+            <Typography variant="h4" fontWeight="bold" gutterBottom>Dashboard Executivo</Typography>
 
-            {/* Container para as Métricas Principais (Simulando Grid de 4 colunas em telas grandes) */}
-            <Box
-                sx={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 3,
-                    mb: 3,
-                    // Responsividade: 100% (xs), 50% (sm/md), 25% (lg)
-                    '& > div': {
-                        flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 12px)', lg: '1 1 calc(25% - 18px)' },
-                    }
-                }}
-            >
-                {/* 1. Métrica Principal: Total de Imóveis */}
-                <Box>
-                    <MetricCard
-                        title="Total de Imóveis Cadastrados"
-                        value={metrics.totalImoveis}
-                        icon={<House />}
-                        color="#42a5f5"
-                    />
-                </Box>
+            {/* GRID DE CARTÕES */}
+            <Box sx={{
+                display: 'grid',
+                gap: 3,
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '1fr 1fr 1fr 1fr' },
+                mb: 4
+            }}>
+                <Paper sx={{ p: 2, borderLeft: '6px solid #1976d2' }}>
+                    <Typography color="textSecondary" variant="caption">IMÓVEIS</Typography>
+                    <Typography variant="h5">{metrics.totalImoveis}</Typography>
+                </Paper>
 
-                {/* 2. Métrica Principal: Valor Total Estimado */}
-                <Box>
-                    <MetricCard
-                        title="Valor Total do Portfólio"
-                        value={formatCurrency(metrics.valorTotalImoveis)}
-                        icon={<AttachMoney />}
-                        color="#66bb6a"
-                    />
-                </Box>
+                <Paper sx={{ p: 2, borderLeft: '6px solid #2e7d32' }}>
+                    <Typography color="textSecondary" variant="caption">VALOR EM CARTEIRA</Typography>
+                    <Typography variant="h5">
+                        {metrics.valorTotalImoveis.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </Typography>
+                </Paper>
 
-                {/* 3. Métrica de Status: Disponíveis */}
-                <Box>
-                    <MetricCard
-                        title="Imóveis Disponíveis"
-                        value={metrics.disponiveis}
-                        icon={<CheckCircle />}
-                        color="#26a69a"
-                    />
-                </Box>
+                <Paper sx={{ p: 2, borderLeft: '6px solid #ed6c02' }}>
+                    <Typography color="textSecondary" variant="caption">USUÁRIOS ATIVOS</Typography>
+                    <Typography variant="h5">{metrics.usuariosAtivos}</Typography>
+                </Paper>
 
-                {/* 4. Métrica de Status: Indisponíveis */}
-                <Box>
-                    <MetricCard
-                        title="Imóveis Indisponíveis"
-                        value={metrics.indisponiveis}
-                        icon={<Cancel />}
-                        color="#ef5350"
-                    />
-                </Box>
+                <Paper sx={{ p: 2, borderLeft: '6px solid #9c27b0' }}>
+                    <Typography color="textSecondary" variant="caption">CLIENTES CADASTRADOS</Typography>
+                    <Typography variant="h5">{metrics.totalClientes}</Typography>
+                </Paper>
             </Box>
 
-            {/* Container para as Visualizações (Simulando Grid de 2 colunas em telas grandes) */}
-            <Box
-                sx={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 3,
-                    '& > div': {
-                        flex: { xs: '1 1 100%', md: '1 1 calc(50% - 12px)' },
-                    }
-                }}
-            >
-                {/* 5. Visualização de Distribuição por Tipo */}
-                <Box>
-                    <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
-                        <Typography variant="h6" gutterBottom>Distribuição por Tipo de Imóvel</Typography>
-
-                        {/* Lista de Tipos com LinearProgress (Simula um gráfico de barras horizontais) */}
-                        {Object.entries(metrics.tipoCounts)
-                            .sort(([, a], [, b]) => b - a)
-                            .map(([tipo, count]) => {
-                                const percentage = (count / metrics.totalImoveis) * 100;
-                                return (
-                                    <Box key={tipo} sx={{ mb: 2 }}>
-                                        <Typography variant="body1" fontWeight="medium">
-                                            {getTipoDisplay(tipo)} ({count})
-                                        </Typography>
-                                        <LinearProgress
-                                            variant="determinate"
-                                            value={percentage}
-                                            sx={{ height: 10, borderRadius: 5, bgcolor: '#e0e0e0' }}
-                                        />
-                                        <Typography variant="caption" color="textSecondary">
-                                            {percentage.toFixed(1)}% do total
-                                        </Typography>
-                                    </Box>
-                                );
-                            })}
-
-                    </Paper>
-                </Box>
-
-                {/* 6. Visualização de Status de Disponibilidade */}
-                <Box>
-                    <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
-                        <Typography variant="h6" gutterBottom>Status de Disponibilidade</Typography>
-
-                        <Box sx={{ mt: 3 }}>
-                            <Typography variant="body1" fontWeight="medium" color="success.main">
-                                Disponíveis ({metrics.disponiveis})
-                            </Typography>
-                            <LinearProgress
-                                variant="determinate"
-                                value={(metrics.disponiveis / metrics.totalImoveis) * 100}
-                                color="success"
-                                sx={{ height: 20, borderRadius: 5, mb: 2 }}
-                            />
-                            <Typography variant="body1" fontWeight="medium" color="error.main">
-                                Indisponíveis ({metrics.indisponiveis})
-                            </Typography>
-                            <LinearProgress
-                                variant="determinate"
-                                value={(metrics.indisponiveis / metrics.totalImoveis) * 100}
-                                color="error"
-                                sx={{ height: 20, borderRadius: 5, mb: 2 }}
-                            />
+            {/* SEÇÃO DE DETALHES */}
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                <Paper sx={{ p: 3, flex: 1, minWidth: '300px' }}>
+                    <Typography variant="h6" gutterBottom>Distribuição de Equipe</Typography>
+                    {Object.entries(metrics.perfilCounts).map(([perfil, qtd]) => (
+                        <Box key={perfil} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography>{perfil.replace('_', ' ')}</Typography>
+                            <Typography fontWeight="bold">{qtd}</Typography>
                         </Box>
+                    ))}
+                </Paper>
 
-                    </Paper>
-                </Box>
+                <Paper sx={{ p: 3, flex: 1, minWidth: '300px' }}>
+                    <Typography variant="h6" gutterBottom>Status de Inventário</Typography>
+                    <Typography variant="body2">Imóveis Disponíveis: {metrics.imoveisDisponiveis}</Typography>
+                    <LinearProgress
+                        variant="determinate"
+                        value={(metrics.imoveisDisponiveis / metrics.totalImoveis) * 100}
+                        sx={{ mt: 1, height: 10, borderRadius: 5 }}
+                    />
+                </Paper>
             </Box>
         </Box>
     );

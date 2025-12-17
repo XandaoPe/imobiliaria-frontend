@@ -1,45 +1,55 @@
-// src/App.tsx
-
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 
-// Imports da Estrutura
+// Imports da Estrutura e Tematização
 import { appTheme } from './theme/theme';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { MainLayout } from './layouts/MainLayout';
+
+// Imports das Páginas
+import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
-
-// ⭐️ Importe os componentes das páginas
-import { UsuariosPage } from './pages/UsuariosPage';
-import { EmpresasPage } from './pages/EmpresasPage'; // ⭐️ NOVO: Importe a página de empresas
-
-// Imports de outras páginas
+import { HomePage } from './pages/HomePage';
+import { DashboardPage } from './pages/DashboardPage';
 import { ClientesPage } from './pages/ClientesPage';
 import { ImoveisPage } from './pages/ImoveisPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { HomePage } from './pages/HomePage';
-import { LandingPage } from './pages/LandingPage';
+import { UsuariosPage } from './pages/UsuariosPage';
+import { EmpresasPage } from './pages/EmpresasPage';
 
-// -----------------------------------------------------------
-// Componente de Rota Protegida (Redireciona se não estiver autenticado)
-// -----------------------------------------------------------
+/**
+ * Componente de Rota Protegida
+ * Se não houver autenticação, redireciona para a Landing Page (/).
+ * Se autenticado, renderiza o MainLayout que contém o Menu e o Topbar.
+ */
 const ProtectedRoute = () => {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    // Redireciona para o login se não houver token
+    // Se o usuário tentar acessar qualquer rota interna sem estar logado,
+    // ele é enviado para a Landing Page principal.
     return <Navigate to="/" replace />;
   }
 
-  // Se autenticado, renderiza o MainLayout, que por sua vez renderiza a rota filha via <Outlet />
+  // Se autenticado, renderiza o layout principal com o Outlet para as rotas filhas
   return <MainLayout />;
 };
 
-// -----------------------------------------------------------
-// Componente Principal
-// -----------------------------------------------------------
+/**
+ * Componente de Rota Pública
+ * Impede que usuários logados acessem a Landing ou Login desnecessariamente.
+ */
+const PublicRoute = ({ children }: { children: React.JSX.Element }) => {
+  const { isAuthenticated } = useAuth();
+
+  // Se o usuário já está logado e tenta ir para Landing ou Login, manda para Home
+  if (isAuthenticated) {
+    return <Navigate to="/home" replace />;
+  }
+  return children;
+};
+
 const App = () => {
   return (
     <ThemeProvider theme={appTheme}>
@@ -48,25 +58,41 @@ const App = () => {
         <AuthProvider>
           <Routes>
 
-            {/* ⭐️ ROTA PÚBLICA 1: LANDING PAGE (Página principal) */}
-            <Route path="/" element={<LandingPage />} />
-            {/* ⭐️ ROTA PÚBLICA 2: LOGIN PAGE (Movida para /login) */}
-            <Route path="/login" element={<LoginPage />} />
+            {/* --- ROTAS PÚBLICAS --- */}
+            {/* A Landing Page é a porta de entrada (/) */}
+            <Route
+              path="/"
+              element={
+                <PublicRoute>
+                  <LandingPage />
+                </PublicRoute>
+              }
+            />
 
+            {/* Rota de Login separada */}
+            <Route
+              path="/login"
+              element={
+                <PublicRoute>
+                  <LoginPage />
+                </PublicRoute>
+              }
+            />
+
+            {/* --- ROTAS PROTEGIDAS (Necessitam Login) --- */}
             <Route element={<ProtectedRoute />}>
               <Route path="/home" element={<HomePage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/imoveis" element={<ImoveisPage />} />
-
-              {/* NOVA ROTA: Empresas (Protegida pelo MainLayout e permissão de menu) */}
               <Route path="/empresas" element={<EmpresasPage />} />
-              {/* ROTA DO MÓDULO DE USUÁRIOS */}
               <Route path="/usuarios" element={<UsuariosPage />} />
             </Route>
 
-            {/* Rota para qualquer URL não mapeada (redireciona para o login/home se não for "/") */}
+            {/* --- FALLBACK --- */}
+            {/* Qualquer URL inexistente redireciona para a Landing Page */}
             <Route path="*" element={<Navigate to="/" replace />} />
+
           </Routes>
         </AuthProvider>
       </BrowserRouter>

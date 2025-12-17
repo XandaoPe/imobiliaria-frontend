@@ -9,7 +9,9 @@ import {
     DataGrid,
     GridColDef,
     GridColumnVisibilityModel,
-    GridRenderCellParams
+    GridRenderCellParams,
+    GridRowSelectionModel,
+    GridRowId
 } from '@mui/x-data-grid';
 
 // Ícones
@@ -21,6 +23,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import DoneIcon from '@mui/icons-material/Done';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 
 // Tipagens e Componentes
 import { Empresa, EmpresaStatusFilter, EmpresaAdmFilter } from '../types/empresa';
@@ -28,27 +31,17 @@ import { EmpresaFormModal } from '../components/EmpresaFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
 
-// --- Componente HighlightedText (Reutilizado) ---
-interface HighlightedTextProps {
-    text: string | null | undefined;
-    highlight: string;
-}
-
-// Reutilização do componente HighlightedText para busca
-const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) => {
+// --- Componente HighlightedText ---
+const HighlightedText: React.FC<{ text: string | null | undefined; highlight: string }> = ({ text, highlight }) => {
     const textToDisplay = text ?? '';
-    if (!textToDisplay.trim() || !highlight.trim()) {
-        return <>{textToDisplay}</>;
-    }
+    if (!textToDisplay.trim() || !highlight.trim()) return <>{textToDisplay}</>;
     const regex = new RegExp(`(${highlight})`, 'gi');
     const parts = textToDisplay.split(regex);
     return (
         <Typography component="span" variant="body2">
             {parts.map((part, i) =>
                 regex.test(part) ? (
-                    <span key={i} style={{ backgroundColor: '#ffeb3b', fontWeight: 'bold' }}>
-                        {part}
-                    </span>
+                    <span key={i} style={{ backgroundColor: '#ffeb3b', fontWeight: 'bold' }}>{part}</span>
                 ) : (
                     <span key={i}>{part}</span>
                 )
@@ -56,7 +49,6 @@ const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) =>
         </Typography>
     );
 };
-// FIM - HighlightedText
 
 const API_URL = 'http://localhost:5000/empresas';
 const DEBOUNCE_DELAY = 300;
@@ -76,9 +68,13 @@ export const EmpresasPage: React.FC = () => {
     const [filterStatus, setFilterStatus] = useState<EmpresaStatusFilter>('TODAS');
     const [filterAdm, setFilterAdm] = useState<EmpresaAdmFilter>('TODAS');
 
-    // Estado para o Menu de Filtro Único
-    const [anchorElFilter, setAnchorElFilter] = useState<null | HTMLElement>(null);
+    // FIX v7: Estado de seleção usando Set e 'include'
+    const [selectionModel, setSelectionModel] = useState<GridRowSelectionModel>({
+        type: 'include',
+        ids: new Set<GridRowId>([])
+    });
 
+    const [anchorElFilter, setAnchorElFilter] = useState<null | HTMLElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
     const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>({
@@ -87,172 +83,89 @@ export const EmpresasPage: React.FC = () => {
         updatedAt: false,
     });
 
-    // Usuário deve ser ADM_GERAL ou GERENTE para acessar
     const canAccess = user?.perfil === PerfisEnum.ADM_GERAL || user?.perfil === PerfisEnum.GERENTE;
-    // Usuário deve ser ADM_GERAL para criar/deletar
     const canCreateAndDelete = user?.perfil === PerfisEnum.ADM_GERAL;
 
-    // Função de busca principal
+    // Contagem de selecionados
+    const selectedCount = selectionModel.ids instanceof Set ? selectionModel.ids.size : 0;
+
     const fetchEmpresas = useCallback(async (
         search: string = '',
         status: EmpresaStatusFilter = 'TODAS',
         adm: EmpresaAdmFilter = 'TODAS'
     ) => {
         if (!canAccess) return;
-
         try {
             setLoading(true);
-
-            const params: { search?: string; ativa?: string; isAdmGeral?: string } = {};
-
-            if (search.trim()) {
-                params.search = search; // O backend procura por nome ou CNPJ
-            }
-            if (status !== 'TODAS') {
-                params.ativa = status; // 'true' ou 'false'
-            }
-            if (adm !== 'TODAS') {
-                params.isAdmGeral = adm; // 'true' ou 'false'
-            }
-
-            const headers = {
-                Authorization: `Bearer ${user?.token}`,
-            };
+            const params: any = {};
+            if (search.trim()) params.search = search;
+            if (status !== 'TODAS') params.ativa = status;
+            if (adm !== 'TODAS') params.isAdmGeral = adm;
 
             const response = await axios.get<Empresa[]>(API_URL, {
-                params: params,
-                headers: headers
+                params,
+                headers: { Authorization: `Bearer ${user?.token}` }
             });
 
             setEmpresas(response.data);
             setError(null);
         } catch (err: any) {
-            let errorMessage = 'Falha ao carregar empresas.';
-            if (err.response) {
-                errorMessage = err.response.data?.message || errorMessage;
-            }
-            setError(errorMessage);
-            console.error("Erro ao buscar empresas:", err);
+            setError(err.response?.data?.message || 'Falha ao carregar empresas.');
             setEmpresas([]);
         } finally {
             setLoading(false);
         }
     }, [user?.token, canAccess]);
 
-    // Efeitos de debounce e busca
     useEffect(() => {
-        const handler = setTimeout(() => {
-            setDebouncedSearchText(searchText);
-        }, DEBOUNCE_DELAY);
-
-        return () => {
-            clearTimeout(handler);
-        };
+        const handler = setTimeout(() => setDebouncedSearchText(searchText), DEBOUNCE_DELAY);
+        return () => clearTimeout(handler);
     }, [searchText]);
 
     useEffect(() => {
         fetchEmpresas(debouncedSearchText, filterStatus, filterAdm);
     }, [fetchEmpresas, debouncedSearchText, filterStatus, filterAdm]);
 
-    // Manipuladores de Filtro
-    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-        setAnchorElFilter(event.currentTarget);
-    };
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorElFilter(event.currentTarget);
+    const handleMenuClose = () => setAnchorElFilter(null);
 
-    const handleMenuClose = () => {
-        setAnchorElFilter(null);
-    };
-
-    const handleSetStatus = (newStatus: EmpresaStatusFilter) => {
-        setFilterStatus(newStatus);
-        handleMenuClose();
-    };
-
-    const handleSetAdm = (newAdm: EmpresaAdmFilter) => {
-        setFilterAdm(newAdm);
-        handleMenuClose();
-    };
-
-    const getFilterSummary = () => {
-        const statusLabel = filterStatus === 'TODAS' ? 'Todos Status' : (filterStatus === 'true' ? 'Ativas' : 'Inativas');
-        const admLabel = filterAdm === 'TODAS' ? 'Todas Adm.' : (filterAdm === 'true' ? 'Adm. Geral' : 'Adm. Local');
-
-        if (filterStatus === 'TODAS' && filterAdm === 'TODAS') {
-            return 'Filtros (Nenhum)';
-        }
-
-        return `Status: ${statusLabel} | Tipo: ${admLabel}`;
-    }
-
-    // Manipuladores de CRUD
-    const handleOpenCreate = () => {
-        if (!canCreateAndDelete) {
-            alert('Apenas usuários Administradores Gerais podem criar empresas.');
-            return;
-        }
-        setEmpresaToEdit(null);
-        setOpenModal(true);
-    };
-
-    const handleOpenEdit = (empresa: Empresa) => {
-        setEmpresaToEdit(empresa);
-        setOpenModal(true);
-    };
-
-    const handleCloseModal = () => {
-        setOpenModal(false);
-        setEmpresaToEdit(null);
-    };
-
-    const handleDelete = async (empresaId: string, nome: string) => {
-        if (!canCreateAndDelete) {
-            alert('Apenas usuários Administradores Gerais podem excluir empresas.');
-            return;
-        }
-
-        if (!window.confirm(`Tem certeza que deseja excluir a empresa: "${nome}"?`)) {
-            return;
-        }
+    const handleBulkDelete = async () => {
+        const ids = Array.from(selectionModel.ids || []) as string[];
+        if (ids.length === 0) return;
+        if (!window.confirm(`Deseja excluir as ${ids.length} empresas selecionadas?`)) return;
 
         try {
-            const headers = {
-                Authorization: `Bearer ${user?.token}`,
-            };
-            await axios.delete(`${API_URL}/${empresaId}`, { headers });
-
+            await axios.post(`${API_URL}/delete-batch`, { ids }, {
+                headers: { Authorization: `Bearer ${user?.token}` }
+            });
+            setSelectionModel({ type: 'include', ids: new Set() });
             fetchEmpresas(debouncedSearchText, filterStatus, filterAdm);
-            alert(`Empresa "${nome}" excluída com sucesso!`);
-
+            alert('Empresas excluídas com sucesso!');
         } catch (err: any) {
-            console.error("Erro ao deletar empresa:", err);
-            alert(err.response?.data?.message || 'Erro ao excluir empresa.');
+            alert(err.response?.data?.message || 'Erro na exclusão em massa.');
         }
     };
 
-    // Definição das colunas da DataGrid
     const columns: GridColDef<Empresa>[] = [
         {
             field: 'nome',
             headerName: 'Nome da Empresa',
-            minWidth: 250,
             flex: 1,
             renderCell: (params: GridRenderCellParams<Empresa>) => (
                 <Typography
-                    component="span"
                     variant="body2"
                     onClick={() => handleOpenEdit(params.row)}
                     sx={{
                         cursor: 'pointer',
                         color: 'primary.main',
-                        '&:hover': {
-                            textDecoration: 'underline'
-                        }
+                        '&:hover': { textDecoration: 'underline' },
+                        // ADICIONE ESTAS LINHAS:
+                        display: 'flex',
+                        alignItems: 'center',
+                        height: '100%',
                     }}
                 >
-                    <HighlightedText
-                        text={params.row.nome}
-                        highlight={debouncedSearchText}
-                    />
+                    <HighlightedText text={params.row.nome} highlight={debouncedSearchText} />
                 </Typography>
             ),
         },
@@ -261,44 +174,29 @@ export const EmpresasPage: React.FC = () => {
             headerName: 'CNPJ',
             width: 180,
             renderCell: (params: GridRenderCellParams<Empresa>) => (
-                <HighlightedText
-                    text={params.row.cnpj}
-                    highlight={debouncedSearchText}
-                />
+                <HighlightedText text={params.row.cnpj} highlight={debouncedSearchText} />
             ),
         },
         {
             field: 'isAdmGeral',
             headerName: 'Tipo',
             width: 150,
-            valueGetter: (value, row) => row.isAdmGeral ? "Adm. Geral" : "Local",
-            renderCell: (params: GridRenderCellParams<Empresa>) => (
-                <Tooltip title={params.row.isAdmGeral ? "Empresa de Administração Geral" : "Empresa Local"}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        {params.row.isAdmGeral ?
-                            <CheckCircleIcon color="primary" fontSize="small" sx={{ mr: 1 }} /> :
-                            <CancelIcon color="disabled" fontSize="small" sx={{ mr: 1 }} />
-                        }
-                        {params.row.isAdmGeral ? "Adm. Geral" : "Local"}
-                    </Box>
-                </Tooltip>
+            renderCell: (params) => (
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    {params.row.isAdmGeral ? <CheckCircleIcon color="primary" fontSize="small" sx={{ mr: 1 }} /> : <CancelIcon color="disabled" fontSize="small" sx={{ mr: 1 }} />}
+                    {params.row.isAdmGeral ? "Adm. Geral" : "Local"}
+                </Box>
             )
         },
         {
             field: 'ativa',
             headerName: 'Status',
             width: 150,
-            valueGetter: (value, row) => row.ativa ? "Ativa" : "Inativa",
-            renderCell: (params: GridRenderCellParams<Empresa>) => (
-                <Tooltip title={params.row.ativa ? "Empresa Ativa" : "Empresa Inativa"}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        {params.row.ativa ?
-                            <CheckCircleIcon color="success" fontSize="small" sx={{ mr: 1 }} /> :
-                            <CancelIcon color="error" fontSize="small" sx={{ mr: 1 }} />
-                        }
-                        {params.row.ativa ? "Ativa" : "Inativa"}
-                    </Box>
-                </Tooltip>
+            renderCell: (params) => (
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    {params.row.ativa ? <CheckCircleIcon color="success" fontSize="small" sx={{ mr: 1 }} /> : <CancelIcon color="error" fontSize="small" sx={{ mr: 1 }} />}
+                    {params.row.ativa ? "Ativa" : "Inativa"}
+                </Box>
             )
         },
         {
@@ -306,206 +204,96 @@ export const EmpresasPage: React.FC = () => {
             headerName: 'Ações',
             width: 120,
             sortable: false,
-            renderCell: (params: GridRenderCellParams<Empresa>) => {
-                return (
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                        <Tooltip title="Editar Empresa" arrow>
-                            <IconButton
-                                color="primary"
-                                size="small"
-                                onClick={() => handleOpenEdit(params.row)}
-                                sx={{
-                                    bgcolor: 'primary.light',
-                                    '&:hover': { bgcolor: 'primary.main' },
-                                    color: 'white'
-                                }}
-                            >
-                                <EditIcon fontSize='small' />
-                            </IconButton>
-                        </Tooltip>
-
-                        {canCreateAndDelete && (
-                            <Tooltip title={`Excluir: ${params.row.nome}`} arrow>
-                                <IconButton
-                                    color="error"
-                                    size="small"
-                                    onClick={() => handleDelete(params.row._id, params.row.nome)}
-                                    sx={{
-                                        bgcolor: 'error.light',
-                                        '&:hover': { bgcolor: 'error.main' },
-                                        color: 'white'
-                                    }}
-                                >
-                                    <DeleteIcon fontSize='small' />
-                                </IconButton>
-                            </Tooltip>
-                        )}
-                    </Box>
-                );
-            },
+            renderCell: (params: GridRenderCellParams<Empresa>) => (
+                <Box sx={{
+                    display: 'flex',
+                    gap: 1,
+                    alignItems: 'center',
+                    height: '100%',
+                }}>
+                    <IconButton size="small" onClick={() => handleOpenEdit(params.row)} sx={{ bgcolor: 'primary.light', color: 'white', '&:hover': { bgcolor: 'primary.main' } }}>
+                        <EditIcon fontSize='small' />
+                    </IconButton>
+                    {canCreateAndDelete && (
+                        <IconButton size="small" onClick={() => handleDelete(params.row._id, params.row.nome)} sx={{ bgcolor: 'error.light', color: 'white', '&:hover': { bgcolor: 'error.main' } }}>
+                            <DeleteIcon fontSize='small' />
+                        </IconButton>
+                    )}
+                </Box>
+            ),
         },
     ];
 
-    if (!canAccess) {
-        return (
-            <Container sx={{ mt: 4 }}>
-                <Alert severity="error">Você não tem permissão para visualizar a gestão de empresas.</Alert>
-            </Container>
-        );
-    }
+    const handleDelete = async (id: string, nome: string) => {
+        if (!window.confirm(`Excluir empresa: "${nome}"?`)) return;
+        try {
+            await axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${user?.token}` } });
+            fetchEmpresas(debouncedSearchText, filterStatus, filterAdm);
+        } catch (err: any) {
+            alert(err.response?.data?.message || 'Erro ao excluir.');
+        }
+    };
 
-    if (loading && !debouncedSearchText && filterStatus === 'TODAS' && filterAdm === 'TODAS') {
-        return (
-            <Container sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-                <CircularProgress />
-            </Container>
-        );
-    }
-
-    if (error) {
-        return (
-            <Container sx={{ p: 3 }}>
-                <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-                <Button
-                    variant="contained"
-                    onClick={() => fetchEmpresas(debouncedSearchText, filterStatus, filterAdm)}
-                >
-                    Tentar Novamente
-                </Button>
-            </Container>
-        );
-    }
+    const handleOpenEdit = (empresa: Empresa) => { setEmpresaToEdit(empresa); setOpenModal(true); };
+    const handleOpenCreate = () => { setEmpresaToEdit(null); setOpenModal(true); };
 
     return (
         <Container sx={{ mt: 4, mb: 4 }}>
-            {/* Cabeçalho e Botão Novo */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h4" component="h1">
-                    Gestão de Empresas
-                </Typography>
-                {canCreateAndDelete && (
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={<AddIcon />}
-                        onClick={handleOpenCreate}
-                    >
-                        Nova Empresa
-                    </Button>
-                )}
-            </Box>
-
-            {/* Área de Busca e Filtros */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
-
-                {/* Campo de Busca */}
-                <Box sx={{ flexGrow: 1 }}>
-                    <TextField
-                        fullWidth
-                        label="Pesquisar Empresas por Nome ou CNPJ"
-                        variant="outlined"
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                        inputRef={searchInputRef}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    {loading && searchText ? <CircularProgress size={20} /> : <SearchIcon />}
-                                </InputAdornment>
-                            ),
-                        }}
-                        disabled={loading && !searchText}
-                        sx={{ bgcolor: 'background.paper', borderRadius: 1 }}
-                    />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                <Typography variant="h4">Gestão de Empresas</Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    {selectedCount > 0 && canCreateAndDelete && (
+                        <Button variant="contained" color="error" startIcon={<DeleteSweepIcon />} onClick={handleBulkDelete}>
+                            Excluir ({selectedCount})
+                        </Button>
+                    )}
+                    {canCreateAndDelete && (
+                        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>Nova Empresa</Button>
+                    )}
                 </Box>
-
-                {/* Botão de Filtro Único */}
-                <Button
-                    variant="outlined"
-                    onClick={handleMenuOpen}
-                    startIcon={<FilterListIcon />}
-                    sx={{ height: 56, flexShrink: 0 }}
-                >
-                    {getFilterSummary()}
-                </Button>
-
-                {/* Menu Dropdown Único com Subdivisões */}
-                <Menu
-                    anchorEl={anchorElFilter}
-                    open={Boolean(anchorElFilter)}
-                    onClose={handleMenuClose}
-                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                >
-
-                    {/* --- Seção de Filtro por Status --- */}
-                    <ListSubheader disableSticky sx={{ fontWeight: 'bold' }}>
-                        Filtrar por Status
-                    </ListSubheader>
-
-                    <MenuItem onClick={() => handleSetStatus('TODAS')} selected={filterStatus === 'TODAS'}>
-                        {filterStatus === 'TODAS' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
-                        <Box sx={{ ml: filterStatus !== 'TODAS' ? '24px' : 0 }}>Todas as Empresas</Box>
-                    </MenuItem>
-                    <MenuItem onClick={() => handleSetStatus('true')} selected={filterStatus === 'true'}>
-                        {filterStatus === 'true' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
-                        <Box sx={{ ml: filterStatus !== 'true' ? '24px' : 0 }}>Ativas</Box>
-                    </MenuItem>
-                    <MenuItem onClick={() => handleSetStatus('false')} selected={filterStatus === 'false'}>
-                        {filterStatus === 'false' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
-                        <Box sx={{ ml: filterStatus !== 'false' ? '24px' : 0 }}>Inativas</Box>
-                    </MenuItem>
-
-                    {/* --- Seção de Filtro por Tipo de Administração --- */}
-                    <ListSubheader disableSticky sx={{ fontWeight: 'bold', mt: 1 }}>
-                        Filtrar por Tipo
-                    </ListSubheader>
-
-                    <MenuItem onClick={() => handleSetAdm('TODAS')} selected={filterAdm === 'TODAS'}>
-                        {filterAdm === 'TODAS' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
-                        <Box sx={{ ml: filterAdm !== 'TODAS' ? '24px' : 0 }}>Todos os Tipos</Box>
-                    </MenuItem>
-                    <MenuItem onClick={() => handleSetAdm('true')} selected={filterAdm === 'true'}>
-                        {filterAdm === 'true' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
-                        <Box sx={{ ml: filterAdm !== 'true' ? '24px' : 0 }}>Administração Geral</Box>
-                    </MenuItem>
-                    <MenuItem onClick={() => handleSetAdm('false')} selected={filterAdm === 'false'}>
-                        {filterAdm === 'false' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
-                        <Box sx={{ ml: filterAdm !== 'false' ? '24px' : 0 }}>Empresa Local</Box>
-                    </MenuItem>
-
-                </Menu>
-                {/* Fim da área de busca e filtros */}
-
             </Box>
 
-            {/* DataGrid */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <TextField
+                    fullWidth
+                    label="Pesquisar por Nome ou CNPJ"
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    InputProps={{
+                        startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                    }}
+                />
+                <Button variant="outlined" onClick={handleMenuOpen} startIcon={<FilterListIcon />} sx={{ height: 56 }}>
+                    Filtros {selectedCount > 0 ? `(${selectedCount})` : ''}
+                </Button>
+                <Menu anchorEl={anchorElFilter} open={Boolean(anchorElFilter)} onClose={handleMenuClose}>
+                    <ListSubheader>Status</ListSubheader>
+                    <MenuItem onClick={() => { setFilterStatus('TODAS'); handleMenuClose(); }}>Todas</MenuItem>
+                    <MenuItem onClick={() => { setFilterStatus('true'); handleMenuClose(); }}>Ativas</MenuItem>
+                    <MenuItem onClick={() => { setFilterStatus('false'); handleMenuClose(); }}>Inativas</MenuItem>
+                    <ListSubheader>Tipo</ListSubheader>
+                    <MenuItem onClick={() => { setFilterAdm('TODAS'); handleMenuClose(); }}>Todos</MenuItem>
+                    <MenuItem onClick={() => { setFilterAdm('true'); handleMenuClose(); }}>Adm. Geral</MenuItem>
+                    <MenuItem onClick={() => { setFilterAdm('false'); handleMenuClose(); }}>Local</MenuItem>
+                </Menu>
+            </Box>
+
             <Paper elevation={3} sx={{ height: 600, width: '100%' }}>
                 <DataGrid
                     rows={empresas}
                     columns={columns}
-                    pageSizeOptions={[10, 25, 50]}
-                    columnVisibilityModel={columnVisibilityModel}
-                    onColumnVisibilityModelChange={(newModel) => setColumnVisibilityModel(newModel)}
+                    loading={loading}
                     checkboxSelection
                     disableRowSelectionOnClick
+                    onRowSelectionModelChange={(newModel) => setSelectionModel(newModel)}
+                    rowSelectionModel={selectionModel}
                     getRowId={(row) => row._id}
-                    loading={loading}
-                    initialState={{
-                        pagination: {
-                            paginationModel: { page: 0, pageSize: 10 },
-                        },
-                        sorting: {
-                            sortModel: [{ field: 'nome', sort: 'asc' }],
-                        },
-                    }}
                 />
             </Paper>
 
-            {/* Modal de Formulário */}
             <EmpresaFormModal
                 open={openModal}
-                onClose={handleCloseModal}
+                onClose={() => setOpenModal(false)}
                 empresaToEdit={empresaToEdit}
                 onSuccess={() => fetchEmpresas(debouncedSearchText, filterStatus, filterAdm)}
             />
