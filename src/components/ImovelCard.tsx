@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     Card, CardContent, CardMedia, Typography, Chip, Box,
-    Tooltip // Componente Tooltip Importado
+    Tooltip, Button, CardActions // Componentes Adicionados
 } from '@mui/material';
 import { Imovel } from '../types/imovel';
 // Ícones Específicos e Tooltips
@@ -9,20 +9,20 @@ import {
     BathtubOutlined,
     BedOutlined,
     DriveEtaOutlined,
-    HomeWorkOutlined,    // Ícone para Área Construída
-    LandscapeOutlined,   // Ícone para Área do Terreno
-    ListAltOutlined,     // Ícone para Descrição
+    HomeWorkOutlined,
+    LandscapeOutlined,
+    ListAltOutlined,
+    SendOutlined // Ícone para o botão de interesse
 } from '@mui/icons-material';
 
-// URL base para as fotos (a mesma que você usou no ImovelPhotosStep)
 const PHOTO_BASE_URL = 'http://localhost:5000/uploads/imoveis';
 
 interface ImovelCardProps {
     imovel: Imovel;
     onClick: (imovel: Imovel) => void;
+    onInteresse?: () => void; // ⭐️ Nova prop opcional
 }
 
-// Função para obter o label amigável do tipo
 const getTipoDisplay = (tipo: string): string => {
     const tipoMap: Record<string, string> = {
         'CASA': 'Casa', 'APARTAMENTO': 'Apartamento',
@@ -31,24 +31,21 @@ const getTipoDisplay = (tipo: string): string => {
     return tipoMap[tipo] || tipo;
 };
 
-// Função para formatar o valor como moeda
 const formatCurrency = (value: number): string => {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-
-const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick }) => {
+// ⭐️ Adicionado onInteresse na desestruturação das props
+const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse }) => {
     const firstPhoto = imovel.fotos && imovel.fotos.length > 0 ? imovel.fotos[0] : null;
-    const imageUrl = firstPhoto ? `${PHOTO_BASE_URL}/${firstPhoto}` : '/images/placeholder.png'; // Use um placeholder
+    const imageUrl = firstPhoto ? `${PHOTO_BASE_URL}/${firstPhoto}` : '/images/placeholder.png';
 
     const statusColor = imovel.disponivel ? 'success' : 'error';
     const statusLabel = imovel.disponivel ? 'Disponível' : 'Indisponível';
 
-    // Define o texto para a garagem (número de vagas ou 'Sim')
     const garagemDisplay = typeof imovel.garagem === 'number' && imovel.garagem > 0
         ? `${imovel.garagem}`
         : 'Sim';
-
 
     return (
         <Card
@@ -88,10 +85,7 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick }) => {
                     {formatCurrency(imovel.valor || 0)}
                 </Typography>
 
-                {/* Ícones de Características */}
                 <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 1 }}>
-
-                    {/* Quartos */}
                     {imovel.quartos && (
                         <Tooltip title="Número de Quartos" arrow>
                             <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
@@ -101,7 +95,6 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick }) => {
                         </Tooltip>
                     )}
 
-                    {/* Banheiros */}
                     {imovel.banheiros && (
                         <Tooltip title="Número de Banheiros" arrow>
                             <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
@@ -111,7 +104,6 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick }) => {
                         </Tooltip>
                     )}
 
-                    {/* Garagem */}
                     {imovel.garagem && (
                         <Tooltip title="Vagas de Garagem" arrow>
                             <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
@@ -121,7 +113,6 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick }) => {
                         </Tooltip>
                     )}
 
-                    {/* Área Terreno - ÍCONE LandscapeOutlined */}
                     {imovel.area_terreno && (
                         <Tooltip title="Área Total do Terreno (m²)" arrow>
                             <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
@@ -131,7 +122,6 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick }) => {
                         </Tooltip>
                     )}
 
-                    {/* Área Construida - ÍCONE HomeWorkOutlined */}
                     {imovel.area_construida && (
                         <Tooltip title="Área Construída (m²)" arrow>
                             <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
@@ -140,20 +130,28 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick }) => {
                             </Box>
                         </Tooltip>
                     )}
-
-                    {/* Descrição - ÍCONE ListAltOutlined e Truncamento de Texto */}
-                    {imovel.descricao && (
-                        <Tooltip title="Detalhes/Descrição" arrow>
-                            <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                                <ListAltOutlined sx={{ fontSize: 18, mr: 0.5 }} />
-                                <Typography variant="body2">
-                                    {imovel.descricao.length > 30 ? `${imovel.descricao.substring(0, 30)}...` : imovel.descricao}
-                                </Typography>
-                            </Box>
-                        </Tooltip>
-                    )}
                 </Box>
             </CardContent>
+
+            {/* ⭐️ SEÇÃO ADICIONADA: Ações do Card */}
+            <CardActions sx={{ p: 2, pt: 0, justifyContent: 'flex-end' }}>
+                {onInteresse && (
+                    <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<SendOutlined />}
+                        color="primary"
+                        fullWidth
+                        onClick={(e) => {
+                            e.stopPropagation(); // Impede que abra a galeria de fotos
+                            onInteresse();
+                        }}
+                        sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 'bold' }}
+                    >
+                        Tenho Interesse
+                    </Button>
+                )}
+            </CardActions>
         </Card>
     );
 }

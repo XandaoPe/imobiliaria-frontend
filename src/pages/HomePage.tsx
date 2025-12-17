@@ -8,6 +8,7 @@ import { Imovel } from '../types/imovel';
 import ImovelCard from '../components/ImovelCard'; // Importa o Card
 import PhotoGalleryModal from '../components/PhotoGalleryModal'; // Importa o Modal
 import { useAuth } from '../contexts/AuthContext';
+import { LeadModal } from '../components/LeadModal'; // Importe o novo modal
 
 const API_URL = 'http://localhost:5000/imoveis';
 
@@ -24,6 +25,14 @@ export const HomePage: React.FC = () => {
     // Estado para o Modal de Galeria
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
+    // ⭐️ NOVOS ESTADOS PARA O LEAD
+    const [leadModalOpen, setLeadModalOpen] = useState(false);
+    const [selectedImovelLead, setSelectedImovelLead] = useState<Imovel | null>(null);
+
+    const handleInteresseClick = (imovel: Imovel) => {
+        setSelectedImovelLead(imovel);
+        setLeadModalOpen(true);
+    };
 
     const fetchImoveis = useCallback(async () => {
         setLoading(true);
@@ -163,11 +172,16 @@ export const HomePage: React.FC = () => {
                     }}
                 >
 
-                    {filteredImoveis.map((imovel) => (
-                        <Box key={imovel._id}>
-                            <ImovelCard imovel={imovel} onClick={handleCardClick} />
-                        </Box>
-                    ))}
+                        {filteredImoveis.map((imovel) => (
+                            <Box key={imovel._id}>
+                                <ImovelCard
+                                    imovel={imovel}
+                                    onClick={handleCardClick}
+                                    // ⭐️ PASSE A FUNÇÃO DE INTERESSE SE NÃO ESTIVER LOGADO
+                                    onInteresse={!user ? () => handleInteresseClick(imovel) : undefined}
+                                />
+                            </Box>
+                        ))}
                 </Box>
             )}
 
@@ -176,6 +190,12 @@ export const HomePage: React.FC = () => {
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
                 photos={selectedPhotos}
+            />
+
+            <LeadModal
+                open={leadModalOpen}
+                onClose={() => setLeadModalOpen(false)}
+                imovel={selectedImovelLead}
             />
         </Box>
     );
