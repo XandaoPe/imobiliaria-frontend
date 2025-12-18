@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Box, Typography, TextField, Button, Stack, Alert } from '@mui/material';
 import { Imovel } from '../types/imovel';
+import axios from 'axios';
 
 interface LeadModalProps {
     open: boolean;
@@ -12,17 +13,25 @@ export const LeadModal: React.FC<LeadModalProps> = ({ open, onClose, imovel }) =
     const [nome, setNome] = useState('');
     const [contato, setContato] = useState('');
 
-    const handleSubmit = () => {
-        // Por enquanto, apenas logamos. No futuro, faremos um POST para /leads
-        console.log('Interesse registrado:', {
-            imovelId: imovel?._id,
-            empresaId: imovel?.empresa,
-            cliente: nome,
-            contato: contato
-        });
-        alert(`Obrigado, ${nome}! A imobiliária entrará em contato sobre o imóvel: ${imovel?.titulo}`);
-        onClose();
-    };
+    const handleSubmit = async () => {
+        try {
+            await axios.post('http://localhost:5000/leads/publico', {
+                nome,
+                contato,
+                imovel: imovel?._id,
+                empresa: imovel?.empresa // Certifique-se que o imovel vem com o ID da empresa
+            });
+
+            alert(`Obrigado, ${nome}! Seus dados foram enviados com sucesso.`);
+            onClose();
+            // Limpar campos
+            setNome('');
+            setContato('');
+        } catch (error) {
+            console.error("Erro ao enviar lead", error);
+            alert("Ocorreu um erro ao enviar sua mensagem. Tente novamente.");
+        }
+    }
 
     return (
         <Modal open={open} onClose={onClose}>

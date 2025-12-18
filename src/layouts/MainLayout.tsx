@@ -12,6 +12,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
+import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
 
 // Importações de Autenticação e Tipagem
 import { useAuth } from '../contexts/AuthContext';
@@ -30,6 +31,7 @@ const USER_ADMIN_ROLES = [PerfisEnum.ADM_GERAL, PerfisEnum.GERENTE];
 const baseMenuItems = [
     { text: 'Home', icon: <HomeIcon />, path: '/home', requiredRoles: [] as PerfisEnum[] },
     { text: 'Dashboard', icon: <HomeIcon />, path: '/dashboard', requiredRoles: [] as PerfisEnum[] },
+    { text: 'Leads (Interesses)', icon: <ContactPhoneIcon />, path: '/leads', requiredRoles: [] }, // ⭐️ NOVO ITEM
     { text: 'Clientes', icon: <GroupIcon />, path: '/clientes', requiredRoles: [] as PerfisEnum[] },
     { text: 'Imóveis', icon: <BusinessIcon />, path: '/imoveis', requiredRoles: [] as PerfisEnum[] },
     { text: 'Empresas', icon: <LocationCityIcon />, path: '/empresas', requiredRoles: ADMIN_GERAL_ROLE },

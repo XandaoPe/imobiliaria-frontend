@@ -4,6 +4,7 @@ import {
     Tooltip, Button, CardActions // Componentes Adicionados
 } from '@mui/material';
 import { Imovel } from '../types/imovel';
+import BusinessIcon from '@mui/icons-material/Business'; // Ícone de empresa
 // Ícones Específicos e Tooltips
 import {
     BathtubOutlined,
@@ -70,6 +71,23 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse })
                 sx={{ objectFit: 'cover' }}
             />
             <CardContent sx={{ flexGrow: 1 }}>
+                {/* ⭐️ ADICIONADO: NOME DA IMOBILIÁRIA */}
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 0.5 }}>
+                    <BusinessIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                    <Typography
+                        variant="caption"
+                        sx={{ fontWeight: 'bold', color: 'primary.main', textTransform: 'uppercase' }}
+                    >
+                        {/* Ajustado para verificar 'nome' em vez de 'nomeFantasia' 
+           conforme o seu JSON 
+        */}
+                        {(imovel.empresa && typeof imovel.empresa === 'object' && 'nome' in imovel.empresa)
+                            ? (imovel.empresa as any).nome
+                            : 'Imobiliária Geral'
+                        }
+                    </Typography>
+                </Box>
+
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                     <Typography variant="subtitle2" color="text.secondary">
                         {getTipoDisplay(imovel.tipo)} | {imovel.cidade}

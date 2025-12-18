@@ -17,6 +17,7 @@ import { ClientesPage } from './pages/ClientesPage';
 import { ImoveisPage } from './pages/ImoveisPage';
 import { UsuariosPage } from './pages/UsuariosPage';
 import { EmpresasPage } from './pages/EmpresasPage';
+import { LeadsPage } from './pages/LeadsPage';
 
 /**
  * Componente de Rota Protegida
@@ -112,6 +113,7 @@ const App = () => {
               <Route path="/imoveis" element={<ImoveisPage />} />
               <Route path="/empresas" element={<EmpresasPage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
+              <Route path="/leads" element={<LeadsPage />} />
             </Route>
 
             {/* --- FALLBACK --- */}
