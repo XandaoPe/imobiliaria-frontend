@@ -1,10 +1,13 @@
-// src/layouts/MainLayout.tsx
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+    Box, AppBar, Toolbar, Typography, IconButton, Drawer, List,
+    ListItem, ListItemButton, ListItemIcon, ListItemText, Divider,
+    CssBaseline, Badge
+} from '@mui/material';
+import { Outlet, Link as RouterLink, useLocation } from 'react-router-dom';
+import axios from 'axios';
 
-import React from 'react';
-import { Box, AppBar, Toolbar, Typography, IconButton, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Divider, CssBaseline } from '@mui/material';
-import { Outlet, Link as RouterLink } from 'react-router-dom';
-
-// Ícones de Navegação
+// Ícones
 import HomeIcon from '@mui/icons-material/Home';
 import GroupIcon from '@mui/icons-material/Group';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -14,13 +17,11 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
 
-// Importações de Autenticação e Tipagem
 import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
 
 const drawerWidth = 240;
 
-// ⭐️ NOVA INTERFACE: Permite que o componente aceite conteúdo interno (children)
 interface MainLayoutProps {
     children?: React.ReactNode;
 }
@@ -28,24 +29,43 @@ interface MainLayoutProps {
 const ADMIN_GERAL_ROLE = [PerfisEnum.ADM_GERAL];
 const USER_ADMIN_ROLES = [PerfisEnum.ADM_GERAL, PerfisEnum.GERENTE];
 
-const baseMenuItems = [
-    { text: 'Home', icon: <HomeIcon />, path: '/home', requiredRoles: [] as PerfisEnum[] },
-    { text: 'Dashboard', icon: <HomeIcon />, path: '/dashboard', requiredRoles: [] as PerfisEnum[] },
-    { text: 'Leads (Interesses)', icon: <ContactPhoneIcon />, path: '/leads', requiredRoles: [] }, // ⭐️ NOVO ITEM
-    { text: 'Clientes', icon: <GroupIcon />, path: '/clientes', requiredRoles: [] as PerfisEnum[] },
-    { text: 'Imóveis', icon: <BusinessIcon />, path: '/imoveis', requiredRoles: [] as PerfisEnum[] },
-    { text: 'Empresas', icon: <LocationCityIcon />, path: '/empresas', requiredRoles: ADMIN_GERAL_ROLE },
-    { text: 'Usuários', icon: <AdminPanelSettingsIcon />, path: '/usuarios', requiredRoles: USER_ADMIN_ROLES },
-];
-
-// ⭐️ APLICANDO A INTERFACE: Adicionado ({ children })
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const { logout, user } = useAuth();
-    const [mobileOpen, setMobileOpen] = React.useState(false);
+    const location = useLocation();
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const [novosLeadsCount, setNovosLeadsCount] = useState(0);
 
-    const handleDrawerToggle = () => {
-        setMobileOpen(!mobileOpen);
-    };
+    const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
+
+    // Função para buscar leads e contar os novos
+    const fetchNotificationCount = useCallback(async () => {
+        if (!user?.token) return;
+        try {
+            // O backend já filtra por empresa baseado no token do usuário
+            const response = await axios.get('http://localhost:5000/leads', {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
+            const novos = response.data.filter((lead: any) => lead.status === 'NOVO');
+            setNovosLeadsCount(novos.length);
+        } catch (error) {
+            console.error("Erro ao buscar notificações de leads", error);
+        }
+    }, [user?.token]);
+
+    useEffect(() => {
+        fetchNotificationCount();
+
+        // 1. Polling: Verifica a cada 60 segundos
+        const interval = setInterval(fetchNotificationCount, 60000);
+
+        // 2. Event Listener: Escuta atualizações manuais vindas da LeadsPage
+        window.addEventListener('updateLeadsCount', fetchNotificationCount);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('updateLeadsCount', fetchNotificationCount);
+        };
+    }, [fetchNotificationCount]);
 
     const hasPermission = (requiredRoles: PerfisEnum[]) => {
         if (requiredRoles.length === 0) return true;
@@ -53,29 +73,50 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         return requiredRoles.includes(user.perfil as PerfisEnum);
     };
 
+    const baseMenuItems = [
+        { text: 'Home', icon: <HomeIcon />, path: '/home', requiredRoles: [] },
+        { text: 'Dashboard', icon: <HomeIcon />, path: '/dashboard', requiredRoles: [] },
+        { text: 'Leads (Interesses)', icon: <ContactPhoneIcon />, path: '/leads', requiredRoles: [] },
+        { text: 'Clientes', icon: <GroupIcon />, path: '/clientes', requiredRoles: [] },
+        { text: 'Imóveis', icon: <BusinessIcon />, path: '/imoveis', requiredRoles: [] },
+        { text: 'Empresas', icon: <LocationCityIcon />, path: '/empresas', requiredRoles: ADMIN_GERAL_ROLE },
+        { text: 'Usuários', icon: <AdminPanelSettingsIcon />, path: '/usuarios', requiredRoles: USER_ADMIN_ROLES },
+    ];
+
     const drawer = (
         <div>
             <Toolbar sx={{ backgroundColor: 'primary.main' }}>
-                <Typography variant="h6" noWrap component="div" sx={{ color: 'white' }}>
-                    Imobiliária 4.0
-                </Typography>
+                <Typography variant="h6" noWrap sx={{ color: 'white' }}>Imobiliária 4.0</Typography>
             </Toolbar>
             <Divider />
             <List>
-                {baseMenuItems.map((item) => (
-                    hasPermission(item.requiredRoles) && (
+                {baseMenuItems.map((item) => {
+                    const isLeads = item.path === '/leads';
+                    return hasPermission(item.requiredRoles as PerfisEnum[]) && (
                         <ListItem key={item.text} disablePadding>
                             <ListItemButton
                                 component={RouterLink}
                                 to={item.path}
-                                onClick={handleDrawerToggle}
+                                selected={location.pathname === item.path}
                             >
-                                <ListItemIcon>{item.icon}</ListItemIcon>
-                                <ListItemText primary={item.text} />
+                                <ListItemIcon>
+                                    {isLeads ? (
+                                        <Badge badgeContent={novosLeadsCount} color="error" overlap="circular">
+                                            {item.icon}
+                                        </Badge>
+                                    ) : item.icon}
+                                </ListItemIcon>
+                                <ListItemText
+                                    primary={item.text}
+                                    sx={{
+                                        fontWeight: (isLeads && novosLeadsCount > 0) ? 'bold' : 'normal',
+                                        color: (isLeads && novosLeadsCount > 0) ? 'error.main' : 'inherit'
+                                    }}
+                                />
                             </ListItemButton>
                         </ListItem>
-                    )
-                ))}
+                    );
+                })}
             </List>
             <Divider />
             <List>
@@ -92,77 +133,26 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     return (
         <Box sx={{ display: 'flex', height: '100vh' }}>
             <CssBaseline />
-
-            <AppBar
-                position="fixed"
-                sx={{
-                    width: { sm: `calc(100% - ${drawerWidth}px)` },
-                    ml: { sm: `${drawerWidth}px` },
-                    zIndex: (theme) => theme.zIndex.drawer + 1,
-                }}
-            >
+            <AppBar position="fixed" sx={{ width: { sm: `calc(100% - ${drawerWidth}px)` }, ml: { sm: `${drawerWidth}px` }, zIndex: (theme) => theme.zIndex.drawer + 1 }}>
                 <Toolbar>
-                    <IconButton
-                        color="inherit"
-                        aria-label="open drawer"
-                        edge="start"
-                        onClick={handleDrawerToggle}
-                        sx={{ mr: 2, display: { sm: 'none' } }}
-                    >
-                        <MenuIcon />
-                    </IconButton>
-                    <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-                        Bem-vindo, {user?.perfil || "Usuário"} - {user?.nome || 'Usuário'}!
+                    <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2, display: { sm: 'none' } }}><MenuIcon /></IconButton>
+                    <Typography variant="h6" noWrap>
+                        Bem-vindo, {user?.perfil} - {user?.nome}!
                     </Typography>
                 </Toolbar>
             </AppBar>
 
-            <Box
-                component="nav"
-                sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-                aria-label="mailbox folders"
-            >
-                <Drawer
-                    variant="temporary"
-                    open={mobileOpen}
-                    onClose={handleDrawerToggle}
-                    ModalProps={{ keepMounted: true }}
-                    sx={{
-                        display: { xs: 'block', sm: 'none' },
-                        '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-                    }}
-                >
+            <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
+                <Drawer variant="temporary" open={mobileOpen} onClose={handleDrawerToggle} ModalProps={{ keepMounted: true }} sx={{ display: { xs: 'block', sm: 'none' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth } }}>
                     {drawer}
                 </Drawer>
-
-                <Drawer
-                    variant="permanent"
-                    sx={{
-                        display: { xs: 'none', sm: 'block' },
-                        '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-                    }}
-                    open
-                >
+                <Drawer variant="permanent" sx={{ display: { xs: 'none', sm: 'block' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth } }} open>
                     {drawer}
                 </Drawer>
             </Box>
 
-            <Box
-                component="main"
-                sx={{
-                    flexGrow: 1,
-                    p: 3,
-                    width: { sm: `calc(100% - ${drawerWidth}px)` },
-                    backgroundColor: 'background.default',
-                    height: '100vh',
-                    overflowY: 'auto',
-                }}
-            >
+            <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` }, bgcolor: 'background.default', height: '100vh', overflowY: 'auto' }}>
                 <Toolbar />
-
-                {/* ⭐️ LOGICA DE CONTEÚDO: 
-                    Se passarmos algo por props (como na Home), renderiza o conteúdo.
-                    Se não, usa o Outlet do React Router. */}
                 {children ? children : <Outlet />}
             </Box>
         </Box>
