@@ -8,6 +8,11 @@ export enum PerfisEnum {
     SUPORTE = 'SUPORTE',
 }
 
+export interface EmpresaVinculada {
+    _id: string;
+    nome: string;
+}
+
 // Interface de dados que vem do backend (Mongoose Document)
 export interface Usuario {
     id: string;
@@ -15,9 +20,14 @@ export interface Usuario {
     nome: string;
     perfil: PerfisEnum;
     ativo: boolean;
-    // Note: A senha nunca deve vir na resposta GET/PUT
+    // ADICIONE ESTA LINHA:
+    empresa?: EmpresaVinculada | string;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface UsuarioLogado extends Usuario {
+    token: string;
 }
 
 // Interface para o formulário de CRIAÇÃO
@@ -38,8 +48,4 @@ export interface UpdateUsuarioFormData {
     nome: string;
     perfil: PerfisEnum;
     ativo: boolean;
-}
-
-export interface UsuarioLogado extends Usuario {
-    token: string;
 }

@@ -18,6 +18,7 @@ import { ImoveisPage } from './pages/ImoveisPage';
 import { UsuariosPage } from './pages/UsuariosPage';
 import { EmpresasPage } from './pages/EmpresasPage';
 import { LeadsPage } from './pages/LeadsPage';
+import { NotificationBadge } from './components/NotificationBadge';
 
 /**
  * Componente de Rota Protegida
@@ -58,6 +59,7 @@ const HomeRouterWrapper = () => {
     // Se logado, envolve a Home no MainLayout (Menu + Conteúdo)
     return (
       <MainLayout>
+        <NotificationBadge />
         <HomePage />
       </MainLayout>
     );

@@ -128,7 +128,7 @@ export const LeadsPage: React.FC = () => {
                 <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
                     <MenuItem onClick={() => { setFilterStatus('TODOS'); setAnchorEl(null); }}>Todos</MenuItem>
                     <MenuItem onClick={() => { setFilterStatus('NOVO'); setAnchorEl(null); }}>Novos</MenuItem>
-                    <MenuItem onClick={() => { setFilterStatus('EM_ATENDIMENTO'); setAnchorEl(null); }}>Em Atendimento</MenuItem>
+                    <MenuItem onClick={() => { setFilterStatus('EM_ANDAMENTO'); setAnchorEl(null); }}>Em Andamento</MenuItem>
                     <MenuItem onClick={() => { setFilterStatus('CONCLUIDO'); setAnchorEl(null); }}>Concluídos</MenuItem>
                 </Menu>
             </Box>
@@ -137,6 +137,7 @@ export const LeadsPage: React.FC = () => {
                 <Table>
                     <TableHead sx={{ bgcolor: '#f5f5f5' }}>
                         <TableRow>
+                            <TableCell>Data</TableCell>
                             <TableCell>Cliente</TableCell>
                             <TableCell>Imóvel</TableCell>
                             <TableCell>Status</TableCell>
@@ -149,30 +150,92 @@ export const LeadsPage: React.FC = () => {
                         ) : leads.map((lead) => (
                             <TableRow key={lead._id}>
                                 <TableCell>
+                                    <Typography variant="body2">
+                                        {new Intl.DateTimeFormat('pt-BR', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        }).format(new Date(lead.createdAt))}
+                                    </Typography>
+                                </TableCell>
+                                <TableCell>
                                     <Typography variant="subtitle2">{lead.nome}</Typography>
                                     <Typography variant="caption" color="text.secondary">{lead.contato}</Typography>
                                 </TableCell>
                                 <TableCell>{lead.imovel?.titulo || 'N/A'}</TableCell>
                                 <TableCell>
                                     <Chip
-                                        label={lead.status}
-                                        color={lead.status === 'NOVO' ? 'error' : lead.status === 'CONCLUIDO' ? 'success' : 'warning'}
+                                        label={lead.status.replace('_', ' ')}
+                                        color={
+                                            lead.status === 'NOVO' ? 'error' :
+                                                lead.status === 'EM_ANDAMENTO' ? 'info' :
+                                                    lead.status === 'CONCLUIDO' ? 'success' : 'warning'
+                                        }
                                         size="small"
+                                        sx={{ fontWeight: 'bold' }}
                                     />
                                 </TableCell>
                                 <TableCell align="center">
-                                    <Tooltip title="WhatsApp">
-                                        <IconButton color="success" onClick={() => window.open(`https://wa.me/${lead.contato.replace(/\D/g, '')}`)}>
-                                            <WhatsAppIcon />
-                                        </IconButton>
-                                    </Tooltip>
-                                    {lead.status !== 'CONCLUIDO' && (
-                                        <Tooltip title="Concluir Atendimento">
-                                            <IconButton color="primary" onClick={() => handleUpdateStatus(lead._id, 'CONCLUIDO')}>
-                                                <CheckCircleOutlineIcon />
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+
+                                        {/* ÍCONE WHATSAPP (Sempre Visível) */}
+                                        <Tooltip title="WhatsApp">
+                                            <IconButton
+                                                color="success"
+                                                onClick={() => window.open(`https://wa.me/${lead.contato.replace(/\D/g, '')}`)}
+                                            >
+                                                <WhatsAppIcon />
                                             </IconButton>
                                         </Tooltip>
-                                    )}
+
+                                        {/* BOTAO INICIAR (Apenas para Novos) */}
+                                        {lead.status === 'NOVO' && (
+                                            <Tooltip title="Iniciar Atendimento">
+                                                <IconButton
+                                                    color="info"
+                                                    onClick={() => handleUpdateStatus(lead._id, 'EM_ANDAMENTO')}
+                                                >
+                                                    <CheckCircleOutlineIcon sx={{ opacity: 0.5 }} /> {/* Ou um ícone de Play */}
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+
+                                        {/* BOTAO CONCLUIR (Para Novos ou Em Andamento) */}
+                                        {lead.status !== 'CONCLUIDO' && (
+                                            <Tooltip title="Concluir Atendimento">
+                                                <IconButton
+                                                    color="primary"
+                                                    onClick={() => {
+                                                        if (window.confirm(`Deseja realmente concluir o atendimento de ${lead.nome}?`)) {
+                                                            handleUpdateStatus(lead._id, 'CONCLUIDO');
+                                                        }
+                                                    }}
+                                                >
+                                                    <CheckCircleOutlineIcon />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+
+                                        {/* BOTAO VOLTAR PARA EM ANDAMENTO (Apenas para Concluídos) */}
+                                        {lead.status === 'CONCLUIDO' && (
+                                            <Tooltip title="Reabrir / Voltar para Em Andamento">
+                                                <IconButton
+                                                    color="warning"
+                                                    onClick={() => {
+                                                        if (window.confirm(`Deseja reabrir o atendimento de ${lead.nome}?`)) {
+                                                            handleUpdateStatus(lead._id, 'EM_ANDAMENTO');
+                                                        }
+                                                    }}
+                                                >
+                                                    {/* Ícone de desfazer/voltar */}
+                                                    <FilterListIcon sx={{ transform: 'scaleX(-1)' }} />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+
+                                    </Box>
                                 </TableCell>
                             </TableRow>
                         ))}

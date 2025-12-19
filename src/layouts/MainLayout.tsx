@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Box, AppBar, Toolbar, Typography, IconButton, Drawer, List,
     ListItem, ListItemButton, ListItemIcon, ListItemText, Divider,
@@ -22,6 +22,29 @@ import { PerfisEnum } from '../types/usuario';
 
 const drawerWidth = 240;
 
+// --- Função de Som ---
+const playLeadSound = (isNew: boolean) => {
+    try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        // Som Agudo (880Hz) para novos leads, Médio (440Hz) para pendentes no login
+        osc.frequency.setValueAtTime(isNew ? 880 : 440, audioCtx.currentTime);
+        osc.type = 'sine';
+
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+    } catch (e) {
+        // Navegadores bloqueiam som sem interação prévia
+        console.log("Aguardando interação para habilitar som.");
+    }
+};
+
 interface MainLayoutProps {
     children?: React.ReactNode;
 }
@@ -34,36 +57,60 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const location = useLocation();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [novosLeadsCount, setNovosLeadsCount] = useState(0);
+    const [nomeEmpresa, setNomeEmpresa] = useState<string>('');
+
+    // Refs para controlar disparos de som
+    const lastTotalCount = useRef(0);
+    const hasPlayedInitial = useRef(false);
 
     const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
-    // Função para buscar leads e contar os novos
-    const fetchNotificationCount = useCallback(async () => {
+    const fetchNotificationCount = useCallback(async (isPolling = false) => {
         if (!user?.token) return;
         try {
-            // O backend já filtra por empresa baseado no token do usuário
             const response = await axios.get('http://localhost:5000/leads', {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
-            const novos = response.data.filter((lead: any) => lead.status === 'NOVO');
+
+            const leads = response.data;
+            // SE O NOME DA EMPRESA AINDA NÃO FOI DEFINIDO, PEGAMOS DO PRIMEIRO LEAD
+            if (!nomeEmpresa && leads.length > 0) {
+                const empresaData = leads[0].empresa;
+                const nome = typeof empresaData === 'object' ? empresaData.nome : empresaData;
+                setNomeEmpresa(nome);
+            }
+            const novos = leads.filter((lead: any) => lead.status === 'NOVO');
+            const hasPending = leads.some((lead: any) => lead.status !== 'CONCLUIDO');
+
+            // --- Lógica Sonora ---
+            // 1. Ao logar: Se houver pendentes
+            if (!isPolling && !hasPlayedInitial.current && hasPending) {
+                playLeadSound(false);
+                hasPlayedInitial.current = true;
+            }
+
+            // 2. No Polling: Se entrou um lead novo (aumento na contagem total)
+            if (isPolling && leads.length > lastTotalCount.current) {
+                playLeadSound(true);
+            }
+
             setNovosLeadsCount(novos.length);
+            lastTotalCount.current = leads.length;
         } catch (error) {
             console.error("Erro ao buscar notificações de leads", error);
         }
-    }, [user?.token]);
+    }, [user?.token, nomeEmpresa]);
 
     useEffect(() => {
-        fetchNotificationCount();
+        // Busca inicial assim que o layout carrega (Pós-login)
+        fetchNotificationCount(false);
 
-        // 1. Polling: Verifica a cada 60 segundos
-        const interval = setInterval(fetchNotificationCount, 60000);
-
-        // 2. Event Listener: Escuta atualizações manuais vindas da LeadsPage
-        window.addEventListener('updateLeadsCount', fetchNotificationCount);
+        const interval = setInterval(() => fetchNotificationCount(true), 30000);
+        window.addEventListener('updateLeadsCount', () => fetchNotificationCount(false));
 
         return () => {
             clearInterval(interval);
-            window.removeEventListener('updateLeadsCount', fetchNotificationCount);
+            window.removeEventListener('updateLeadsCount', () => fetchNotificationCount(false));
         };
     }, [fetchNotificationCount]);
 
@@ -72,6 +119,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         if (!user) return false;
         return requiredRoles.includes(user.perfil as PerfisEnum);
     };
+    console.log('user...', user)
 
     const baseMenuItems = [
         { text: 'Home', icon: <HomeIcon />, path: '/home', requiredRoles: [] },
@@ -134,10 +182,24 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <Box sx={{ display: 'flex', height: '100vh' }}>
             <CssBaseline />
             <AppBar position="fixed" sx={{ width: { sm: `calc(100% - ${drawerWidth}px)` }, ml: { sm: `${drawerWidth}px` }, zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-                <Toolbar>
-                    <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2, display: { sm: 'none' } }}><MenuIcon /></IconButton>
-                    <Typography variant="h6" noWrap>
-                        Bem-vindo, {user?.perfil} - {user?.nome}!
+                <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2, display: { sm: 'none' } }}>
+                            <MenuIcon />
+                        </IconButton>
+
+                        <Typography variant="h6" noWrap>
+                            {nomeEmpresa && (
+                                <Box component="span" sx={{ fontWeight: 800, color: '#FFD700', mr: 1 }}>
+                                    {nomeEmpresa.toUpperCase()} —
+                                </Box>
+                            )}
+                            {" "}Bem-vindo, {user?.nome}!
+                        </Typography>
+                    </Box>
+
+                    <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                        {user?.perfil}
                     </Typography>
                 </Toolbar>
             </AppBar>
