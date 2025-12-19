@@ -1,21 +1,26 @@
-// src/pages/HomePage.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import {
-    Box, Typography, CircularProgress, Alert, ToggleButtonGroup, ToggleButton
+    Box, Typography, CircularProgress, Alert, ToggleButtonGroup,
+    ToggleButton, Button, Container, useTheme
 } from '@mui/material';
+import {
+    Home as HomeIcon,
+    FilterList as FilterIcon
+} from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+
 import { Imovel } from '../types/imovel';
-import ImovelCard from '../components/ImovelCard'; // Importa o Card
-import PhotoGalleryModal from '../components/PhotoGalleryModal'; // Importa o Modal
+import ImovelCard from '../components/ImovelCard';
+import PhotoGalleryModal from '../components/PhotoGalleryModal';
 import { useAuth } from '../contexts/AuthContext';
-import { LeadModal } from '../components/LeadModal'; // Importe o novo modal
-
-const API_URL = 'http://localhost:5000/imoveis';
-
-type FilterStatus = 'TODOS' | 'DISPONIVEIS' | 'INDISPONIVEIS';
+import { LeadModal } from '../components/LeadModal';
 
 export const HomePage: React.FC = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
+    const theme = useTheme();
+
     const token = user?.token || null;
     const [imoveis, setImoveis] = useState<Imovel[]>([]);
     const [loading, setLoading] = useState(true);
@@ -25,7 +30,8 @@ export const HomePage: React.FC = () => {
     // Estado para o Modal de Galeria
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
-    // ⭐️ NOVOS ESTADOS PARA O LEAD
+
+    // Estados para o Lead
     const [leadModalOpen, setLeadModalOpen] = useState(false);
     const [selectedImovelLead, setSelectedImovelLead] = useState<Imovel | null>(null);
 
@@ -38,13 +44,11 @@ export const HomePage: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            // Lógica de URL Dinâmica
             const url = token
                 ? 'http://localhost:5000/imoveis'
                 : 'http://localhost:5000/imoveis/publico';
 
             const response = await axios.get(url, {
-                // Só envia o header se o token existir
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
 
@@ -60,32 +64,25 @@ export const HomePage: React.FC = () => {
         fetchImoveis();
     }, [fetchImoveis]);
 
-    // Lógica de filtragem dos imóveis
     const filteredImoveis = useMemo(() => {
         return imoveis.filter(imovel => {
-            if (filter === 'DISPONIVEIS') {
-                return imovel.disponivel === true;
-            }
-            if (filter === 'INDISPONIVEIS') {
-                return imovel.disponivel === false;
-            }
-            return true; // TODOS
+            if (filter === 'DISPONIVEIS') return imovel.disponivel === true;
+            if (filter === 'INDISPONIVEIS') return imovel.disponivel === false;
+            return true;
         });
     }, [imoveis, filter]);
 
-    // Função chamada ao clicar em um Card
     const handleCardClick = (imovel: Imovel) => {
         if (imovel.fotos && imovel.fotos.length > 0) {
             setSelectedPhotos(imovel.fotos);
             setModalOpen(true);
         } else {
-            // Em um ambiente de produção, este alerta seria substituído por uma notificação mais amigável
             alert('Este imóvel não possui fotos cadastradas.');
         }
     };
 
     const handleFilterChange = (
-        event: React.MouseEvent<HTMLElement>,
+        _event: React.MouseEvent<HTMLElement>,
         newFilter: FilterStatus | null,
     ) => {
         if (newFilter !== null) {
@@ -101,91 +98,124 @@ export const HomePage: React.FC = () => {
         );
     }
 
-    if (error) {
-        return (
-            <Box sx={{ p: 3, flexGrow: 1 }}>
-                <Alert severity="error">{error}</Alert>
-            </Box>
-        );
-    }
-
     return (
-        <Box sx={{ p: 3, flexGrow: 1 }}>
-            <Typography variant="h4" component="h1" gutterBottom>
-                Catálogo de Imóveis
-            </Typography>
-
-            {user && (
-                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-start' }}>
-                    <ToggleButtonGroup
-                        value={filter}
-                        exclusive
-                        onChange={handleFilterChange}
-                        aria-label="Status do Imóvel"
-                        size="small"
-                    >
-                        <ToggleButton value="TODOS">Todos ({imoveis.length})</ToggleButton>
-                        <ToggleButton value="DISPONIVEIS" color="success">
-                            Disponíveis ({imoveis.filter(i => i.disponivel).length})
-                        </ToggleButton>
-                        <ToggleButton value="INDISPONIVEIS" color="error">
-                            Indisponíveis ({imoveis.filter(i => !i.disponivel).length})
-                        </ToggleButton>
-                    </ToggleButtonGroup>
-                </Box>
-            )}
-
-            {/* Listagem dos Imóveis (Usando Box com Flexbox para Layout Responsivo) */}
-            {filteredImoveis.length === 0 ? (
-                <Alert severity="info">
-                    Nenhum imóvel encontrado com o status "{filter === 'DISPONIVEIS' ? 'Disponível' : filter === 'INDISPONIVEIS' ? 'Indisponível' : 'Todos'}".
-                </Alert>
-            ) : (
-
-                <Box
-                    sx={{
+        <Box sx={{ minHeight: '100vh', bgcolor: '#f8f9fa', pb: 8 }}>
+            {/* --- HEADER --- */}
+            <Box sx={{
+                bgcolor: 'background.paper',
+                pt: 4, pb: 3, mb: 4,
+                boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+                borderBottom: '1px solid #eee'
+            }}>
+                <Container maxWidth="lg">
+                    <Box sx={{
                         display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 3, // Espaçamento entre os cards
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        justifyContent: 'space-between',
+                        alignItems: { xs: 'flex-start', sm: 'center' },
+                        gap: 2
+                    }}>
+                        <Box>
+                            <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main', letterSpacing: '-0.5px' }}>
+                                Catálogo de Imóveis
+                            </Typography>
+                            <Typography variant="body1" color="text.secondary">
+                                {user ? `Bem-vindo de volta, ${user.nome}!` : 'Explore nossas oportunidades exclusivas.'}
+                            </Typography>
+                        </Box>
 
-                        // Responsividade para os Cards:
-                        '& > div': {
-                            // 1 coluna (xs)
-                            // Utilizamos 'flex: 0 0 100%' para que o card não cresça e ocupe mais que o necessário
-                            flex: '0 0 100%',
-                            // 2 colunas (sm)
-                            '@media (min-width: 600px)': {
-                                // MUDANÇA: flex-grow agora é 0 (não cresce)
-                                flex: '0 0 calc(50% - 12px)',
-                            },
-                            // 3 colunas (md)
-                            '@media (min-width: 960px)': {
-                                // MUDANÇA: flex-grow agora é 0 (não cresce)
-                                flex: '0 0 calc(33.333% - 16px)',
-                            },
-                            // 4 colunas (lg)
-                            '@media (min-width: 1280px)': {
-                                // MUDANÇA: flex-grow agora é 0 (não cresce)
-                                flex: '0 0 calc(25% - 18px)',
-                            },
-                        },
-                    }}
-                >
+                        {/* RENDERIZAÇÃO CONDICIONAL: Só aparece se NÃO houver usuário logado */}
+                        {!user && (
+                            <Button
+                                variant="contained"
+                                startIcon={<HomeIcon />}
+                                onClick={() => navigate('/')}
+                                sx={{
+                                    borderRadius: '50px',
+                                    textTransform: 'none',
+                                    fontWeight: 600,
+                                    px: 4,
+                                    py: 1,
+                                    boxShadow: '0 4px 14px 0 rgba(0,118,255,0.39)',
+                                    '&:hover': {
+                                        boxShadow: '0 6px 20px rgba(0,118,255,0.23)',
+                                    }
+                                }}
+                            >
+                                Voltar para o Início
+                            </Button>
+                        )}
+                    </Box>
+                </Container>
+            </Box>
 
+            <Container maxWidth="lg">
+                {/* --- SEÇÃO DE FILTROS (Apenas para Logados) --- */}
+                {user && (
+                    <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <FilterIcon color="action" />
+                        <ToggleButtonGroup
+                            value={filter}
+                            exclusive
+                            onChange={handleFilterChange}
+                            size="small"
+                            sx={{
+                                bgcolor: 'white',
+                                borderRadius: '12px',
+                                overflow: 'hidden',
+                                '& .MuiToggleButton-root': {
+                                    px: 3,
+                                    border: '1px solid #e0e0e0',
+                                    '&.Mui-selected': {
+                                        fontWeight: 'bold'
+                                    }
+                                }
+                            }}
+                        >
+                            <ToggleButton value="TODOS">Todos ({imoveis.length})</ToggleButton>
+                            <ToggleButton value="DISPONIVEIS" color="success">Disponíveis</ToggleButton>
+                            <ToggleButton value="INDISPONIVEIS" color="error">Indisponíveis</ToggleButton>
+                        </ToggleButtonGroup>
+                    </Box>
+                )}
+
+                {error && <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }}>{error}</Alert>}
+
+                {/* --- LISTAGEM --- */}
+                {filteredImoveis.length === 0 ? (
+                    <Box sx={{ textAlign: 'center', py: 10 }}>
+                        <Typography variant="h6" color="text.secondary">
+                            Nenhum imóvel encontrado para os critérios selecionados.
+                        </Typography>
+                    </Box>
+                ) : (
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 3,
+                            '& > div': {
+                                flex: '0 0 100%',
+                                '@media (min-width: 600px)': { flex: '0 0 calc(50% - 12px)' },
+                                '@media (min-width: 960px)': { flex: '0 0 calc(33.333% - 16px)' },
+                                '@media (min-width: 1280px)': { flex: '0 0 calc(25% - 18px)' },
+                            },
+                        }}
+                    >
                         {filteredImoveis.map((imovel) => (
                             <Box key={imovel._id}>
                                 <ImovelCard
                                     imovel={imovel}
                                     onClick={handleCardClick}
-                                    // ⭐️ PASSE A FUNÇÃO DE INTERESSE SE NÃO ESTIVER LOGADO
                                     onInteresse={!user ? () => handleInteresseClick(imovel) : undefined}
                                 />
                             </Box>
                         ))}
-                </Box>
-            )}
+                    </Box>
+                )}
+            </Container>
 
-            {/* Modal de Galeria de Fotos */}
+            {/* Modais */}
             <PhotoGalleryModal
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
@@ -200,3 +230,6 @@ export const HomePage: React.FC = () => {
         </Box>
     );
 };
+
+// Definição de tipos local para evitar erros de compilação
+type FilterStatus = 'TODOS' | 'DISPONIVEIS' | 'INDISPONIVEIS';
