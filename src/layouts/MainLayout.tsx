@@ -68,51 +68,40 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const fetchNotificationCount = useCallback(async (isPolling = false) => {
         if (!user?.token) return;
         try {
-            const response = await axios.get('http://localhost:5000/leads', {
+            const response = await axios.get('http://localhost:5000/leads/count', {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
 
-            const leads = response.data;
-            // SE O NOME DA EMPRESA AINDA NÃO FOI DEFINIDO, PEGAMOS DO PRIMEIRO LEAD
-            if (!nomeEmpresa && leads.length > 0) {
-                const empresaData = leads[0].empresa;
-                const nome = typeof empresaData === 'object' ? empresaData.nome : empresaData;
-                setNomeEmpresa(nome);
-            }
-            const novos = leads.filter((lead: any) => lead.status === 'NOVO');
-            const hasPending = leads.some((lead: any) => lead.status !== 'CONCLUIDO');
+            const count = response.data.count ?? 0;
 
-            // --- Lógica Sonora ---
-            // 1. Ao logar: Se houver pendentes
-            if (!isPolling && !hasPlayedInitial.current && hasPending) {
-                playLeadSound(false);
-                hasPlayedInitial.current = true;
-            }
-
-            // 2. No Polling: Se entrou um lead novo (aumento na contagem total)
-            if (isPolling && leads.length > lastTotalCount.current) {
+            if (isPolling && count > lastTotalCount.current) {
                 playLeadSound(true);
             }
 
-            setNovosLeadsCount(novos.length);
-            lastTotalCount.current = leads.length;
+            setNovosLeadsCount(count);
+            lastTotalCount.current = count;
         } catch (error) {
-            console.error("Erro ao buscar notificações de leads", error);
+            console.error("Erro ao buscar contagem de leads", error);
         }
-    }, [user?.token, nomeEmpresa]);
+    }, [user?.token]);
 
     useEffect(() => {
-        // Busca inicial assim que o layout carrega (Pós-login)
         fetchNotificationCount(false);
 
-        const interval = setInterval(() => fetchNotificationCount(true), 30000);
+        const interval = setInterval(() => {
+            // ECONOMIA: Se o usuário já está na página de leads, não precisa do polling do layout
+            if (location.pathname !== '/leads') {
+                fetchNotificationCount(true);
+            }
+        }, 30000);
+
         window.addEventListener('updateLeadsCount', () => fetchNotificationCount(false));
 
         return () => {
             clearInterval(interval);
             window.removeEventListener('updateLeadsCount', () => fetchNotificationCount(false));
         };
-    }, [fetchNotificationCount]);
+    }, [fetchNotificationCount, location.pathname]);
 
     const hasPermission = (requiredRoles: PerfisEnum[]) => {
         if (requiredRoles.length === 0) return true;

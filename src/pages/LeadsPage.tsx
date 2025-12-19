@@ -82,9 +82,12 @@ export const LeadsPage: React.FC = () => {
         return () => clearTimeout(timer);
     }, [searchText, filterStatus, fetchLeads]);
 
-    // Polling a cada 30 segundos para novos leads
     useEffect(() => {
-        const interval = setInterval(() => fetchLeads(true), 30000);
+        // Polling a cada 30 segundos
+        const interval = setInterval(() => {
+            fetchLeads(true); // O fetchLeads busca a lista completa para a tabela
+        }, 30000);
+
         return () => clearInterval(interval);
     }, [fetchLeads]);
 
