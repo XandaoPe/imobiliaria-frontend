@@ -50,7 +50,7 @@ const HighlightedText: React.FC<{ text: string | null | undefined; highlight: st
     );
 };
 
-const API_URL = 'http://localhost:5000/empresas';
+const API_URL = 'http://192.168.1.5:5000/empresas';
 const DEBOUNCE_DELAY = 300;
 
 export const EmpresasPage: React.FC = () => {

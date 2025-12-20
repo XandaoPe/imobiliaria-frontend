@@ -45,8 +45,8 @@ export const HomePage: React.FC = () => {
         setError(null);
         try {
             const url = token
-                ? 'http://localhost:5000/imoveis'
-                : 'http://localhost:5000/imoveis/publico';
+                ? 'http://192.168.1.5:5000/imoveis'
+                : 'http://192.168.1.5:5000/imoveis/publico';
 
             const response = await axios.get(url, {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}

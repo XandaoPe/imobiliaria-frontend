@@ -24,6 +24,9 @@ interface DashboardMetrics {
     totalClientes: number; // Métrica nova vinda do seu novo backend
     tipoCounts: Record<string, number>;
     perfilCounts: Record<string, number>;
+    totalLeads: number;
+    novosLeads: number;
+    leadsEmAtendimento: number;
 }
 
 export const DashboardPage: React.FC = () => {
@@ -36,18 +39,18 @@ export const DashboardPage: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            // ⭐️ 3. CHAMADA ÀS 3 ROTAS (Inclusive a de clientes que você postou)
-            const [resImoveis, resUsuarios, resClientes] = await Promise.all([
+            const [resImoveis, resUsuarios, resClientes, resLeadsStats] = await Promise.all([
                 api.get('/imoveis'),
                 api.get('/usuarios'),
-                api.get('/clientes') // Esta rota agora funciona com seu novo Controller
+                api.get('/clientes'),
+                api.get('/leads/stats') // Nova rota de estatísticas
             ]);
 
             const imoveis: Imovel[] = resImoveis.data;
             const usuarios: Usuario[] = resUsuarios.data;
             const clientes = resClientes.data;
+            const statsLeads = resLeadsStats.data;
 
-            // ⭐️ 4. PROCESSAMENTO DOS DADOS (Agregação)
             const aggregated: DashboardMetrics = {
                 totalImoveis: imoveis.length,
                 valorTotalImoveis: imoveis.reduce((acc, cur) => acc + (cur.valor || 0), 0),
@@ -55,6 +58,10 @@ export const DashboardPage: React.FC = () => {
                 totalUsuarios: usuarios.length,
                 usuariosAtivos: usuarios.filter(u => u.ativo).length,
                 totalClientes: clientes.length,
+                // Dados vindos do novo endpoint
+                totalLeads: statsLeads.total,
+                novosLeads: statsLeads.novos,
+                leadsEmAtendimento: statsLeads.emAtendimento,
                 tipoCounts: imoveis.reduce((acc: any, cur) => {
                     acc[cur.tipo] = (acc[cur.tipo] || 0) + 1;
                     return acc;
@@ -67,8 +74,7 @@ export const DashboardPage: React.FC = () => {
 
             setMetrics(aggregated);
         } catch (err: any) {
-            setError('Erro ao carregar os dados consolidados do dashboard.');
-            console.error(err);
+            setError('Erro ao carregar os dados do dashboard.');
         } finally {
             setLoading(false);
         }
@@ -88,7 +94,7 @@ export const DashboardPage: React.FC = () => {
             <Box sx={{
                 display: 'grid',
                 gap: 3,
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '1fr 1fr 1fr 1fr' },
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '1fr 1fr 1fr 1fr 1fr' },
                 mb: 4
             }}>
                 <Paper sx={{ p: 2, borderLeft: '6px solid #1976d2' }}>
@@ -112,6 +118,20 @@ export const DashboardPage: React.FC = () => {
                     <Typography color="textSecondary" variant="caption">CLIENTES CADASTRADOS</Typography>
                     <Typography variant="h5">{metrics.totalClientes}</Typography>
                 </Paper>
+                <Paper sx={{ p: 2, borderLeft: '6px solid #f44336', bgcolor: '#fff5f5' }}>
+                    <Typography color="error" variant="caption" sx={{ fontWeight: 'bold' }}>
+                        LEADS NOVOS
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
+                        <Typography variant="h5" color="error" fontWeight="bold">
+                            {metrics.novosLeads}
+                        </Typography>
+                        <AssignmentInd color="error" />
+                    </Box>
+                    <Typography variant="caption" color="textSecondary">
+                        De um total de {metrics.totalLeads}
+                    </Typography>
+                </Paper>
             </Box>
 
             {/* SEÇÃO DE DETALHES */}
@@ -124,6 +144,22 @@ export const DashboardPage: React.FC = () => {
                             <Typography fontWeight="bold">{qtd}</Typography>
                         </Box>
                     ))}
+                </Paper>
+
+                <Paper sx={{ p: 3, flex: 1, minWidth: '300px' }}>
+                    <Typography variant="h6" gutterBottom>Performance de Leads</Typography>
+                    <Typography variant="body2">
+                        Novos: {metrics.novosLeads} / Atendimento: {metrics.leadsEmAtendimento} / Concluídos: {metrics.totalLeads - metrics.novosLeads - metrics.leadsEmAtendimento} / Total: {metrics.totalLeads}
+                    </Typography>
+                    <LinearProgress
+                        variant="determinate"
+                        // Calcula qual % dos leads já saíram do status "NOVO"
+                        value={metrics.totalLeads > 0 ? ((metrics.totalLeads - metrics.novosLeads) / metrics.totalLeads) * 100 : 0}
+                        sx={{ mt: 1, height: 10, borderRadius: 5, bgcolor: '#eee', '& .MuiLinearProgress-bar': { bgcolor: '#2e7d32' } }}
+                    />
+                    <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
+                        Progresso de Atendimento (Leads tratados vs Total)
+                    </Typography>
                 </Paper>
 
                 <Paper sx={{ p: 3, flex: 1, minWidth: '300px' }}>

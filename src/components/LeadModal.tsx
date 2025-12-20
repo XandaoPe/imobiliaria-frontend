@@ -15,7 +15,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({ open, onClose, imovel }) =
 
     const handleSubmit = async () => {
         try {
-            await axios.post('http://localhost:5000/leads/publico', {
+            await axios.post('http://192.168.1.5:5000/leads/publico', {
                 nome,
                 contato,
                 imovel: imovel?._id,

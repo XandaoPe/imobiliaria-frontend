@@ -14,7 +14,7 @@ import {
 } from '../types/usuario'; // Assumindo tipagens definidas aqui
 import api from '../services/api';
 
-const API_URL = 'http://localhost:5000/usuarios';
+const API_URL = 'http://192.168.1.5:5000/usuarios';
 
 // O tipo de input agora inclui o campo 'senha' opcional (ou obrigatório na criação)
 type UsuarioFormInputs = UpdateUsuarioFormData & { senha: string };

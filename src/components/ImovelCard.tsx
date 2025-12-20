@@ -16,7 +16,7 @@ import {
     SendOutlined // Ícone para o botão de interesse
 } from '@mui/icons-material';
 
-const PHOTO_BASE_URL = 'http://localhost:5000/uploads/imoveis';
+const PHOTO_BASE_URL = 'http://192.168.1.5:5000/uploads/imoveis';
 
 interface ImovelCardProps {
     imovel: Imovel;

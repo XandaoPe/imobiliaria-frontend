@@ -8,7 +8,7 @@ import {
 import { useForm, SubmitHandler, Controller } from 'react-hook-form';
 import { EmpresaRegistroMasterFormInputs, RegistroMasterPayload } from '../types/combinedForms';
 
-const API_REGISTRO_URL = 'http://localhost:5000/auth/register-master'; // Exemplo de rota pública
+const API_REGISTRO_URL = 'http://192.168.1.5:5000/auth/register-master'; // Exemplo de rota pública
 
 interface RegistroMasterModalProps {
     open: boolean;

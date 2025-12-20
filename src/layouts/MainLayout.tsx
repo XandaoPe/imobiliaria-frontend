@@ -68,7 +68,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const fetchNotificationCount = useCallback(async (isPolling = false) => {
         if (!user?.token) return;
         try {
-            const response = await axios.get('http://localhost:5000/leads/count', {
+            const response = await axios.get('http://192.168.1.5:5000/leads/count', {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
 

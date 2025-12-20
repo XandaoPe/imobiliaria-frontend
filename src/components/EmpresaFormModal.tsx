@@ -15,7 +15,7 @@ import {
 import { useAuth } from '../contexts/AuthContext'; // Hook de autenticação
 import { PerfisEnum } from '../types/usuario'; // Tipagem do perfil
 
-const API_URL = 'http://localhost:5000/empresas';
+const API_URL = 'http://192.168.1.5:5000/empresas';
 
 interface EmpresaFormModalProps {
     open: boolean;

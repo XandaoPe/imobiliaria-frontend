@@ -19,7 +19,7 @@ import {
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 
 // ⚠️ IMPORTANTE: Ajuste a URL base da sua API NestJS
-const API_URL = 'http://localhost:5000/auth/login';
+const API_URL = 'http://192.168.1.5:5000/auth/login';
 
 // Interface para o objeto de empresa retornado pelo backend
 interface EmpresaOption {

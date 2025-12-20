@@ -18,7 +18,7 @@ interface ClienteFormModalProps {
     onSuccess: () => void;
 }
 
-const API_URL = 'http://localhost:5000/clientes';
+const API_URL = 'http://192.168.1.5:5000/clientes';
 
 export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClose, clienteToEdit, onSuccess }) => {
     const isEdit = !!clienteToEdit;

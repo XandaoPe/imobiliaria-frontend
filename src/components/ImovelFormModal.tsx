@@ -22,7 +22,7 @@ interface ImovelFormModalProps {
     onSuccess: () => void;
 }
 
-const API_URL = 'http://localhost:5000/imoveis';
+const API_URL = 'http://192.168.1.5:5000/imoveis';
 const steps = ['Dados Principais', 'Detalhes', 'Fotos (Opcional)']; // ⭐️ NOVO PASSO
 
 // Usamos um state local para o imóvel, pois ele pode ser criado no meio do processo
