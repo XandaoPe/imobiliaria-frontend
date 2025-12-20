@@ -9,7 +9,7 @@ import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext'; // ⭐️ Verifique o caminho real para o seu AuthContext
 
 // URL base do backend (ajuste conforme a sua)
-const BASE_URL = 'http://192.168.1.5:5000';
+const BASE_URL = 'http://localhost:5000';
 const PHOTO_BASE_URL = `${BASE_URL}/uploads/imoveis`;
 
 interface ImovelPhotosStepProps {

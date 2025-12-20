@@ -1,4 +1,3 @@
-// src/components/EmpresaFormModal.tsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
@@ -12,10 +11,10 @@ import {
     CreateEmpresaFormData,
     UpdateEmpresaFormData
 } from '../types/empresa';
-import { useAuth } from '../contexts/AuthContext'; // Hook de autenticação
-import { PerfisEnum } from '../types/usuario'; // Tipagem do perfil
+import { useAuth } from '../contexts/AuthContext';
+import { PerfisEnum } from '../types/usuario';
 
-const API_URL = 'http://192.168.1.5:5000/empresas';
+const API_URL = 'http://localhost:5000/empresas';
 
 interface EmpresaFormModalProps {
     open: boolean;
@@ -25,13 +24,30 @@ interface EmpresaFormModalProps {
 }
 
 export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClose, empresaToEdit, onSuccess }) => {
-
-    const { user } = useAuth(); // Para obter o token
+    const { user } = useAuth();
     const isEditing = !!empresaToEdit;
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [formKey, setFormKey] = useState(0);
+
+    // --- FUNÇÕES DE MÁSCARA E NORMALIZAÇÃO (IGUAL AO CLIENTE) ---
+    const formatTelefone = (telefone: string | null): string => {
+        if (!telefone) return '';
+        const cleaned = telefone.replace(/\D/g, '');
+        if (cleaned.length <= 10) {
+            return cleaned.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').trim();
+        }
+        if (cleaned.length > 10) {
+            return cleaned.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim();
+        }
+        return cleaned;
+    };
+
+    const normalizeTelefone = (value: string | null): string => {
+        if (!value) return '';
+        return value.replace(/\D/g, '');
+    };
 
     const {
         control,
@@ -42,20 +58,21 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClos
         defaultValues: {
             nome: '',
             cnpj: '',
+            fone: '',
             isAdmGeral: false,
             ativa: true,
         }
     });
 
-    // Efeito para resetar e preencher o formulário
     useEffect(() => {
         if (open) {
             setFormKey(prev => prev + 1);
-
             if (empresaToEdit) {
                 reset({
                     nome: empresaToEdit.nome,
                     cnpj: empresaToEdit.cnpj,
+                    // Garante que o telefone venha limpo para o formulário
+                    fone: normalizeTelefone(empresaToEdit.fone || ''),
                     isAdmGeral: empresaToEdit.isAdmGeral,
                     ativa: empresaToEdit.ativa,
                 });
@@ -63,7 +80,8 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClos
                 reset({
                     nome: '',
                     cnpj: '',
-                    isAdmGeral: false, // Padrão para nova empresa
+                    fone: '',
+                    isAdmGeral: false,
                     ativa: true,
                 });
             }
@@ -80,18 +98,11 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClos
         setLoading(true);
         setError(null);
 
-        let payload: CreateEmpresaFormData | UpdateEmpresaFormData = data;
-
-        // Remove a propriedade 'cnpj' da atualização para garantir que o backend não tente alterar
-        // um campo que geralmente é imutável em PUTs de recursos com PK/Unique Key.
-        // Embora seu backend permita, é uma boa prática de frontend.
-        if (isEditing) {
-            // Cria uma cópia do payload para manipulação
-            const { cnpj, ...updatePayload } = data;
-
-            // O PartialType no backend ignora campos undefined, mas por segurança de tipo
-            payload = updatePayload as UpdateEmpresaFormData;
-        }
+        // Normaliza o telefone antes de enviar para o backend
+        const payloadFinal = {
+            ...data,
+            fone: normalizeTelefone(data.fone || null)
+        };
 
         try {
             const headers = {
@@ -99,23 +110,23 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClos
             };
 
             if (isEditing) {
-                await axios.put(`${API_URL}/${empresaToEdit!._id}`, payload, { headers });
+                const { cnpj, ...updatePayload } = payloadFinal;
+                await axios.put(`${API_URL}/${empresaToEdit!._id}`, updatePayload, { headers });
             } else {
-                await axios.post(API_URL, payload, { headers });
+                await axios.post(API_URL, payloadFinal, { headers });
             }
 
             onSuccess();
             handleClose();
         } catch (err: any) {
             console.error(err);
-            const message = err.response?.data?.message || 'Ocorreu um erro desconhecido ao salvar a empresa.';
+            const message = err.response?.data?.message || 'Ocorreu um erro desconhecido.';
             setError(Array.isArray(message) ? message.join(', ') : message);
         } finally {
             setLoading(false);
         }
     };
 
-    // Usuário logado deve ser ADM_GERAL para poder manipular o switch isAdmGeral
     const isAdmGeralUser = user?.perfil === PerfisEnum.ADM_GERAL;
 
     return (
@@ -126,7 +137,6 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClos
                 <DialogContent dividers>
                     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-                    {/* Campo Nome */}
                     <Controller
                         name="nome"
                         control={control}
@@ -145,7 +155,6 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClos
                         )}
                     />
 
-                    {/* Campo CNPJ */}
                     <Controller
                         name="cnpj"
                         control={control}
@@ -159,7 +168,6 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClos
                                 margin="normal"
                                 error={!!errors.cnpj}
                                 helperText={errors.cnpj?.message}
-                                // CNPJ é editável apenas na criação
                                 disabled={isEditing}
                             />
                         )}
@@ -170,10 +178,30 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClos
                         </Typography>
                     )}
 
-                    {/* Switches */}
-                    <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', mt: 1 }}>
+                    {/* CAMPO TELEFONE COM MÁSCARA APLICADA */}
+                    <Controller
+                        name="fone"
+                        control={control}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                label="Telefone / WhatsApp"
+                                fullWidth
+                                variant="outlined"
+                                margin="normal"
+                                error={!!errors.fone}
+                                helperText={errors.fone?.message}
+                                value={formatTelefone(field.value || null)} // Formata para o usuário
+                                onChange={(e) => {
+                                    const rawValue = normalizeTelefone(e.target.value);
+                                    field.onChange(rawValue); // Salva no state apenas números
+                                }}
+                                inputProps={{ maxLength: 15 }}
+                            />
+                        )}
+                    />
 
-                        {/* Switch Ativa */}
+                    <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', mt: 1 }}>
                         <Controller
                             name="ativa"
                             control={control}
@@ -181,19 +209,16 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClos
                                 <FormControlLabel
                                     control={
                                         <Switch
-                                            {...field}
                                             checked={field.value}
                                             onChange={(e) => field.onChange(e.target.checked)}
                                             color="primary"
                                         />
                                     }
                                     label={field.value ? "Ativa" : "Inativa"}
-                                    sx={{ mt: 1 }}
                                 />
                             )}
                         />
 
-                        {/* Switch isAdmGeral (Visível/Editável apenas para ADM_GERAL) */}
                         {isAdmGeralUser && (
                             <Controller
                                 name="isAdmGeral"
@@ -202,21 +227,19 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClos
                                     <FormControlLabel
                                         control={
                                             <Switch
-                                                {...field}
                                                 checked={field.value}
                                                 onChange={(e) => field.onChange(e.target.checked)}
                                                 color="secondary"
                                             />
                                         }
                                         label="Administração Geral"
-                                        sx={{ mt: 1 }}
                                     />
                                 )}
                             />
                         )}
                     </Box>
-
                 </DialogContent>
+
                 <DialogActions>
                     <Button onClick={handleClose} disabled={loading} color="secondary">
                         Cancelar

@@ -4,6 +4,7 @@
 export interface CreateEmpresaFormData {
     nome: string;
     cnpj: string;
+    fone?: string; // Adicionado
     isAdmGeral?: boolean;
     ativa?: boolean;
 }
@@ -16,6 +17,7 @@ export interface Empresa {
     _id: string; // Mongoose ID
     nome: string;
     cnpj: string;
+    fone?: string; // Adicionado
     isAdmGeral: boolean; // Se é a empresa de administração geral do sistema
     ativa: boolean;
     createdAt: string;

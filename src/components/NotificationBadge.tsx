@@ -29,7 +29,7 @@ export const NotificationBadge: React.FC = () => {
         if (!user?.token) return;
 
         try {
-            const response = await axios.get('http://192.168.1.5:5000/leads', {
+            const response = await axios.get('http://localhost:5000/leads', {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
 

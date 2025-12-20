@@ -1,9 +1,9 @@
 // src/pages/EmpresasPage.tsx
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
 import {
-    Container, Typography, Button, Box, Paper, TextField, InputAdornment, Tooltip, IconButton,
-    CircularProgress, Alert, Menu, MenuItem, ListSubheader
+    Container, Typography, Button, Box, Paper, TextField, InputAdornment, IconButton,
+    Menu, MenuItem, ListSubheader
 } from '@mui/material';
 import {
     DataGrid,
@@ -50,7 +50,7 @@ const HighlightedText: React.FC<{ text: string | null | undefined; highlight: st
     );
 };
 
-const API_URL = 'http://192.168.1.5:5000/empresas';
+const API_URL = 'http://localhost:5000/empresas';
 const DEBOUNCE_DELAY = 300;
 
 export const EmpresasPage: React.FC = () => {
@@ -68,14 +68,12 @@ export const EmpresasPage: React.FC = () => {
     const [filterStatus, setFilterStatus] = useState<EmpresaStatusFilter>('TODAS');
     const [filterAdm, setFilterAdm] = useState<EmpresaAdmFilter>('TODAS');
 
-    // FIX v7: Estado de seleção usando Set e 'include'
     const [selectionModel, setSelectionModel] = useState<GridRowSelectionModel>({
         type: 'include',
         ids: new Set<GridRowId>([])
     });
 
     const [anchorElFilter, setAnchorElFilter] = useState<null | HTMLElement>(null);
-    const searchInputRef = useRef<HTMLInputElement>(null);
 
     const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>({
         _id: false,
@@ -83,10 +81,22 @@ export const EmpresasPage: React.FC = () => {
         updatedAt: false,
     });
 
+    // Função de Máscara para Telefone
+    const formatTelefoneForDisplay = (telefone: string | null | undefined): string => {
+        if (!telefone) return '';
+        const cleaned = telefone.replace(/\D/g, '');
+        if (cleaned.length === 11) {
+            return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+        }
+        if (cleaned.length === 10) {
+            return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+        }
+        return telefone;
+    };
+
     const canAccess = user?.perfil === PerfisEnum.ADM_GERAL || user?.perfil === PerfisEnum.GERENTE;
     const canCreateAndDelete = user?.perfil === PerfisEnum.ADM_GERAL;
 
-    // Contagem de selecionados
     const selectedCount = selectionModel.ids instanceof Set ? selectionModel.ids.size : 0;
 
     const fetchEmpresas = useCallback(async (
@@ -129,6 +139,16 @@ export const EmpresasPage: React.FC = () => {
     const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorElFilter(event.currentTarget);
     const handleMenuClose = () => setAnchorElFilter(null);
 
+    const handleDelete = async (id: string, nome: string) => {
+        if (!window.confirm(`Excluir empresa: "${nome}"?`)) return;
+        try {
+            await axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${user?.token}` } });
+            fetchEmpresas(debouncedSearchText, filterStatus, filterAdm);
+        } catch (err: any) {
+            alert(err.response?.data?.message || 'Erro ao excluir.');
+        }
+    };
+
     const handleBulkDelete = async () => {
         const ids = Array.from(selectionModel.ids || []) as string[];
         if (ids.length === 0) return;
@@ -146,7 +166,10 @@ export const EmpresasPage: React.FC = () => {
         }
     };
 
-    const columns: GridColDef<Empresa>[] = [
+    const handleOpenEdit = (empresa: Empresa) => { setEmpresaToEdit(empresa); setOpenModal(true); };
+    const handleOpenCreate = () => { setEmpresaToEdit(null); setOpenModal(true); };
+
+    const columns: GridColDef<Empresa>[] = useMemo(() => [
         {
             field: 'nome',
             headerName: 'Nome da Empresa',
@@ -159,7 +182,6 @@ export const EmpresasPage: React.FC = () => {
                         cursor: 'pointer',
                         color: 'primary.main',
                         '&:hover': { textDecoration: 'underline' },
-                        // ADICIONE ESTAS LINHAS:
                         display: 'flex',
                         alignItems: 'center',
                         height: '100%',
@@ -174,15 +196,30 @@ export const EmpresasPage: React.FC = () => {
             headerName: 'CNPJ',
             width: 180,
             renderCell: (params: GridRenderCellParams<Empresa>) => (
-                <HighlightedText text={params.row.cnpj} highlight={debouncedSearchText} />
+                <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                    <HighlightedText text={params.row.cnpj} highlight={debouncedSearchText} />
+                </Box>
             ),
+        },
+        {
+            field: 'fone',
+            headerName: 'Telefone',
+            width: 150,
+            renderCell: (params: GridRenderCellParams<Empresa>) => (
+                <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                    <HighlightedText
+                        text={formatTelefoneForDisplay(params.row.fone)}
+                        highlight={debouncedSearchText}
+                    />
+                </Box>
+            )
         },
         {
             field: 'isAdmGeral',
             headerName: 'Tipo',
             width: 150,
             renderCell: (params) => (
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
                     {params.row.isAdmGeral ? <CheckCircleIcon color="primary" fontSize="small" sx={{ mr: 1 }} /> : <CancelIcon color="disabled" fontSize="small" sx={{ mr: 1 }} />}
                     {params.row.isAdmGeral ? "Adm. Geral" : "Local"}
                 </Box>
@@ -193,7 +230,7 @@ export const EmpresasPage: React.FC = () => {
             headerName: 'Status',
             width: 150,
             renderCell: (params) => (
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
                     {params.row.ativa ? <CheckCircleIcon color="success" fontSize="small" sx={{ mr: 1 }} /> : <CancelIcon color="error" fontSize="small" sx={{ mr: 1 }} />}
                     {params.row.ativa ? "Ativa" : "Inativa"}
                 </Box>
@@ -205,12 +242,7 @@ export const EmpresasPage: React.FC = () => {
             width: 120,
             sortable: false,
             renderCell: (params: GridRenderCellParams<Empresa>) => (
-                <Box sx={{
-                    display: 'flex',
-                    gap: 1,
-                    alignItems: 'center',
-                    height: '100%',
-                }}>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', height: '100%' }}>
                     <IconButton size="small" onClick={() => handleOpenEdit(params.row)} sx={{ bgcolor: 'primary.light', color: 'white', '&:hover': { bgcolor: 'primary.main' } }}>
                         <EditIcon fontSize='small' />
                     </IconButton>
@@ -222,20 +254,7 @@ export const EmpresasPage: React.FC = () => {
                 </Box>
             ),
         },
-    ];
-
-    const handleDelete = async (id: string, nome: string) => {
-        if (!window.confirm(`Excluir empresa: "${nome}"?`)) return;
-        try {
-            await axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${user?.token}` } });
-            fetchEmpresas(debouncedSearchText, filterStatus, filterAdm);
-        } catch (err: any) {
-            alert(err.response?.data?.message || 'Erro ao excluir.');
-        }
-    };
-
-    const handleOpenEdit = (empresa: Empresa) => { setEmpresaToEdit(empresa); setOpenModal(true); };
-    const handleOpenCreate = () => { setEmpresaToEdit(null); setOpenModal(true); };
+    ], [debouncedSearchText, canCreateAndDelete]);
 
     return (
         <Container sx={{ mt: 4, mb: 4 }}>
@@ -263,18 +282,42 @@ export const EmpresasPage: React.FC = () => {
                         startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
                     }}
                 />
-                <Button variant="outlined" onClick={handleMenuOpen} startIcon={<FilterListIcon />} sx={{ height: 56 }}>
-                    Filtros {selectedCount > 0 ? `(${selectedCount})` : ''}
+                <Button
+                    variant={filterStatus !== 'TODAS' || filterAdm !== 'TODAS' ? "contained" : "outlined"}
+                    onClick={handleMenuOpen}
+                    startIcon={<FilterListIcon />}
+                    sx={{ height: 56, minWidth: 150 }}
+                >
+                    Filtros
                 </Button>
                 <Menu anchorEl={anchorElFilter} open={Boolean(anchorElFilter)} onClose={handleMenuClose}>
                     <ListSubheader>Status</ListSubheader>
-                    <MenuItem onClick={() => { setFilterStatus('TODAS'); handleMenuClose(); }}>Todas</MenuItem>
-                    <MenuItem onClick={() => { setFilterStatus('true'); handleMenuClose(); }}>Ativas</MenuItem>
-                    <MenuItem onClick={() => { setFilterStatus('false'); handleMenuClose(); }}>Inativas</MenuItem>
+                    <MenuItem onClick={() => { setFilterStatus('TODAS'); handleMenuClose(); }}>
+                        <Box sx={{ width: 30, display: 'flex' }}>{filterStatus === 'TODAS' && <DoneIcon fontSize="small" color="primary" />}</Box>
+                        Todas
+                    </MenuItem>
+                    <MenuItem onClick={() => { setFilterStatus('true'); handleMenuClose(); }}>
+                        <Box sx={{ width: 30, display: 'flex' }}>{filterStatus === 'true' && <DoneIcon fontSize="small" color="primary" />}</Box>
+                        Ativas
+                    </MenuItem>
+                    <MenuItem onClick={() => { setFilterStatus('false'); handleMenuClose(); }}>
+                        <Box sx={{ width: 30, display: 'flex' }}>{filterStatus === 'false' && <DoneIcon fontSize="small" color="primary" />}</Box>
+                        Inativas
+                    </MenuItem>
+
                     <ListSubheader>Tipo</ListSubheader>
-                    <MenuItem onClick={() => { setFilterAdm('TODAS'); handleMenuClose(); }}>Todos</MenuItem>
-                    <MenuItem onClick={() => { setFilterAdm('true'); handleMenuClose(); }}>Adm. Geral</MenuItem>
-                    <MenuItem onClick={() => { setFilterAdm('false'); handleMenuClose(); }}>Local</MenuItem>
+                    <MenuItem onClick={() => { setFilterAdm('TODAS'); handleMenuClose(); }}>
+                        <Box sx={{ width: 30, display: 'flex' }}>{filterAdm === 'TODAS' && <DoneIcon fontSize="small" color="primary" />}</Box>
+                        Todos
+                    </MenuItem>
+                    <MenuItem onClick={() => { setFilterAdm('true'); handleMenuClose(); }}>
+                        <Box sx={{ width: 30, display: 'flex' }}>{filterAdm === 'true' && <DoneIcon fontSize="small" color="primary" />}</Box>
+                        Adm. Geral
+                    </MenuItem>
+                    <MenuItem onClick={() => { setFilterAdm('false'); handleMenuClose(); }}>
+                        <Box sx={{ width: 30, display: 'flex' }}>{filterAdm === 'false' && <DoneIcon fontSize="small" color="primary" />}</Box>
+                        Local
+                    </MenuItem>
                 </Menu>
             </Box>
 
@@ -288,6 +331,8 @@ export const EmpresasPage: React.FC = () => {
                     onRowSelectionModelChange={(newModel) => setSelectionModel(newModel)}
                     rowSelectionModel={selectionModel}
                     getRowId={(row) => row._id}
+                    columnVisibilityModel={columnVisibilityModel}
+                    onColumnVisibilityModelChange={(newModel) => setColumnVisibilityModel(newModel)}
                 />
             </Paper>
 

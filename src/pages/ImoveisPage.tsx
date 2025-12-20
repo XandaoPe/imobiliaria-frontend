@@ -53,7 +53,7 @@ const HighlightedText: React.FC<{ text: string | null | undefined; highlight: st
 // Tipos para o filtro de status do Imóvel
 type ImovelStatusFilter = 'TODOS' | 'DISPONIVEL' | 'INDISPONIVEL';
 
-const API_URL = 'http://192.168.1.5:5000/imoveis';
+const API_URL = 'http://localhost:5000/imoveis';
 
 const DEBOUNCE_DELAY = 300;
 

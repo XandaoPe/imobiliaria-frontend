@@ -23,7 +23,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import DoneIcon from '@mui/icons-material/Done';
 
 
-const API_URL = 'http://192.168.1.5:5000/clientes';
+const API_URL = 'http://localhost:5000/clientes';
 const DEBOUNCE_DELAY = 300;
 
 type StatusFilter = 'TODOS' | 'ATIVO' | 'INATIVO';

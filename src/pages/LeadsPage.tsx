@@ -43,7 +43,7 @@ export const LeadsPage: React.FC = () => {
             if (searchText?.trim()) params.search = searchText;
             if (filterStatus !== 'TODOS') params.status = filterStatus;
 
-            const response = await axios.get('http://192.168.1.5:5000/leads', {
+            const response = await axios.get('http://localhost:5000/leads', {
                 headers: { Authorization: `Bearer ${user?.token}` },
                 params: params
             });
@@ -92,7 +92,7 @@ export const LeadsPage: React.FC = () => {
     }, [fetchLeads]);
 
     const handleUpdateStatus = async (id: string, novoStatus: string) => {
-        await axios.patch(`http://192.168.1.5:5000/leads/${id}/status`,
+        await axios.patch(`http://localhost:5000/leads/${id}/status`,
             { status: novoStatus },
             { headers: { Authorization: `Bearer ${user?.token}` } }
         );

@@ -14,7 +14,7 @@ import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
-const PHOTO_BASE_URL = 'http://192.168.1.5:5000/uploads/imoveis';
+const PHOTO_BASE_URL = 'http://localhost:5000/uploads/imoveis';
 
 interface PhotoGalleryModalProps {
     open: boolean;
