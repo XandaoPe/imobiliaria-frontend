@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ImovelCard from '../components/ImovelCard';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material'; // Importe o ícone de voltar
+import { ImovelDetailsModal } from '../components/ImovelDetailsModal';
 
 export const HomePage: React.FC = () => {
     const navigate = useNavigate(); // Hook para navegação
@@ -18,6 +19,18 @@ export const HomePage: React.FC = () => {
     const [searching, setSearching] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [filter, setFilter] = useState('TODOS');
+    const [selectedImovel, setSelectedImovel] = useState<any | null>(null);
+    const [modalOpen, setModalOpen] = useState(false);
+
+    const handleOpenModal = (imovel: any) => {
+        setSelectedImovel(imovel);
+        setModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setModalOpen(false);
+        setSelectedImovel(null);
+    };
 
     const fetchImoveis = useCallback(async () => {
         setSearching(true);
@@ -103,13 +116,20 @@ export const HomePage: React.FC = () => {
                         <Box key={imovel._id} sx={{ flex: '0 0 calc(33.333% - 16px)' }}>
                             <ImovelCard
                                 imovel={imovel}
-                                onClick={() => { }}
+                                onClick={() => handleOpenModal(imovel)} // AGORA CHAMA A MODAL
                                 searchTerm={searchTerm} // Passando o termo para o destaque
                             />
                         </Box>
                     ))}
                 </Box>
             </Container>
+            {selectedImovel && (
+                <ImovelDetailsModal
+                    open={modalOpen}
+                    onClose={handleCloseModal}
+                    imovel={selectedImovel}
+                />
+            )}
         </Box>
     );
 };
