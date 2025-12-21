@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import ImovelCard from '../components/ImovelCard';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material'; // Importe o ícone de voltar
 import { ImovelDetailsModal } from '../components/ImovelDetailsModal';
+import { LeadModal } from '../components/LeadModal';
 
 export const HomePage: React.FC = () => {
     const navigate = useNavigate(); // Hook para navegação
@@ -21,6 +22,14 @@ export const HomePage: React.FC = () => {
     const [filter, setFilter] = useState('TODOS');
     const [selectedImovel, setSelectedImovel] = useState<any | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
+    const [leadModalOpen, setLeadModalOpen] = useState(false);
+    const [imovelParaLead, setImovelParaLead] = useState<any | null>(null);
+
+    // Função para abrir a modal de formulário
+    const handleOpenInteresse = (imovel: any) => {
+        setImovelParaLead(imovel);
+        setLeadModalOpen(true);
+    };
 
     const handleOpenModal = (imovel: any) => {
         setSelectedImovel(imovel);
@@ -116,8 +125,10 @@ export const HomePage: React.FC = () => {
                         <Box key={imovel._id} sx={{ flex: '0 0 calc(33.333% - 16px)' }}>
                             <ImovelCard
                                 imovel={imovel}
-                                onClick={() => handleOpenModal(imovel)} // AGORA CHAMA A MODAL
-                                searchTerm={searchTerm} // Passando o termo para o destaque
+                                onClick={() => handleOpenModal(imovel)}
+                                // RECOLOCANDO A FUNÇÃO NO CARD DA VITRINE
+                                onInteresse={() => handleOpenInteresse(imovel)}
+                                searchTerm={searchTerm}
                             />
                         </Box>
                     ))}
@@ -128,8 +139,18 @@ export const HomePage: React.FC = () => {
                     open={modalOpen}
                     onClose={handleCloseModal}
                     imovel={selectedImovel}
+                    // PASSANDO A FUNÇÃO PARA DENTRO DA MODAL DE DETALHES TAMBÉM!
+                    onInteresse={() => {
+                        handleCloseModal(); // Fecha a de detalhes
+                        handleOpenInteresse(selectedImovel); // Abre a de formulário
+                    }}
                 />
             )}
+            <LeadModal
+                open={leadModalOpen}
+                onClose={() => setLeadModalOpen(false)}
+                imovel={imovelParaLead}
+            />
         </Box>
     );
 };
