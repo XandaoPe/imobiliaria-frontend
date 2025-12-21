@@ -1,177 +1,70 @@
 import React from 'react';
-import {
-    Card, CardContent, CardMedia, Typography, Chip, Box,
-    Tooltip, Button, CardActions // Componentes Adicionados
-} from '@mui/material';
+import { Card, CardContent, CardMedia, Typography, Chip, Box, Tooltip, Button, CardActions } from '@mui/material';
+import { Business as BusinessIcon, BathtubOutlined, BedOutlined, DriveEtaOutlined, HomeWorkOutlined, LandscapeOutlined, SendOutlined } from '@mui/icons-material';
 import { Imovel } from '../types/imovel';
-import BusinessIcon from '@mui/icons-material/Business'; // Ícone de empresa
-// Ícones Específicos e Tooltips
-import {
-    BathtubOutlined,
-    BedOutlined,
-    DriveEtaOutlined,
-    HomeWorkOutlined,
-    LandscapeOutlined,
-    ListAltOutlined,
-    SendOutlined // Ícone para o botão de interesse
-} from '@mui/icons-material';
-
+import HighlightText from './HighlightText';
 const PHOTO_BASE_URL = 'http://localhost:5000/uploads/imoveis';
 
 interface ImovelCardProps {
     imovel: Imovel;
     onClick: (imovel: Imovel) => void;
-    onInteresse?: () => void; // ⭐️ Nova prop opcional
+    onInteresse?: () => void;
+    searchTerm?: string; // Prop necessária para o highlight
 }
 
 const getTipoDisplay = (tipo: string): string => {
-    const tipoMap: Record<string, string> = {
-        'CASA': 'Casa', 'APARTAMENTO': 'Apartamento',
-        'TERRENO': 'Terreno', 'COMERCIAL': 'Comercial'
-    };
+    const tipoMap: Record<string, string> = { 'CASA': 'Casa', 'APARTAMENTO': 'Apartamento', 'TERRENO': 'Terreno', 'COMERCIAL': 'Comercial' };
     return tipoMap[tipo] || tipo;
 };
 
-const formatCurrency = (value: number): string => {
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-};
-
-// ⭐️ Adicionado onInteresse na desestruturação das props
-const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse }) => {
+const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse, searchTerm = '' }) => {
     const firstPhoto = imovel.fotos && imovel.fotos.length > 0 ? imovel.fotos[0] : null;
     const imageUrl = firstPhoto ? `${PHOTO_BASE_URL}/${firstPhoto}` : '/images/placeholder.png';
-
-    const statusColor = imovel.disponivel ? 'success' : 'error';
-    const statusLabel = imovel.disponivel ? 'Disponível' : 'Indisponível';
-
-    const garagemDisplay = typeof imovel.garagem === 'number' && imovel.garagem > 0
-        ? `${imovel.garagem}`
-        : 'Sim';
+    const nomeEmpresa = typeof imovel.empresa === 'object'
+        ? imovel.empresa.nome
+        : 'Imobiliária Geral';
 
     return (
-        <Card
-            sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                cursor: 'pointer',
-                transition: '0.3s',
-                '&:hover': {
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                    transform: 'translateY(-2px)'
-                }
-            }}
-            onClick={() => onClick(imovel)}
-        >
-            <CardMedia
-                component="img"
-                height="190"
-                image={imageUrl}
-                alt={`Foto principal do imóvel em ${imovel.cidade}`}
-                sx={{ objectFit: 'cover' }}
-            />
+        <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', cursor: 'pointer', transition: '0.3s', '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.1)', transform: 'translateY(-2px)' } }} onClick={() => onClick(imovel)}>
+            <CardMedia component="img" height="190" image={imageUrl} sx={{ objectFit: 'cover' }} />
             <CardContent sx={{ flexGrow: 1 }}>
-                {/* ⭐️ ADICIONADO: NOME DA IMOBILIÁRIA */}
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 0.5 }}>
                     <BusinessIcon sx={{ fontSize: 16, color: 'primary.main' }} />
-                    <Typography
-                        variant="caption"
-                        sx={{ fontWeight: 'bold', color: 'primary.main', textTransform: 'uppercase' }}
-                    >
-                        {/* Ajustado para verificar 'nome' em vez de 'nomeFantasia' 
-           conforme o seu JSON 
-        */}
-                        {(imovel.empresa && typeof imovel.empresa === 'object' && 'nome' in imovel.empresa)
-                            ? (imovel.empresa as any).nome
-                            : 'Imobiliária Geral'
-                        }
+                    <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'primary.main', textTransform: 'uppercase' }}>
+                        <HighlightText text={nomeEmpresa} highlight={searchTerm} />
                     </Typography>
                 </Box>
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                     <Typography variant="subtitle2" color="text.secondary">
-                        {getTipoDisplay(imovel.tipo)} | {imovel.cidade}
+                        {getTipoDisplay(imovel.tipo)} | <HighlightText text={imovel.cidade || ''} highlight={searchTerm} />
                     </Typography>
-                    <Chip label={statusLabel} color={statusColor} size="small" />
+                    <Chip label={imovel.disponivel ? 'Disponível' : 'Indisponível'} color={imovel.disponivel ? 'success' : 'error'} size="small" />
                 </Box>
 
                 <Typography variant="h6" component="div" gutterBottom noWrap>
-                    {imovel.titulo || 'Imóvel sem Título'}
+                    <HighlightText text={imovel.titulo || 'Imóvel sem Título'} highlight={searchTerm} />
                 </Typography>
 
                 <Typography variant="h5" color="primary.main" fontWeight="bold" sx={{ mb: 1 }}>
-                    {formatCurrency(imovel.valor || 0)}
+                    {(imovel.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </Typography>
 
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 1 }}>
-                    {imovel.quartos && (
-                        <Tooltip title="Número de Quartos" arrow>
-                            <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                                <BedOutlined sx={{ fontSize: 18, mr: 0.5 }} />
-                                <Typography variant="body2">{imovel.quartos}</Typography>
-                            </Box>
-                        </Tooltip>
-                    )}
-
-                    {imovel.banheiros && (
-                        <Tooltip title="Número de Banheiros" arrow>
-                            <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                                <BathtubOutlined sx={{ fontSize: 18, mr: 0.5 }} />
-                                <Typography variant="body2">{imovel.banheiros}</Typography>
-                            </Box>
-                        </Tooltip>
-                    )}
-
-                    {imovel.garagem && (
-                        <Tooltip title="Vagas de Garagem" arrow>
-                            <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                                <DriveEtaOutlined sx={{ fontSize: 18, mr: 0.5 }} />
-                                <Typography variant="body2">{garagemDisplay}</Typography>
-                            </Box>
-                        </Tooltip>
-                    )}
-
-                    {imovel.area_terreno && (
-                        <Tooltip title="Área Total do Terreno (m²)" arrow>
-                            <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                                <LandscapeOutlined sx={{ fontSize: 18, mr: 0.5 }} />
-                                <Typography variant="body2">{imovel.area_terreno} m²</Typography>
-                            </Box>
-                        </Tooltip>
-                    )}
-
-                    {imovel.area_construida && (
-                        <Tooltip title="Área Construída (m²)" arrow>
-                            <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                                <HomeWorkOutlined sx={{ fontSize: 18, mr: 0.5 }} />
-                                <Typography variant="body2">{imovel.area_construida} m²</Typography>
-                            </Box>
-                        </Tooltip>
-                    )}
-                </Box>
+                {/* Opcional: Highlight no endereço também */}
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                    <HighlightText text={imovel.endereco || ''} highlight={searchTerm} />
+                </Typography>
             </CardContent>
 
-            {/* ⭐️ SEÇÃO ADICIONADA: Ações do Card */}
             <CardActions sx={{ p: 2, pt: 0, justifyContent: 'flex-end' }}>
                 {onInteresse && (
-                    <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<SendOutlined />}
-                        color="primary"
-                        fullWidth
-                        onClick={(e) => {
-                            e.stopPropagation(); // Impede que abra a galeria de fotos
-                            onInteresse();
-                        }}
-                        sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 'bold' }}
-                    >
+                    <Button variant="contained" size="small" startIcon={<SendOutlined />} fullWidth onClick={(e) => { e.stopPropagation(); onInteresse(); }} sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 'bold' }}>
                         Tenho Interesse
                     </Button>
                 )}
             </CardActions>
         </Card>
     );
-}
+};
 
 export default ImovelCard;

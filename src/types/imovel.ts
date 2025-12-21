@@ -22,11 +22,17 @@ export interface ImovelFormData {
     garagem: boolean;
 }
 
+export interface EmpresaInfo {
+    _id: string;
+    nome: string;
+    fone?: string;
+}
+
 // Interface principal do Imóvel (compatível com backend)
 export interface Imovel extends ImovelFormData {
     _id: string;
     fotos: string[];
-    empresa: string;
+    empresa: string | EmpresaInfo;
     createdAt?: string;
     updatedAt?: string;
 }
