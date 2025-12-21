@@ -5,8 +5,10 @@ import { Home as HomeIcon, FilterList as FilterIcon, Search as SearchIcon, Clear
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ImovelCard from '../components/ImovelCard';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material'; // Importe o ícone de voltar
 
 export const HomePage: React.FC = () => {
+    const navigate = useNavigate(); // Hook para navegação
     const { user } = useAuth();
     const theme = useTheme();
     const token = user?.token || null;
@@ -55,6 +57,15 @@ export const HomePage: React.FC = () => {
             <Box sx={{ bgcolor: 'background.paper', pt: 4, pb: 3, mb: 4, borderBottom: '1px solid #eee' }}>
                 <Container maxWidth="lg">
                     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: 'center', gap: 3 }}>
+                        <IconButton
+                            onClick={() => navigate('/')} // Ajuste para a rota da sua Landing Page
+                            sx={{
+                                bgcolor: '#f1f3f4',
+                                '&:hover': { bgcolor: '#e8eaed' }
+                            }}
+                        >
+                            <ArrowBackIcon />
+                        </IconButton>
                         <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main' }}>Catálogo</Typography>
 
                         <TextField

@@ -61,6 +61,7 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
         if (open) {
             // Inicialização
             if (isEdit && imovelToEdit) {
+                console.log("Dados recebidos para edição:", imovelToEdit);
                 reset({
                     titulo: imovelToEdit.titulo || '',
                     tipo: normalizeTipoImovel(imovelToEdit.tipo || 'CASA'),
@@ -68,17 +69,17 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                     valor: imovelToEdit.valor || 0,
                     disponivel: imovelToEdit.disponivel ?? true,
                     cidade: imovelToEdit.cidade || '',
-                    descricao: imovelToEdit.descricao || null,
-                    detalhes: imovelToEdit.detalhes || null,
-                    quartos: imovelToEdit.quartos || null,
-                    banheiros: imovelToEdit.banheiros || null,
-                    area_terreno: imovelToEdit.area_terreno || null,
-                    area_construida: imovelToEdit.area_construida || null,
+                    // Garante que se vier undefined do banco, vire null para o Yup/Form
+                    descricao: imovelToEdit.descricao ?? null,
+                    detalhes: imovelToEdit.detalhes ?? null,
+                    quartos: imovelToEdit.quartos ?? null,
+                    banheiros: imovelToEdit.banheiros ?? null,
+                    area_terreno: imovelToEdit.area_terreno ?? null,
+                    area_construida: imovelToEdit.area_construida ?? null,
                     garagem: imovelToEdit.garagem ?? false,
                 });
                 setCurrentImovel(imovelToEdit);
                 setCurrentPhotos(imovelToEdit.fotos || []);
-
             } else {
                 reset(defaultValues);
                 setCurrentImovel(null);
