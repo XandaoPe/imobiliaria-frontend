@@ -21,9 +21,8 @@ import SearchIcon from '@mui/icons-material/Search';
 
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DoneIcon from '@mui/icons-material/Done';
+import { API_URL } from '../services/api';
 
-
-const API_URL = 'http://localhost:5000/clientes';
 const DEBOUNCE_DELAY = 300;
 
 type StatusFilter = 'TODOS' | 'ATIVO' | 'INATIVO';
@@ -111,7 +110,7 @@ export const ClientesPage = () => {
                 params.status = status;
             }
 
-            const response = await axios.get(API_URL, { params });
+            const response = await axios.get(API_URL+'/clientes', { params });
 
             const clientesNormalizados = response.data.map((cliente: any) => ({
                 ...cliente,
@@ -202,7 +201,7 @@ export const ClientesPage = () => {
         }
 
         try {
-            await axios.delete(`${API_URL}/${clienteId}`);
+            await axios.delete(`${API_URL}/clientes/${clienteId}`);
             fetchClientes(debouncedSearchText, filterStatus);
             alert(`Cliente ${nome} excluído com sucesso!`);
         } catch (err: any) {

@@ -30,6 +30,7 @@ import { Empresa, EmpresaStatusFilter, EmpresaAdmFilter } from '../types/empresa
 import { EmpresaFormModal } from '../components/EmpresaFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
+import { API_URL } from '../services/api';
 
 // --- Componente HighlightedText ---
 const HighlightedText: React.FC<{ text: string | null | undefined; highlight: string }> = ({ text, highlight }) => {
@@ -50,7 +51,6 @@ const HighlightedText: React.FC<{ text: string | null | undefined; highlight: st
     );
 };
 
-const API_URL = 'http://localhost:5000/empresas';
 const DEBOUNCE_DELAY = 300;
 
 export const EmpresasPage: React.FC = () => {
@@ -112,7 +112,7 @@ export const EmpresasPage: React.FC = () => {
             if (status !== 'TODAS') params.ativa = status;
             if (adm !== 'TODAS') params.isAdmGeral = adm;
 
-            const response = await axios.get<Empresa[]>(API_URL, {
+            const response = await axios.get<Empresa[]>(API_URL+'/empresas', {
                 params,
                 headers: { Authorization: `Bearer ${user?.token}` }
             });
@@ -142,7 +142,7 @@ export const EmpresasPage: React.FC = () => {
     const handleDelete = async (id: string, nome: string) => {
         if (!window.confirm(`Excluir empresa: "${nome}"?`)) return;
         try {
-            await axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${user?.token}` } });
+            await axios.delete(`${API_URL}/empresas/${id}`, { headers: { Authorization: `Bearer ${user?.token}` } });
             fetchEmpresas(debouncedSearchText, filterStatus, filterAdm);
         } catch (err: any) {
             alert(err.response?.data?.message || 'Erro ao excluir.');
@@ -155,7 +155,7 @@ export const EmpresasPage: React.FC = () => {
         if (!window.confirm(`Deseja excluir as ${ids.length} empresas selecionadas?`)) return;
 
         try {
-            await axios.post(`${API_URL}/delete-batch`, { ids }, {
+            await axios.post(`${API_URL}/empresas/delete-batch`, { ids }, {
                 headers: { Authorization: `Bearer ${user?.token}` }
             });
             setSelectionModel({ type: 'include', ids: new Set() });

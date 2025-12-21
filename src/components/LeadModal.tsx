@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Box, Typography, TextField, Button, Stack, Alert } from '@mui/material';
 import { Imovel } from '../types/imovel';
 import axios from 'axios';
+import { API_URL } from '../services/api';
 
 interface LeadModalProps {
     open: boolean;
@@ -15,7 +16,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({ open, onClose, imovel }) =
 
     const handleSubmit = async () => {
         try {
-            await axios.post('http://localhost:5000/leads/publico', {
+            await axios.post(API_URL+`/leads/publico`, {
                 nome,
                 contato,
                 imovel: imovel?._id,

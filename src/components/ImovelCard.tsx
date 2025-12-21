@@ -13,8 +13,9 @@ import {
 } from '@mui/icons-material';
 import { Imovel } from '../types/imovel';
 import HighlightText from './HighlightText';
+import { API_URL } from '../services/api';
 
-const PHOTO_BASE_URL = 'http://localhost:5000/uploads/imoveis';
+const PHOTO_BASE_URL = `${API_URL}/uploads/imoveis`;
 
 interface ImovelCardProps {
     imovel: Imovel;

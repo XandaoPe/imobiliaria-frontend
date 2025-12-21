@@ -10,6 +10,7 @@ import {
 // IMPORTAÇÃO ATUALIZADA: normalizeTelefone deve estar aqui
 import { Cliente, ClienteFormData, clienteValidationSchema, normalizeCPF, normalizeStatus, normalizeTelefone } from '../types/cliente';
 import axios from 'axios';
+import { API_URL } from '../services/api';
 
 interface ClienteFormModalProps {
     open: boolean;
@@ -18,7 +19,6 @@ interface ClienteFormModalProps {
     onSuccess: () => void;
 }
 
-const API_URL = 'http://localhost:5000/clientes';
 
 export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClose, clienteToEdit, onSuccess }) => {
     const isEdit = !!clienteToEdit;
@@ -103,10 +103,10 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
             };
 
             if (isEdit && clienteToEdit) {
-                await axios.put(`${API_URL}/${clienteToEdit._id}`, dadosEnviar);
+                await axios.put(`${API_URL}/clientes/${clienteToEdit._id}`, dadosEnviar);
                 console.log('Cliente atualizado com sucesso:', dadosEnviar);
             } else {
-                await axios.post(API_URL, dadosEnviar);
+                await axios.post(API_URL+'/clientes', dadosEnviar);
                 console.log('Cliente criado com sucesso:', dadosEnviar);
             }
 

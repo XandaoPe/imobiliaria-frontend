@@ -13,8 +13,8 @@ import {
 } from '../types/empresa';
 import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
+import { API_URL } from '../services/api';
 
-const API_URL = 'http://localhost:5000/empresas';
 
 interface EmpresaFormModalProps {
     open: boolean;
@@ -111,9 +111,9 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClos
 
             if (isEditing) {
                 const { cnpj, ...updatePayload } = payloadFinal;
-                await axios.put(`${API_URL}/${empresaToEdit!._id}`, updatePayload, { headers });
+                await axios.put(`${API_URL}/empresas/${empresaToEdit!._id}`, updatePayload, { headers });
             } else {
-                await axios.post(API_URL, payloadFinal, { headers });
+                await axios.post(API_URL+`/empresas`, payloadFinal, { headers });
             }
 
             onSuccess();

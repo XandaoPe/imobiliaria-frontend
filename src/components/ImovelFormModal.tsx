@@ -13,6 +13,7 @@ import { DetalhesStep } from './steps/DetalhesStep';
 import { ImovelPhotosStep } from './steps/ImovelPhotosStep';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../services/api';
 
 interface ImovelFormModalProps {
     open: boolean;
@@ -22,7 +23,6 @@ interface ImovelFormModalProps {
     onSuccess: () => void;
 }
 
-const API_URL = 'http://localhost:5000/imoveis';
 const steps = ['Dados Principais', 'Detalhes', 'Fotos (Opcional)']; // ⭐️ NOVO PASSO
 
 // Usamos um state local para o imóvel, pois ele pode ser criado no meio do processo
@@ -125,10 +125,10 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
 
             if (isEdit && currentImovel) {
                 // FLUXO DE EDIÇÃO: PUT
-                response = await axios.put(`${API_URL}/${currentImovel._id}`, dadosEnviar);
+                response = await axios.put(`${API_URL}/imoveis/${currentImovel._id}`, dadosEnviar);
             } else {
                 // FLUXO DE CRIAÇÃO: POST
-                response = await axios.post(API_URL, dadosEnviar);
+                response = await axios.post(API_URL+`/imoveis`, dadosEnviar);
             }
 
             const imovelResult = response.data as Imovel;

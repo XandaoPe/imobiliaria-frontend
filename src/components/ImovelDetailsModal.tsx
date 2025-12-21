@@ -12,8 +12,9 @@ import {
     NavigateNext as NavigateNextIcon,
     SendOutlined as SendIcon
 } from '@mui/icons-material';
+import { API_URL } from '../services/api';
 
-const PHOTO_BASE_URL = 'http://localhost:5000/uploads/imoveis';
+const PHOTO_BASE_URL = `${API_URL}/uploads/imoveis`;
 
 interface ImovelDetailsModalProps {
     open: boolean;

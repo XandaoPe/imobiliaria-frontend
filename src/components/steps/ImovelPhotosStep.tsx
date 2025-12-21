@@ -7,9 +7,10 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext'; // ⭐️ Verifique o caminho real para o seu AuthContext
+import { API_URL } from '../../services/api';
 
 // URL base do backend (ajuste conforme a sua)
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = API_URL;
 const PHOTO_BASE_URL = `${BASE_URL}/uploads/imoveis`;
 
 interface ImovelPhotosStepProps {

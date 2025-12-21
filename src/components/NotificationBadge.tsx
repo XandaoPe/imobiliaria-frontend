@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../services/api';
 
 // Função de som com frequências diferentes para distinguir
 const playAlertSound = (type: 'NEW' | 'PENDING') => {
@@ -29,7 +30,7 @@ export const NotificationBadge: React.FC = () => {
         if (!user?.token) return;
 
         try {
-            const response = await axios.get('http://localhost:5000/leads', {
+            const response = await axios.get(API_URL+'/leads', {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
 

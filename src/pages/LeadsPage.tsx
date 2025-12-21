@@ -10,6 +10,7 @@ import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import { API_URL } from '../services/api';
 
 // --- Função de Som Suave ---
 const playBeep = () => {
@@ -43,7 +44,7 @@ export const LeadsPage: React.FC = () => {
             if (searchText?.trim()) params.search = searchText;
             if (filterStatus !== 'TODOS') params.status = filterStatus;
 
-            const response = await axios.get('http://localhost:5000/leads', {
+            const response = await axios.get(API_URL + '/leads', {
                 headers: { Authorization: `Bearer ${user?.token}` },
                 params: params
             });
@@ -92,7 +93,7 @@ export const LeadsPage: React.FC = () => {
     }, [fetchLeads]);
 
     const handleUpdateStatus = async (id: string, novoStatus: string) => {
-        await axios.patch(`http://localhost:5000/leads/${id}/status`,
+        await axios.patch(`${API_URL}/leads/${id}/status`,
             { status: novoStatus },
             { headers: { Authorization: `Bearer ${user?.token}` } }
         );

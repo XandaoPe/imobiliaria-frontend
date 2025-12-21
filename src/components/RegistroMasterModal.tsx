@@ -7,8 +7,9 @@ import {
 } from '@mui/material';
 import { useForm, SubmitHandler, Controller } from 'react-hook-form';
 import { EmpresaRegistroMasterFormInputs, RegistroMasterPayload } from '../types/combinedForms';
+import { API_URL } from '../services/api';
 
-const API_REGISTRO_URL = 'http://localhost:5000/auth/register-master'; // Exemplo de rota pública
+const API_REGISTRO_URL =  API_URL+'/auth/register-master'; // Exemplo de rota pública
 
 interface RegistroMasterModalProps {
     open: boolean;

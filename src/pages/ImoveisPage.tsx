@@ -20,6 +20,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 
 import { Imovel, ImovelFormData } from '../types/imovel';
 import { ImovelFormModal } from '../components/ImovelFormModal';
+import { API_URL } from '../services/api';
 
 
 // Componente para Destaque de Texto (HighlightedText)
@@ -53,7 +54,6 @@ const HighlightedText: React.FC<{ text: string | null | undefined; highlight: st
 // Tipos para o filtro de status do Imóvel
 type ImovelStatusFilter = 'TODOS' | 'DISPONIVEL' | 'INDISPONIVEL';
 
-const API_URL = 'http://localhost:5000/imoveis';
 
 const DEBOUNCE_DELAY = 300;
 
@@ -104,7 +104,7 @@ export const ImoveisPage = () => {
                 params.status = status;
             }
 
-            const response = await axios.get(API_URL, {
+            const response = await axios.get(API_URL+'/imoveis', {
                 params: params
             });
 
@@ -180,7 +180,7 @@ export const ImoveisPage = () => {
         }
 
         try {
-            await axios.delete(`${API_URL}/${imovelId}`);
+            await axios.delete(`${API_URL}/imoveis/${imovelId}`);
             fetchImoveis(debouncedSearchText, filterStatus); // Recarrega com os filtros atuais
             alert('Imóvel excluído com sucesso!');
         } catch (err: any) {

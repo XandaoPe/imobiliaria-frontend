@@ -17,9 +17,9 @@ import {
     SelectChangeEvent   // Tipo para o evento de mudança do Select
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import { API_URL } from '../services/api';
 
 // ⚠️ IMPORTANTE: Ajuste a URL base da sua API NestJS
-const API_URL = 'http://localhost:5000/auth/login';
 
 // Interface para o objeto de empresa retornado pelo backend
 interface EmpresaOption {
@@ -64,7 +64,7 @@ export const LoginPage = () => {
 
         try {
             // 1. Faz a requisição POST para o endpoint de login do NestJS
-            const response = await axios.post(API_URL, payload);
+            const response = await axios.post(API_URL+'/auth/login', payload);
 
             if (response.data.requiresSelection) {
                 // ⭐️ ETAPA 1: O backend retornou a lista de empresas e requiresSelection = true

@@ -19,6 +19,7 @@ import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
 
 import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
+import { API_URL } from '../services/api';
 
 const drawerWidth = 240;
 
@@ -68,7 +69,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const fetchNotificationCount = useCallback(async (isPolling = false) => {
         if (!user?.token) return;
         try {
-            const response = await axios.get('http://localhost:5000/leads/count', {
+            const response = await axios.get(`${API_URL}/leads/count`, {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
 
@@ -102,7 +103,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             }
 
             // 2. Buscando o nome da empresa usando o ID extraído
-            const response = await axios.get(`http://localhost:5000/empresas/${empresaId}`, {
+            const response = await axios.get(`${API_URL}/empresas/${empresaId}`, {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
 

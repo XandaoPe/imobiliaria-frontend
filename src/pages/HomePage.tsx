@@ -8,6 +8,7 @@ import ImovelCard from '../components/ImovelCard';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material'; // Importe o ícone de voltar
 import { ImovelDetailsModal } from '../components/ImovelDetailsModal';
 import { LeadModal } from '../components/LeadModal';
+import { API_URL } from '../services/api';
 
 export const HomePage: React.FC = () => {
     const navigate = useNavigate(); // Hook para navegação
@@ -44,7 +45,7 @@ export const HomePage: React.FC = () => {
     const fetchImoveis = useCallback(async () => {
         setSearching(true);
         try {
-            const url = token ? 'http://localhost:5000/imoveis' : 'http://localhost:5000/imoveis/publico';
+            const url = token ? API_URL + '/imoveis' : API_URL + '/imoveis/publico';
             const response = await axios.get(url, {
                 params: { search: searchTerm },
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}

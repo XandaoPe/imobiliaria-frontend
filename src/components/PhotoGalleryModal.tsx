@@ -13,8 +13,9 @@ import { Navigation, Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
+import { API_URL } from '../services/api';
 
-const PHOTO_BASE_URL = 'http://localhost:5000/uploads/imoveis';
+const PHOTO_BASE_URL = `${API_URL}/uploads/imoveis`;
 
 interface PhotoGalleryModalProps {
     open: boolean;
