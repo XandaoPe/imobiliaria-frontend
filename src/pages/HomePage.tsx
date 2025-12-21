@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import {
     Box, Typography, CircularProgress, Alert, ToggleButtonGroup,
-    ToggleButton, Button, Container, useTheme
+    ToggleButton, Button, Container, useTheme, TextField, InputAdornment, IconButton
 } from '@mui/material';
 import {
     Home as HomeIcon,
-    FilterList as FilterIcon
+    FilterList as FilterIcon,
+    Search as SearchIcon,
+    Clear as ClearIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -22,48 +24,57 @@ export const HomePage: React.FC = () => {
     const theme = useTheme();
 
     const token = user?.token || null;
+
+    // Estados
     const [imoveis, setImoveis] = useState<Imovel[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searching, setSearching] = useState(false); // Novo: específico para o debounce da busca
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<FilterStatus>('TODOS');
+    const [searchTerm, setSearchTerm] = useState('');
 
-    // Estado para o Modal de Galeria
+    // Estados para Modais
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
-
-    // Estados para o Lead
     const [leadModalOpen, setLeadModalOpen] = useState(false);
     const [selectedImovelLead, setSelectedImovelLead] = useState<Imovel | null>(null);
 
-    const handleInteresseClick = (imovel: Imovel) => {
-        setSelectedImovelLead(imovel);
-        setLeadModalOpen(true);
-    };
+    // Função de busca no Backend
+    const fetchImoveis = useCallback(async (isInitial = false) => {
+        if (isInitial) setLoading(true);
+        setSearching(true);
 
-    const fetchImoveis = useCallback(async () => {
-        setLoading(true);
-        setError(null);
         try {
             const url = token
                 ? 'http://localhost:5000/imoveis'
                 : 'http://localhost:5000/imoveis/publico';
 
             const response = await axios.get(url, {
+                params: { search: searchTerm },
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
 
             setImoveis(response.data);
+            setError(null);
         } catch (err: any) {
-            setError('Falha ao carregar imóveis.');
+            console.error(err);
+            setError('Falha ao carregar imóveis do servidor.');
         } finally {
             setLoading(false);
+            setSearching(false);
         }
-    }, [token]);
+    }, [token, searchTerm]);
 
+    // Lógica de Debounce: evita requisições excessivas e mantém o foco
     useEffect(() => {
-        fetchImoveis();
-    }, [fetchImoveis]);
+        const delayDebounceFn = setTimeout(() => {
+            fetchImoveis();
+        }, 600); // 600ms após o usuário parar de digitar
 
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm, fetchImoveis]);
+
+    // Filtro local (Status Disponível/Indisponível)
     const filteredImoveis = useMemo(() => {
         return imoveis.filter(imovel => {
             if (filter === 'DISPONIVEIS') return imovel.disponivel === true;
@@ -81,23 +92,6 @@ export const HomePage: React.FC = () => {
         }
     };
 
-    const handleFilterChange = (
-        _event: React.MouseEvent<HTMLElement>,
-        newFilter: FilterStatus | null,
-    ) => {
-        if (newFilter !== null) {
-            setFilter(newFilter);
-        }
-    };
-
-    if (loading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
-
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: '#f8f9fa', pb: 8 }}>
             {/* --- HEADER --- */}
@@ -110,39 +104,60 @@ export const HomePage: React.FC = () => {
                 <Container maxWidth="lg">
                     <Box sx={{
                         display: 'flex',
-                        flexDirection: { xs: 'column', sm: 'row' },
+                        flexDirection: { xs: 'column', md: 'row' },
                         justifyContent: 'space-between',
-                        alignItems: { xs: 'flex-start', sm: 'center' },
-                        gap: 2
+                        alignItems: { xs: 'stretch', md: 'center' },
+                        gap: 3
                     }}>
                         <Box>
                             <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main', letterSpacing: '-0.5px' }}>
                                 Catálogo de Imóveis
                             </Typography>
                             <Typography variant="body1" color="text.secondary">
-                                {user ? `Bem-vindo de volta, ${user.nome}!` : 'Explore nossas oportunidades exclusivas.'}
+                                {user ? `Bem-vindo, ${user.nome}!` : 'Encontre o imóvel dos seus sonhos.'}
                             </Typography>
                         </Box>
 
-                        {/* RENDERIZAÇÃO CONDICIONAL: Só aparece se NÃO houver usuário logado */}
+                        {/* BUSCA (Query no Back) */}
+                        <TextField
+                            placeholder="Cidade, título ou valor..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            variant="outlined"
+                            size="medium"
+                            sx={{
+                                width: { xs: '100%', md: '450px' },
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '50px',
+                                    bgcolor: '#f1f3f4',
+                                    '& fieldset': { border: 'none' },
+                                    '&.Mui-focused': { bgcolor: 'white', boxShadow: '0 0 0 2px ' + theme.palette.primary.main }
+                                }
+                            }}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        {searching ? <CircularProgress size={20} /> : <SearchIcon color="primary" />}
+                                    </InputAdornment>
+                                ),
+                                endAdornment: searchTerm && (
+                                    <InputAdornment position="end">
+                                        <IconButton onClick={() => setSearchTerm('')} edge="end">
+                                            <ClearIcon />
+                                        </IconButton>
+                                    </InputAdornment>
+                                )
+                            }}
+                        />
+
                         {!user && (
                             <Button
                                 variant="contained"
                                 startIcon={<HomeIcon />}
                                 onClick={() => navigate('/')}
-                                sx={{
-                                    borderRadius: '50px',
-                                    textTransform: 'none',
-                                    fontWeight: 600,
-                                    px: 4,
-                                    py: 1,
-                                    boxShadow: '0 4px 14px 0 rgba(0,118,255,0.39)',
-                                    '&:hover': {
-                                        boxShadow: '0 6px 20px rgba(0,118,255,0.23)',
-                                    }
-                                }}
+                                sx={{ borderRadius: '50px', px: 4, fontWeight: 600 }}
                             >
-                                Voltar para o Início
+                                Início
                             </Button>
                         )}
                     </Box>
@@ -150,27 +165,16 @@ export const HomePage: React.FC = () => {
             </Box>
 
             <Container maxWidth="lg">
-                {/* --- SEÇÃO DE FILTROS (Apenas para Logados) --- */}
+                {/* --- FILTROS DE STATUS (Apenas Logado) --- */}
                 {user && (
                     <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
                         <FilterIcon color="action" />
                         <ToggleButtonGroup
                             value={filter}
                             exclusive
-                            onChange={handleFilterChange}
+                            onChange={(_e, v) => v && setFilter(v)}
                             size="small"
-                            sx={{
-                                bgcolor: 'white',
-                                borderRadius: '12px',
-                                overflow: 'hidden',
-                                '& .MuiToggleButton-root': {
-                                    px: 3,
-                                    border: '1px solid #e0e0e0',
-                                    '&.Mui-selected': {
-                                        fontWeight: 'bold'
-                                    }
-                                }
-                            }}
+                            sx={{ bgcolor: 'white', borderRadius: '12px' }}
                         >
                             <ToggleButton value="TODOS">Todos ({imoveis.length})</ToggleButton>
                             <ToggleButton value="DISPONIVEIS" color="success">Disponíveis</ToggleButton>
@@ -182,10 +186,15 @@ export const HomePage: React.FC = () => {
                 {error && <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }}>{error}</Alert>}
 
                 {/* --- LISTAGEM --- */}
-                {filteredImoveis.length === 0 ? (
+                {loading ? (
+                    <Box sx={{ textAlign: 'center', py: 10 }}>
+                        <CircularProgress />
+                        <Typography sx={{ mt: 2 }} color="text.secondary">Carregando catálogo...</Typography>
+                    </Box>
+                ) : filteredImoveis.length === 0 ? (
                     <Box sx={{ textAlign: 'center', py: 10 }}>
                         <Typography variant="h6" color="text.secondary">
-                            Nenhum imóvel encontrado para os critérios selecionados.
+                            Nenhum imóvel encontrado para "{searchTerm}".
                         </Typography>
                     </Box>
                 ) : (
@@ -207,7 +216,10 @@ export const HomePage: React.FC = () => {
                                 <ImovelCard
                                     imovel={imovel}
                                     onClick={handleCardClick}
-                                    onInteresse={!user ? () => handleInteresseClick(imovel) : undefined}
+                                    onInteresse={!user ? () => {
+                                        setSelectedImovelLead(imovel);
+                                        setLeadModalOpen(true);
+                                    } : undefined}
                                 />
                             </Box>
                         ))}
@@ -231,5 +243,4 @@ export const HomePage: React.FC = () => {
     );
 };
 
-// Definição de tipos local para evitar erros de compilação
 type FilterStatus = 'TODOS' | 'DISPONIVEIS' | 'INDISPONIVEIS';
