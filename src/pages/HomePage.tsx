@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { Box, Typography, CircularProgress, Alert, ToggleButtonGroup, ToggleButton, Button, Container, useTheme, TextField, InputAdornment, IconButton } from '@mui/material';
+import { Box, Typography, CircularProgress, Alert, ToggleButtonGroup, ToggleButton, Button, Container, useTheme, TextField, InputAdornment, IconButton, Tooltip } from '@mui/material';
 import { Home as HomeIcon, FilterList as FilterIcon, Search as SearchIcon, Clear as ClearIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -57,15 +57,17 @@ export const HomePage: React.FC = () => {
             <Box sx={{ bgcolor: 'background.paper', pt: 4, pb: 3, mb: 4, borderBottom: '1px solid #eee' }}>
                 <Container maxWidth="lg">
                     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: 'center', gap: 3 }}>
-                        <IconButton
-                            onClick={() => navigate('/')} // Ajuste para a rota da sua Landing Page
-                            sx={{
-                                bgcolor: '#f1f3f4',
-                                '&:hover': { bgcolor: '#e8eaed' }
-                            }}
-                        >
-                            <ArrowBackIcon />
-                        </IconButton>
+                        <Tooltip title="Voltar para a página inicial" arrow>
+                            <IconButton
+                                onClick={() => navigate('/')}
+                                sx={{
+                                    bgcolor: '#f1f3f4',
+                                    '&:hover': { bgcolor: '#e8eaed' }
+                                }}
+                            >
+                                <ArrowBackIcon />
+                            </IconButton>
+                        </Tooltip>
                         <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main' }}>Catálogo</Typography>
 
                         <TextField

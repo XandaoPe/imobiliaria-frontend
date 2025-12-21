@@ -85,7 +85,35 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         }
     }, [user?.token]);
 
+    const fetchEmpresaData = useCallback(async () => {
+        if (!user?.token) return;
+
+        try {
+            // 1. Extraindo o empresaId manualmente do Token (Payload é a parte do meio)
+            const base64Url = user.token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const payload = JSON.parse(window.atob(base64));
+
+            const empresaId = payload.empresaId; // Aqui está o seu ID do log: 6940...
+
+            if (!empresaId) {
+                console.warn("EmpresaId não encontrado no token.");
+                return;
+            }
+
+            // 2. Buscando o nome da empresa usando o ID extraído
+            const response = await axios.get(`http://localhost:5000/empresas/${empresaId}`, {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
+
+            setNomeEmpresa(response.data.nome);
+        } catch (error) {
+            console.error("Erro ao extrair/buscar dados da empresa:", error);
+        }
+    }, [user?.token]);
+
     useEffect(() => {
+        fetchEmpresaData();
         fetchNotificationCount(false);
 
         const interval = setInterval(() => {
