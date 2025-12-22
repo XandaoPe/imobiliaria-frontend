@@ -17,14 +17,15 @@ export const api = axios.create({
 // });
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
-    // Verifique se config e config.headers existem antes de atribuir
-    if (token && config.headers) {
+
+    // Só adiciona o header se o token REALMENTE existir
+    if (token) {
+        config.headers = config.headers || {};
         config.headers.Authorization = `Bearer ${token}`;
     }
+
     return config;
 }, (error) => {
-    // Adicione um log de erro para ver no inspetor se conseguir conectar o cabo
-    console.error("Erro no interceptor:", error);
     return Promise.reject(error);
 });
 
