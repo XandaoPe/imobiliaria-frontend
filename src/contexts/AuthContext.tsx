@@ -75,6 +75,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     useEffect(() => {
+        console.log('🔍 AuthContext - Debug Info:');
+        console.log('📍 URL atual:', window.location.href);
+        console.log('🔑 Token no localStorage:', localStorage.getItem('token') ? 'Existe' : 'Não existe');
+        console.log('👤 User no localStorage:', localStorage.getItem('usuarioLogado'));
+
+        const storedToken = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('usuarioLogado');
+
+        if (storedToken && storedUser) {
+            console.log('📝 Token encontrado, tentando decodificar...');
+            try {
+                const parsedUser = JSON.parse(storedUser);
+                console.log('👤 Usuário parseado:', parsedUser.nome);
+
+                if (parsedUser.token !== storedToken) {
+                    console.warn('⚠️ Token não coincide! Limpando...');
+                    logout();
+                    return;
+                }
+
+                setUser(parsedUser);
+            } catch (e) {
+                console.error('❌ Erro ao parsear usuário:', e);
+                logout();
+            }
+        } else {
+            console.log('📭 Sem token ou usuário armazenado');
+        }
+    }, []);
+
+    useEffect(() => {
         const interceptor = api.interceptors.response.use( // MUDOU AQUI (de axios para api)
             (response) => response,
             (error) => {
@@ -115,9 +146,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Função chamada após a autenticação bem-sucedida (da LoginPage)
     const login = (jwtToken: string) => {
+        console.log('✅ Login chamado com token:', jwtToken.substring(0, 20) + '...');
+
         // Apenas salva o token, o useEffect fará a decodificação e o setUser
         localStorage.setItem('token', jwtToken);
         setToken(jwtToken);
+
+        const payloadDecoded = decodeToken(jwtToken);
+        if (payloadDecoded) {
+            console.log('👤 Payload decodificado:', payloadDecoded);
+        }
     };
 
     const logout = () => {
