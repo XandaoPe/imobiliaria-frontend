@@ -42,11 +42,15 @@ const ImovelPhotosStep: React.FC<ImovelPhotosStepProps> = ({ imovelId, currentPh
         },
     });
 
-    const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const files = event.target.files;
-        if (!files || files.length === 0 || !imovelId) return;
+        const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+            const files = event.target.files;
+            // ⭐️ VERIFICAÇÃO EXTRA: Se não houver imovelId, nem tenta
+            if (!files || files.length === 0 || !imovelId || imovelId === "undefined") {
+                setError("ID do imóvel inválido para upload.");
+                return;
+            }
 
-        const filesArray = Array.from(files);
+            const filesArray = Array.from(files);
 
         // 1. Cria as pré-visualizações (URL de Blob)
         const previews: UploadPreview[] = filesArray.map(file => ({
@@ -70,14 +74,16 @@ const ImovelPhotosStep: React.FC<ImovelPhotosStepProps> = ({ imovelId, currentPh
                 const singleFormData = new FormData();
                 singleFormData.append('file', file);
 
-                setUploadPreviews(prev => prev.map((p, idx) =>
-                    idx === i ? { ...p, isUploading: true } : p
-                ));
-
-                await api.post(
-                    `/imoveis/${imovelId}/upload-foto`,
+                // ⭐️ IMPORTANTE: Use a instância global da sua API ou passe o token explicitamente
+                // para evitar que o axios.create() use um token vazio
+                await axios.post(
+                    `${API_URL}/imoveis/${imovelId}/upload-foto`,
                     singleFormData,
                     {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'multipart/form-data'
+                        },
                         onUploadProgress: (progressEvent) => {
                             const percentCompleted = Math.round(
                                 (progressEvent.loaded * 100) / progressEvent.total!
@@ -96,8 +102,8 @@ const ImovelPhotosStep: React.FC<ImovelPhotosStepProps> = ({ imovelId, currentPh
             onPhotosUpdate(updatedImovelPhotos);
 
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Erro ao fazer upload da(s) foto(s).';
-            setError(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
+            console.error("Erro detalhado no upload:", err.response?.data); // Isso vai te mostrar o erro real no F12 do navegador
+            setError(err.response?.data?.message || 'Erro ao fazer upload.');
 
         } finally {
             // 3. Limpa e revoga as URLs temporárias
