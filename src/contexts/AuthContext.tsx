@@ -53,19 +53,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Mantemos o token em um estado interno para facilitar o useEffect
     const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
 
-    // ⭐️ CORREÇÃO 1: Tipagem do user no useState.
     const [user, setUser] = useState<UsuarioLogado | null>(() => {
+        const storedToken = localStorage.getItem('token');
         const storedUser = localStorage.getItem('usuarioLogado');
-        if (storedUser) {
-            try {
-                // Ao recuperar do localStorage, o objeto deve ser do tipo UsuarioLogado
-                return JSON.parse(storedUser) as UsuarioLogado;
-            } catch (e) {
-                console.error("Erro ao parsear usuário do localStorage", e);
-                return null;
-            }
+
+        // Se tem um usuário mas NÃO tem token, os dados estão sujos. Limpa tudo.
+        if (!storedToken || !storedUser) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('usuarioLogado');
+            return null;
         }
-        return null;
+
+        try {
+            const parsedUser = JSON.parse(storedUser) as UsuarioLogado;
+            // Verifica se o token no usuário é o mesmo do localStorage
+            if (parsedUser.token !== storedToken) return null;
+            return parsedUser;
+        } catch (e) {
+            return null;
+        }
     });
 
     useEffect(() => {
@@ -101,8 +107,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setUser(usuarioLogado);
                 localStorage.setItem('usuarioLogado', JSON.stringify(usuarioLogado));
 
-                // REMOVA as linhas de axios.defaults.headers daqui! 
-                // O interceptor do api.ts já cuidará disso.
             } else {
                 logout();
             }

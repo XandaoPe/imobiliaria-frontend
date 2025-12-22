@@ -3,22 +3,24 @@ import axios from 'axios';
 export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 export const api = axios.create({
-    baseURL: API_URL
+    baseURL: API_URL,
+    headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+    }
 });
 
-// Este interceptor garante que TODA vez que o Dashboard chamar a API,
-// ele pegará o token mais atualizado do localStorage
-// api.interceptors.request.use((config) => {
-//     const token = localStorage.getItem('token');
-//     if (token) {
-//         config.headers.Authorization = `Bearer ${token}`;
-//     }
-//     return config;
-// });
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
 
-    // Só adiciona o header se o token REALMENTE existir
+    if (config.method === 'get') {
+        config.params = {
+            ...config.params,
+            _t: Date.now(),
+        };
+    }
+
     if (token) {
         config.headers = config.headers || {};
         config.headers.Authorization = `Bearer ${token}`;
@@ -26,7 +28,12 @@ api.interceptors.request.use((config) => {
 
     return config;
 }, (error) => {
-    return Promise.reject(error);
+        if (error.response?.status === 401) {
+            localStorage.clear(); // Limpa o lixo do cache
+            window.location.href = '/login'; // Força o refresh
+        }
+        return Promise.reject(error);
+
 });
 
 
