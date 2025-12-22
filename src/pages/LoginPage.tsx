@@ -119,9 +119,7 @@ export const LoginPage = () => {
                 backgroundColor: 'background.default'
             }}
         >
-            <div style={{ color: 'red', padding: '10px', fontSize: '10px' }}>
-                Tentando conectar em: {process.env.REACT_APP_API_URL || "LOCALHOST (ERRO)"}
-            </div>
+
             <Paper
                 elevation={6}
                 sx={{
@@ -137,7 +135,14 @@ export const LoginPage = () => {
                     {etapa === 'credenciais' ? 'Acesso ao Sistema' : 'Selecione a Empresa'}
                 </Typography>
 
-                <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3, width: '100%' }}>
+                <Box component="form"
+                    onSubmit={handleSubmit}
+                    sx={{
+                        mt: 3,
+                        width: '100%',
+                    }}
+                    autoComplete="off"
+                >
 
                     {/* ⭐️ Renderiza Campos de Credenciais SOMENTE na Etapa 1 */}
                     {etapa === 'credenciais' && (
@@ -147,20 +152,29 @@ export const LoginPage = () => {
                                 required
                                 fullWidth
                                 label="E-mail"
-                                autoComplete="email"
+                                autoComplete="new-password"
                                 autoFocus
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                inputProps={{
+                                    autoComplete: 'new-password', // Reforço para navegadores mobile
+                                    form: {
+                                        autoComplete: 'off',
+                                    },
+                                }}
                             />
                             <TextField
                                 margin="normal"
                                 required
                                 fullWidth
                                 label="Senha"
-                                type="password"
-                                autoComplete="current-password"
+                                type="password"                                
+                                autoComplete="new-password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                inputProps={{
+                                    autoComplete: 'new-password',
+                                }}
                             />
                         </>
                     )}
