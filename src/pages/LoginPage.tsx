@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import axios from 'axios';
 import { useNavigate, Navigate } from 'react-router-dom';
 import {
     Box,
@@ -17,7 +16,7 @@ import {
     SelectChangeEvent   // Tipo para o evento de mudança do Select
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import { API_URL } from '../services/api';
+import api, { API_URL } from '../services/api';
 
 // ⚠️ IMPORTANTE: Ajuste a URL base da sua API NestJS
 
@@ -63,8 +62,7 @@ export const LoginPage = () => {
         };
 
         try {
-            // 1. Faz a requisição POST para o endpoint de login do NestJS
-            const response = await axios.post(API_URL+'/auth/login', payload);
+            const response = await api.post('/auth/login', payload);
 
             if (response.data.requiresSelection) {
                 // ⭐️ ETAPA 1: O backend retornou a lista de empresas e requiresSelection = true

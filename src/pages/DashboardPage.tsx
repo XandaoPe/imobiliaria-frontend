@@ -12,6 +12,7 @@ import {
 import api from '../services/api'; // Use sua instância configurada do axios
 import { Imovel } from '../types/imovel';
 import { Usuario } from '../types/usuario';
+import { useAuth } from '../contexts/AuthContext';
 
 // ⭐️ 1. DEFINIÇÃO DA INTERFACE (Localmente na página)
 // Ela define o "formato" do objeto que vai guardar os cálculos do dashboard
@@ -30,7 +31,7 @@ interface DashboardMetrics {
 }
 
 export const DashboardPage: React.FC = () => {
-    // ⭐️ 2. ESTADO TIPADO COM A INTERFACE
+    const { user, isAuthenticated } = useAuth();
     const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -38,6 +39,10 @@ export const DashboardPage: React.FC = () => {
     const fetchAllData = useCallback(async () => {
         setLoading(true);
         setError(null);
+        const token = localStorage.getItem('token');
+        if (!token) return; // Não dispara se o token sumiu
+
+        setLoading(true);
         try {
             const [resImoveis, resUsuarios, resClientes, resLeadsStats] = await Promise.all([
                 api.get('/imoveis'),
@@ -79,6 +84,13 @@ export const DashboardPage: React.FC = () => {
             setLoading(false);
         }
     }, []);
+
+    useEffect(() => {
+        // ⭐️ SÓ dispara a busca se o contexto confirmar que o usuário e o token estão prontos
+        if (isAuthenticated && user) {
+            fetchAllData();
+        }
+    }, [fetchAllData, isAuthenticated, user]);
 
     useEffect(() => { fetchAllData(); }, [fetchAllData]);
 

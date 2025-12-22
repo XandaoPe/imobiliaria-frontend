@@ -5,13 +5,8 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext'; // ⭐️ Verifique o caminho real para o seu AuthContext
-import { API_URL } from '../../services/api';
-
-// URL base do backend (ajuste conforme a sua)
-const BASE_URL = API_URL;
-// const PHOTO_BASE_URL = `${BASE_URL}/uploads/imoveis`;
+import api, { API_URL } from '../../services/api';
 
 interface ImovelPhotosStepProps {
     imovelId?: string;
@@ -19,7 +14,6 @@ interface ImovelPhotosStepProps {
     onPhotosUpdate: (newPhotos: string[]) => void;
 }
 
-// Tipo para pré-visualização de upload
 interface UploadPreview {
     url: string; // URL criada com URL.createObjectURL
     name: string; // Nome original do arquivo
@@ -35,85 +29,59 @@ const ImovelPhotosStep: React.FC<ImovelPhotosStepProps> = ({ imovelId, currentPh
     const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
     const [uploadPreviews, setUploadPreviews] = useState<UploadPreview[]>([]);
 
-    const api = axios.create({
-        baseURL: BASE_URL,
-        headers: {
-            'Authorization': token ? `Bearer ${token}` : '',
-        },
-    });
 
-        const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-            const files = event.target.files;
-            // ⭐️ VERIFICAÇÃO EXTRA: Se não houver imovelId, nem tenta
-            if (!files || files.length === 0 || !imovelId || imovelId === "undefined") {
-                setError("ID do imóvel inválido para upload.");
-                return;
-            }
+    const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = event.target.files;
+        if (!files || files.length === 0 || !imovelId || imovelId === "undefined") {
+            setError("ID do imóvel inválido para upload.");
+            return;
+        }
 
-            const filesArray = Array.from(files);
-
-        // 1. Cria as pré-visualizações (URL de Blob)
+        const filesArray = Array.from(files);
         const previews: UploadPreview[] = filesArray.map(file => ({
             url: URL.createObjectURL(file),
             name: file.name,
             isUploading: true,
         }));
 
-        // Define os estados
-        setFilesToUpload(filesArray);
         setUploadPreviews(previews);
         setUploading(true);
         setError(null);
-        setProgress(0);
-
-        const successfulUploadUrls: string[] = [];
 
         try {
             for (let i = 0; i < filesArray.length; i++) {
                 const file = filesArray[i];
-                const singleFormData = new FormData();
-                singleFormData.append('file', file);
+                const formData = new FormData();
+                formData.append('file', file);
 
-                // ⭐️ IMPORTANTE: Use a instância global da sua API ou passe o token explicitamente
-                // para evitar que o axios.create() use um token vazio
-                await axios.post(
-                    `${API_URL}/imoveis/${imovelId}/upload-foto`,
-                    singleFormData,
+                // ⭐️ USANDO A INSTÂNCIA GLOBAL 'api'
+                await api.post(
+                    `/imoveis/${imovelId}/upload-foto`,
+                    formData,
                     {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'multipart/form-data'
-                        },
+                        headers: { 'Content-Type': 'multipart/form-data' },
                         onUploadProgress: (progressEvent) => {
                             const percentCompleted = Math.round(
-                                (progressEvent.loaded * 100) / progressEvent.total!
+                                (progressEvent.loaded * 100) / (progressEvent.total || 100)
                             );
                             setProgress(Math.round(((i) + (percentCompleted / 100)) * (100 / filesArray.length)));
                         },
                     }
                 );
-
-                successfulUploadUrls.push(previews[i].url);
             }
 
-            // 2. Atualiza a lista de fotos do imóvel
+            // ⭐️ RECARREGAR DADOS APÓS UPLOAD
             const response = await api.get(`/imoveis/${imovelId}`);
-            const updatedImovelPhotos = response.data.fotos || [];
-            onPhotosUpdate(updatedImovelPhotos);
+            onPhotosUpdate(response.data.fotos || []);
 
         } catch (err: any) {
-            console.error("Erro detalhado no upload:", err.response?.data); // Isso vai te mostrar o erro real no F12 do navegador
             setError(err.response?.data?.message || 'Erro ao fazer upload.');
-
         } finally {
-            // 3. Limpa e revoga as URLs temporárias
             setUploading(false);
             setProgress(0);
-            event.target.value = '';
-            setFilesToUpload([]);
             setUploadPreviews([]);
-
-            successfulUploadUrls.forEach(url => URL.revokeObjectURL(url));
+            // Revogar URLs para liberar memória
+            previews.forEach(p => URL.revokeObjectURL(p.url));
         }
     };
 

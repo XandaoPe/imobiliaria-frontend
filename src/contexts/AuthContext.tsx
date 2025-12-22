@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
 import { UsuarioLogado, PerfisEnum } from '../types/usuario';
+import api from '../services/api';
 
 // 1. Interface para o Payload do JWT (Como ele vem decodificado)
 // Note que as chaves são as do JWT (sub, empresaId)
@@ -68,57 +69,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     useEffect(() => {
-        // Configura o interceptor do Axios
-        const interceptor = axios.interceptors.response.use(
-            (response) => response, // Se a resposta for OK, não faz nada
+        const interceptor = api.interceptors.response.use( // MUDOU AQUI (de axios para api)
+            (response) => response,
             (error) => {
-                // Verifica se o erro é 401 (Unauthorized)
                 if (error.response && error.response.status === 401) {
-                    console.warn("Token inválido ou expirado. Deslogando...");
-                    logout();
+                    console.warn("Sessão expirada. Redirecionando...");
+                    logout(); // Isso limpa o estado e te joga para a vitrine
                 }
                 return Promise.reject(error);
             }
         );
 
-        // Limpa o interceptor quando o componente for desmontado
-        return () => {
-            axios.interceptors.response.eject(interceptor);
-        };
+        return () => api.interceptors.response.eject(interceptor);
     }, []);
 
     useEffect(() => {
         if (token) {
             const payloadDecoded = decodeToken(token);
-
             if (payloadDecoded && payloadDecoded.sub) {
-
                 const usuarioLogado: UsuarioLogado = {
-                    id: payloadDecoded.sub, // Mapeia 'sub' para '_id'
+                    id: payloadDecoded.sub,
                     nome: payloadDecoded.nome,
                     email: payloadDecoded.email,
                     perfil: payloadDecoded.perfil,
-
-                    // Propriedades que não vêm do JWT, mas são obrigatórias em Usuario/UsuarioLogado:
-                    ativo: true, // Assumimos que está ativo se logou
-                    createdAt: new Date().toISOString(), // Usar um valor default/placeholder, idealmente, você teria essa info no payload
-                    updatedAt: new Date().toISOString(), // Usar um valor default/placeholder
-
-                    // Propriedade token para satisfazer UsuarioLogado
+                    ativo: true,
                     token: token,
+                    empresa: payloadDecoded.empresaId,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
                 };
-
                 setUser(usuarioLogado);
                 localStorage.setItem('usuarioLogado', JSON.stringify(usuarioLogado));
 
-                // Configura o cabeçalho padrão do Axios
-                axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+                // REMOVA as linhas de axios.defaults.headers daqui! 
+                // O interceptor do api.ts já cuidará disso.
             } else {
                 logout();
             }
-        } else {
-            // Limpa o cabeçalho se não houver token
-            delete axios.defaults.headers.common['Authorization'];
         }
     }, [token]);
 

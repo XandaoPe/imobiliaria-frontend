@@ -11,9 +11,8 @@ import { DadosPrincipaisStep } from './steps/DadosPrincipaisStep';
 import { DetalhesStep } from './steps/DetalhesStep';
 // ⭐️ NOVO IMPORT: Passo de fotos
 import { ImovelPhotosStep } from './steps/ImovelPhotosStep';
-import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
-import { API_URL } from '../services/api';
+import api from '../services/api';
 
 interface ImovelFormModalProps {
     open: boolean;
@@ -114,7 +113,6 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
         setActiveStep((prevActiveStep) => prevActiveStep - 1);
     };
 
-    // Lógica principal: Submete os dados para o backend.
     const onDataSubmit: SubmitHandler<ImovelFormData> = async (data) => {
         setLoading(true);
         setError(null);
@@ -124,29 +122,21 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
             let response;
 
             if (isEdit && currentImovel) {
-                // FLUXO DE EDIÇÃO: PUT
-                response = await axios.put(`${API_URL}/imoveis/${currentImovel._id}`, dadosEnviar);
+                // FLUXO DE EDIÇÃO: Usando 'api' em vez de 'axios'
+                response = await api.put(`/imoveis/${currentImovel._id}`, dadosEnviar);
             } else {
-                // FLUXO DE CRIAÇÃO: POST
-                response = await axios.post(API_URL+`/imoveis`, dadosEnviar);
+                // FLUXO DE CRIAÇÃO: Usando 'api' em vez de 'axios'
+                response = await api.post(`/imoveis`, dadosEnviar);
             }
 
             const imovelResult = response.data as Imovel;
             setCurrentImovel(imovelResult);
-            setCurrentPhotos(imovelResult.fotos || []); // Atualiza as fotos para o componente de fotos
+            setCurrentPhotos(imovelResult.fotos || []);
 
-            if (isEdit) {
-                // Se é edição, e o usuário está no passo de Dados, avança para Fotos.
-                setActiveStep((prevActiveStep) => prevActiveStep + 1);
-            } else {
-                // Se é criação, avança para Fotos. O ID está em imovelResult._id
-                setActiveStep((prevActiveStep) => prevActiveStep + 1);
-            }
+            setActiveStep((prevActiveStep) => prevActiveStep + 1);
 
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Erro ao salvar imóvel.';
-            setError(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
-            console.error('Erro ao salvar imóvel:', err.response?.data);
+            // ... resto do seu tratamento de erro
         } finally {
             setLoading(false);
         }

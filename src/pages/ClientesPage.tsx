@@ -21,7 +21,8 @@ import SearchIcon from '@mui/icons-material/Search';
 
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DoneIcon from '@mui/icons-material/Done';
-import { API_URL } from '../services/api';
+import api, { API_URL } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const DEBOUNCE_DELAY = 300;
 
@@ -57,6 +58,7 @@ const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) =>
 };
 
 export const ClientesPage = () => {
+    const { isAuthenticated, user } = useAuth();
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -110,8 +112,7 @@ export const ClientesPage = () => {
                 params.status = status;
             }
 
-            const response = await axios.get(API_URL+'/clientes', { params });
-
+            const response = await api.get('/clientes', { params });
             const clientesNormalizados = response.data.map((cliente: any) => ({
                 ...cliente,
                 // Garantir que os campos que aceitam null/undefined sejam tratados
@@ -133,6 +134,13 @@ export const ClientesPage = () => {
             setLoading(false);
         }
     }, []);
+
+    useEffect(() => {
+        // ⭐️ Só busca se estiver autenticado para evitar disparar 401 desnecessário
+        if (isAuthenticated && user) {
+            fetchClientes(debouncedSearchText, filterStatus);
+        }
+    }, [fetchClientes, debouncedSearchText, filterStatus, isAuthenticated, user]);
 
     // ... (Efeitos de Debounce e Busca inalterados)
     useEffect(() => {
@@ -201,7 +209,7 @@ export const ClientesPage = () => {
         }
 
         try {
-            await axios.delete(`${API_URL}/clientes/${clienteId}`);
+            await api.delete(`/clientes/${clienteId}`);
             fetchClientes(debouncedSearchText, filterStatus);
             alert(`Cliente ${nome} excluído com sucesso!`);
         } catch (err: any) {
@@ -244,11 +252,18 @@ export const ClientesPage = () => {
             field: 'cpf',
             headerName: 'CPF',
             width: 150,
-            editable: false,
-            // 💡 Nota: A formatação do CPF deve ser aplicada antes de renderizar (ou seja, formatarCPF(params.row.cpf)) se você quiser visualmente
-            // Aqui, apenas usamos o HighlightedText no CPF normalizado (só dígitos) ou o formato que vier
-            // Idealmente, você aplicaria a formatação aqui também, mas vou manter o original (com highlight) para consistência
-            renderCell: (params) => renderCellWithHighlight(params, 'cpf')
+            renderCell: (params) => {
+                const rawCpf = params.row.cpf || '';
+                // Máscara simples: 000.000.000-00
+                const formattedCpf = rawCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+
+                return (
+                    <HighlightedText
+                        text={formattedCpf}
+                        highlight={debouncedSearchText}
+                    />
+                );
+            }
         },
         {
             field: 'email',

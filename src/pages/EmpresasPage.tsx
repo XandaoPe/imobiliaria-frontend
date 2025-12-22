@@ -30,7 +30,7 @@ import { Empresa, EmpresaStatusFilter, EmpresaAdmFilter } from '../types/empresa
 import { EmpresaFormModal } from '../components/EmpresaFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
-import { API_URL } from '../services/api';
+import api, { API_URL } from '../services/api';
 
 // --- Componente HighlightedText ---
 const HighlightedText: React.FC<{ text: string | null | undefined; highlight: string }> = ({ text, highlight }) => {
@@ -77,6 +77,7 @@ export const EmpresasPage: React.FC = () => {
 
     const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>({
         _id: false,
+        isAdmGeral: false,
         createdAt: false,
         updatedAt: false,
     });
@@ -112,10 +113,7 @@ export const EmpresasPage: React.FC = () => {
             if (status !== 'TODAS') params.ativa = status;
             if (adm !== 'TODAS') params.isAdmGeral = adm;
 
-            const response = await axios.get<Empresa[]>(API_URL+'/empresas', {
-                params,
-                headers: { Authorization: `Bearer ${user?.token}` }
-            });
+            const response = await api.get<Empresa[]>('/empresas', { params });
 
             setEmpresas(response.data);
             setError(null);
@@ -142,7 +140,7 @@ export const EmpresasPage: React.FC = () => {
     const handleDelete = async (id: string, nome: string) => {
         if (!window.confirm(`Excluir empresa: "${nome}"?`)) return;
         try {
-            await axios.delete(`${API_URL}/empresas/${id}`, { headers: { Authorization: `Bearer ${user?.token}` } });
+            await api.delete(`/empresas/${id}`);
             fetchEmpresas(debouncedSearchText, filterStatus, filterAdm);
         } catch (err: any) {
             alert(err.response?.data?.message || 'Erro ao excluir.');
@@ -174,6 +172,7 @@ export const EmpresasPage: React.FC = () => {
             field: 'nome',
             headerName: 'Nome da Empresa',
             flex: 1,
+            width: 250,
             renderCell: (params: GridRenderCellParams<Empresa>) => (
                 <Typography
                     variant="body2"

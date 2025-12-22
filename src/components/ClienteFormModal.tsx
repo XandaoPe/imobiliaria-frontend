@@ -9,8 +9,7 @@ import {
 } from '@mui/material';
 // IMPORTAÇÃO ATUALIZADA: normalizeTelefone deve estar aqui
 import { Cliente, ClienteFormData, clienteValidationSchema, normalizeCPF, normalizeStatus, normalizeTelefone } from '../types/cliente';
-import axios from 'axios';
-import { API_URL } from '../services/api';
+import api from '../services/api';
 
 interface ClienteFormModalProps {
     open: boolean;
@@ -93,21 +92,20 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
         setError(null);
 
         try {
-            // ⭐️ Normaliza o telefone antes de enviar, caso o usuário tenha digitado sem a máscara
             const dadosEnviar = {
                 ...data,
                 cpf: normalizeCPF(data.cpf),
                 status: normalizeStatus(data.status),
-                telefone: normalizeTelefone(data.telefone), // Envia apenas dígitos ou null
+                telefone: normalizeTelefone(data.telefone),
                 observacoes: data.observacoes || null,
             };
 
             if (isEdit && clienteToEdit) {
-                await axios.put(`${API_URL}/clientes/${clienteToEdit._id}`, dadosEnviar);
-                console.log('Cliente atualizado com sucesso:', dadosEnviar);
+                // USANDO A INSTÂNCIA 'api' (Já envia o Token automaticamente)
+                await api.put(`/clientes/${clienteToEdit._id}`, dadosEnviar);
             } else {
-                await axios.post(API_URL+'/clientes', dadosEnviar);
-                console.log('Cliente criado com sucesso:', dadosEnviar);
+                // USANDO A INSTÂNCIA 'api'
+                await api.post('/clientes', dadosEnviar);
             }
 
             onSuccess();
@@ -116,7 +114,6 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || 'Erro ao salvar cliente.';
             setError(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
-            console.error('Erro ao salvar cliente:', err.response?.data);
         } finally {
             setLoading(false);
         }

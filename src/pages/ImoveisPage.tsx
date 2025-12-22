@@ -20,7 +20,8 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 
 import { Imovel, ImovelFormData } from '../types/imovel';
 import { ImovelFormModal } from '../components/ImovelFormModal';
-import { API_URL } from '../services/api';
+import api, { API_URL } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 
 // Componente para Destaque de Texto (HighlightedText)
@@ -58,6 +59,7 @@ type ImovelStatusFilter = 'TODOS' | 'DISPONIVEL' | 'INDISPONIVEL';
 const DEBOUNCE_DELAY = 300;
 
 export const ImoveisPage = () => {
+    const { isAuthenticated, user } = useAuth();
     const [imoveis, setImoveis] = useState<Imovel[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -104,9 +106,7 @@ export const ImoveisPage = () => {
                 params.status = status;
             }
 
-            const response = await axios.get(API_URL+'/imoveis', {
-                params: params
-            });
+            const response = await api.get('/imoveis', { params });
 
             setImoveis(response.data as Imovel[]);
             setError(null);
@@ -121,6 +121,13 @@ export const ImoveisPage = () => {
             setLoading(false);
         }
     }, []);
+
+    useEffect(() => {
+        // ⭐️ SÓ dispara a busca se o contexto confirmar que o usuário está pronto
+        if (isAuthenticated && user) {
+            fetchImoveis(debouncedSearchText, filterStatus);
+        }
+    }, [fetchImoveis, debouncedSearchText, filterStatus, isAuthenticated, user]);
 
     // Efeito para debounce do campo de busca
     useEffect(() => {
@@ -180,7 +187,7 @@ export const ImoveisPage = () => {
         }
 
         try {
-            await axios.delete(`${API_URL}/imoveis/${imovelId}`);
+            await api.delete(`/imoveis/${imovelId}`);
             fetchImoveis(debouncedSearchText, filterStatus); // Recarrega com os filtros atuais
             alert('Imóvel excluído com sucesso!');
         } catch (err: any) {
