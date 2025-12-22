@@ -26,6 +26,8 @@ interface EmpresaOption {
     nome: string; // Esperamos que o backend retorne o nome agora
 }
 
+console.log("DEBUG API URL:", process.env.REACT_APP_API_URL);
+
 export const LoginPage = () => {
     // Estado de Credenciais
     const [email, setEmail] = useState('');
@@ -108,6 +110,7 @@ export const LoginPage = () => {
     };
 
     return (
+
         <Box
             sx={{
                 display: 'flex',
@@ -117,6 +120,9 @@ export const LoginPage = () => {
                 backgroundColor: 'background.default'
             }}
         >
+            <div style={{ color: 'red', padding: '10px', fontSize: '10px' }}>
+                Tentando conectar em: {process.env.REACT_APP_API_URL || "LOCALHOST (ERRO)"}
+            </div>
             <Paper
                 elevation={6}
                 sx={{
