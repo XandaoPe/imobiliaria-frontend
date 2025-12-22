@@ -60,7 +60,6 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
         if (open) {
             // Inicialização
             if (isEdit && imovelToEdit) {
-                console.log("Dados recebidos para edição:", imovelToEdit);
                 reset({
                     titulo: imovelToEdit.titulo || '',
                     tipo: normalizeTipoImovel(imovelToEdit.tipo || 'CASA'),

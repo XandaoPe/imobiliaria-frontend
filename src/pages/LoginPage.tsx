@@ -26,7 +26,6 @@ interface EmpresaOption {
     nome: string; // Esperamos que o backend retorne o nome agora
 }
 
-console.log("DEBUG API URL:", process.env.REACT_APP_API_URL);
 
 export const LoginPage = () => {
     // Estado de Credenciais

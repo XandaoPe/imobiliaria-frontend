@@ -137,7 +137,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         if (!user) return false;
         return requiredRoles.includes(user.perfil as PerfisEnum);
     };
-    console.log('user...', user)
 
     const baseMenuItems = [
         { text: 'Home', icon: <HomeIcon />, path: '/home', requiredRoles: [] },
