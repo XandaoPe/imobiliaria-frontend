@@ -11,7 +11,7 @@ import { API_URL } from '../../services/api';
 
 // URL base do backend (ajuste conforme a sua)
 const BASE_URL = API_URL;
-const PHOTO_BASE_URL = `${BASE_URL}/uploads/imoveis`;
+// const PHOTO_BASE_URL = `${BASE_URL}/uploads/imoveis`;
 
 interface ImovelPhotosStepProps {
     imovelId?: string;
@@ -112,21 +112,18 @@ const ImovelPhotosStep: React.FC<ImovelPhotosStepProps> = ({ imovelId, currentPh
     };
 
 
-    const handleDelete = async (filename: string) => {
-        if (!imovelId) return;
-
-        const isConfirmed = window.confirm(`Tem certeza que deseja remover a foto "${filename}"?`);
+    const handleDelete = async (photoUrl: string) => {
+        const isConfirmed = window.confirm(`Deseja remover esta foto?`);
         if (!isConfirmed) return;
 
         try {
-            await api.delete(`/imoveis/${imovelId}/foto/${filename}`);
+            // Usamos encodeURIComponent porque a URL tem caracteres especiais (/, :, .)
+            await api.delete(`/imoveis/${imovelId}/foto/${encodeURIComponent(photoUrl)}`);
 
-            const newPhotos = currentPhotos.filter(p => p !== filename);
+            const newPhotos = currentPhotos.filter(p => p !== photoUrl);
             onPhotosUpdate(newPhotos);
-
-        } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Erro ao remover a foto.';
-            setError(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
+        } catch (err) {
+            setError('Erro ao remover a foto.');
         }
     };
 
@@ -140,14 +137,20 @@ const ImovelPhotosStep: React.FC<ImovelPhotosStepProps> = ({ imovelId, currentPh
 
     // Combina as fotos existentes com as fotos em pré-visualização (se houver)
     const combinedPhotos = [
-        // Fotos já salvas
-        ...currentPhotos.map(filename => ({
-            url: `${PHOTO_BASE_URL}/${filename}`,
-            name: filename.substring(filename.lastIndexOf('-') + 1),
-            isUploading: false,
-            key: filename
-        })),
-        // Fotos em upload (pré-visualização)
+        // Fotos já salvas (vêm do backend como URLs completas)
+        ...currentPhotos.map(url => {
+            // Tenta extrair um nome amigável da URL para exibição
+            const parts = url.split('/');
+            const fileName = parts[parts.length - 1];
+
+            return {
+                url: url, // ⭐️ Agora usamos a URL pura que vem do banco
+                name: fileName,
+                isUploading: false,
+                key: url
+            };
+        }),
+        // Fotos em upload (pré-visualização via Blob)
         ...uploadPreviews.map(p => ({
             url: p.url,
             name: p.name,
