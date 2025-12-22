@@ -102,7 +102,7 @@ export const ImovelDetailsModal: React.FC<ImovelDetailsModalProps> = ({ open, on
                             >
                                 <Box
                                     component="img"
-                                    src={`${PHOTO_BASE_URL}/${foto}`}
+                                    src={foto.startsWith('http') ? foto : `${PHOTO_BASE_URL}/${foto}`}
                                     sx={{
                                         maxWidth: '100%',
                                         maxHeight: '100%',

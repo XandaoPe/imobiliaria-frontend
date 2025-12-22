@@ -141,24 +141,21 @@ const ImovelPhotosStep: React.FC<ImovelPhotosStepProps> = ({ imovelId, currentPh
         );
     }
 
-    // Combina as fotos existentes com as fotos em pré-visualização (se houver)
     const combinedPhotos = [
-        // Fotos já salvas (vêm do backend como URLs completas)
         ...currentPhotos.map(url => {
-            // Tenta extrair um nome amigável da URL para exibição
             const parts = url.split('/');
             const fileName = parts[parts.length - 1];
 
             return {
-                url: url, // ⭐️ Agora usamos a URL pura que vem do banco
+                // ⭐️ LOGICA DE PREFIXO: Se não for Cloudinary (http), adiciona o prefixo local
+                url: url.startsWith('http') ? url : `${API_URL}/uploads/imoveis/${url}`,
                 name: fileName,
                 isUploading: false,
                 key: url
             };
         }),
-        // Fotos em upload (pré-visualização via Blob)
         ...uploadPreviews.map(p => ({
-            url: p.url,
+            url: p.url, // Aqui não mexe, pois é o Blob temporário (blob:http://...)
             name: p.name,
             isUploading: p.isUploading,
             key: p.name,
@@ -219,6 +216,9 @@ const ImovelPhotosStep: React.FC<ImovelPhotosStepProps> = ({ imovelId, currentPh
                                     <img
                                         src={photo.url}
                                         alt={`Foto ${photo.name}`}
+                                        onError={(e) => {
+                                            (e.target as HTMLImageElement).src = '/images/placeholder.png';
+                                        }}
                                         style={{
                                             width: '100%',
                                             height: '100%',

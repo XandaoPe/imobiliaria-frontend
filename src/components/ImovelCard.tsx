@@ -36,7 +36,12 @@ const getTipoDisplay = (tipo: string): string => {
 
 const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse, searchTerm = '' }) => {
     const firstPhoto = imovel.fotos && imovel.fotos.length > 0 ? imovel.fotos[0] : null;
-    const imageUrl = firstPhoto ? `${PHOTO_BASE_URL}/${firstPhoto}` : '/images/placeholder.png';
+
+    // Lógica inteligente: se a string começar com "http", usa ela direto. 
+    // Caso contrário, anexa o PHOTO_BASE_URL local.
+    const imageUrl = firstPhoto
+        ? (firstPhoto.startsWith('http') ? firstPhoto : `${PHOTO_BASE_URL}/${firstPhoto}`)
+        : '/images/placeholder.png';
 
     const nomeEmpresa = typeof imovel.empresa === 'object'
         ? imovel.empresa.nome
