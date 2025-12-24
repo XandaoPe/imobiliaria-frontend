@@ -15,24 +15,36 @@ export const LeadModal: React.FC<LeadModalProps> = ({ open, onClose, imovel }) =
     const [contato, setContato] = useState('');
 
     const handleSubmit = async () => {
+        // Busca o ID da empresa independentemente de como ele venha (objeto ou string)
+        const empresaId = typeof imovel?.empresa === 'object'
+            ? (imovel?.empresa as any)._id
+            : imovel?.empresa;
+
+        if (!empresaId || !imovel?._id) {
+            alert("Erro: Dados de identificação do imóvel ou imobiliária não encontrados.");
+            return;
+        }
+
         try {
-            await axios.post(API_URL+`/leads/publico`, {
-                nome,
-                contato,
-                imovel: imovel?._id,
-                empresa: imovel?.empresa // Certifique-se que o imovel vem com o ID da empresa
+            await axios.post(`${API_URL}/leads/publico`, {
+                nome: nome.trim(),
+                contato: contato.trim(),
+                imovel: imovel._id, // Envia String
+                empresa: empresaId  // Envia String
             });
 
             alert(`Obrigado, ${nome}! Seus dados foram enviados com sucesso.`);
-            onClose();
-            // Limpar campos
+
+            // Limpeza e fechamento
             setNome('');
             setContato('');
-        } catch (error) {
-            console.error("Erro ao enviar lead", error);
-            alert("Ocorreu um erro ao enviar sua mensagem. Tente novamente.");
+            onClose();
+        } catch (error: any) {
+            console.error("DETALHE DO ERRO:", error.response?.data);
+            const msg = error.response?.data?.message;
+            alert(`Erro: ${Array.isArray(msg) ? msg.join(', ') : msg || 'Erro interno'}`);
         }
-    }
+    };
 
     return (
         <Modal open={open} onClose={onClose}>
@@ -46,7 +58,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({ open, onClose, imovel }) =
                 </Typography>
                 <Stack spacing={2}>
                     <TextField label="Seu Nome" fullWidth value={nome} onChange={(e) => setNome(e.target.value)} />
-                    <TextField label="WhatsApp ou E-mail" fullWidth value={contato} onChange={(e) => setContato(e.target.value)} />
+                    <TextField label="WhatsApp" fullWidth value={contato} onChange={(e) => setContato(e.target.value)} />
                     <Button variant="contained" fullWidth onClick={handleSubmit} disabled={!nome || !contato}>
                         Enviar Contato
                     </Button>

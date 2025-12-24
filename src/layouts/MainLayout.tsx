@@ -25,25 +25,28 @@ const drawerWidth = 240;
 
 // --- Função de Som ---
 const playLeadSound = (isNew: boolean) => {
-    try {
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
 
-        // Som Agudo (880Hz) para novos leads, Médio (440Hz) para pendentes no login
-        osc.frequency.setValueAtTime(isNew ? 880 : 440, audioCtx.currentTime);
-        osc.type = 'sine';
-
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.5);
-    } catch (e) {
-        // Navegadores bloqueiam som sem interação prévia
-        console.log("Aguardando interação para habilitar som.");
+    // Se o navegador suspendeu o áudio, tenta retomar
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
     }
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(isNew ? 1200 : 440, audioCtx.currentTime);
+    // Subi para 1200Hz (mais "alerta")
+
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.8);
 };
 
 interface MainLayoutProps {
@@ -115,22 +118,24 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
     useEffect(() => {
         fetchEmpresaData();
-        fetchNotificationCount(false);
+        fetchNotificationCount(false); // Busca inicial
 
         const interval = setInterval(() => {
-            // ECONOMIA: Se o usuário já está na página de leads, não precisa do polling do layout
-            if (location.pathname !== '/leads') {
-                fetchNotificationCount(true);
-            }
-        }, 30000);
+            // REMOVIDO o "if location.pathname" para garantir que o badge atualize e o som toque sempre
+            // mas passamos true apenas se não estivermos na tela de leads para evitar som repetitivo
+            const deveTocarSom = location.pathname !== '/leads';
+            fetchNotificationCount(deveTocarSom);
+        }, 2000); // Reduzido para 2 segundos para ser mais responsivo
 
-        window.addEventListener('updateLeadsCount', () => fetchNotificationCount(false));
+        // Evento customizado para quando você limpa leads na tela de leads, o layout atualizar o badge
+        const updateHandler = () => fetchNotificationCount(false);
+        window.addEventListener('updateLeadsCount', updateHandler);
 
         return () => {
             clearInterval(interval);
-            window.removeEventListener('updateLeadsCount', () => fetchNotificationCount(false));
+            window.removeEventListener('updateLeadsCount', updateHandler);
         };
-    }, [fetchNotificationCount, location.pathname]);
+    }, [fetchNotificationCount, location.pathname, fetchEmpresaData]);
 
     const hasPermission = (requiredRoles: PerfisEnum[]) => {
         if (requiredRoles.length === 0) return true;
