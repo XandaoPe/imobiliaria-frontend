@@ -1,6 +1,7 @@
 import React from 'react';
 import {
-    Card, CardContent, CardMedia, Typography, Chip, Box, Tooltip, Button, CardActions
+    Card, CardContent, CardMedia, Typography, Chip, Box, Tooltip, Button, CardActions,
+    Divider
 } from '@mui/material';
 import {
     Business as BusinessIcon,
@@ -64,7 +65,7 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse, s
         >
             <CardMedia
                 component="img"
-                height="190"
+                height="240"
                 image={imageUrl}
                 sx={{ objectFit: 'cover' }}
             />
@@ -92,40 +93,88 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse, s
                 </Typography>
 
                 {/* Título */}
-                <Typography variant="h6" component="div" sx={{ mb: 1, lineHeight: 1.2, height: '3.2em', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                <Typography
+                    variant="h6"
+                    component="div"
+                    sx={{
+                        mb: 0.5, // Diminuído de 1 para 0.5 para aproximar do divider
+                        lineHeight: 1.2,
+                        height: '1.4em', // Ajustado para 2 linhas exatas
+                        overflow: 'hidden',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical'
+                    }}
+                >
                     <HighlightText text={imovel.titulo || 'Imóvel sem Título'} highlight={searchTerm} />
                 </Typography>
 
+                {/* Divider com margem reduzida */}
+                <Divider sx={{ mb: 1.5, opacity: 0.6 }} />
+
                 {/* ⭐️ NOVO: Badges para finalidade */}
-                <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                {/* Container Pai para agrupar as modalidades de negócio */}
+                <Box sx={{
+                    display: 'flex',
+                    flexDirection: 'column', // Mantém a pilha vertical para o card
+                    alignItems: 'center',
+                    width: '100%',
+                    gap: 2 // Espaço entre o bloco de Venda e o de Aluguel caso ambos existam
+                }}>
+
+                    {/* SEÇÃO DE VENDA */}
                     {imovel.para_venda && (
-                        <Chip
-                            label="Venda"
-                            size="small"
-                            color="success"
-                            variant="outlined"
-                            sx={{ height: 20, fontSize: '0.7rem' }}
-                        />
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center', width: '100%' }}>
+                            <Box>
+                                <Chip
+                                    label="Venda"
+                                    size="medium"
+                                    color="success"
+                                    variant="outlined"
+                                    sx={{ height: 32, fontSize: '1.1rem', px: 1 }}
+                                />
+                            </Box>
+                            <Typography
+                                variant="h5"
+                                color="primary.main"
+                                fontWeight="bold"
+                                sx={{ textAlign: 'center' }}
+                            >
+                                {(imovel.valor_venda || 0).toLocaleString('pt-BR', {
+                                    style: 'currency',
+                                    currency: 'BRL'
+                                })}
+                            </Typography>
+                        </Box>
                     )}
+
+                    {/* SEÇÃO DE ALUGUEL */}
                     {imovel.para_aluguel && (
-                        <Chip
-                            label="Aluguel"
-                            size="small"
-                            color="info"
-                            variant="outlined"
-                            sx={{ height: 20, fontSize: '0.7rem' }}
-                        />
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center', width: '100%' }}>
+                            <Box>
+                                <Chip
+                                    label="Aluguel"
+                                    size="medium"
+                                    color="info"
+                                    variant="outlined"
+                                    sx={{ height: 32, fontSize: '1.1rem', px: 1 }}
+                                />
+                            </Box>
+                            <Typography
+                                variant="h5"
+                                color="primary.main"
+                                fontWeight="bold"
+                                sx={{ textAlign: 'center' }}
+                            >
+                                {(imovel.valor_aluguel || 0).toLocaleString('pt-BR', {
+                                    style: 'currency',
+                                    currency: 'BRL'
+                                })}
+                            </Typography>
+                        </Box>
                     )}
                 </Box>
 
-                {/* Preços originais (mantidos) */}
-                <Typography variant="h5" color="primary.main" fontWeight="bold" sx={{ mb: 1.5 }}>
-                    {(imovel.valor_aluguel || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </Typography>
-
-                <Typography variant="h5" color="primary.main" fontWeight="bold" sx={{ mb: 1.5 }}>
-                    {(imovel.valor_venda || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </Typography>
 
                 {/* --- CARACTERÍSTICAS DO IMÓVEL --- */}
                 <Box sx={{
