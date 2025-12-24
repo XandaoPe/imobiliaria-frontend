@@ -152,16 +152,10 @@ export const LoginPage = () => {
                                 required
                                 fullWidth
                                 label="E-mail"
-                                autoComplete="new-password"
+                                // autoComplete="new-password"
                                 autoFocus
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                inputProps={{
-                                    autoComplete: 'new-password', // Reforço para navegadores mobile
-                                    form: {
-                                        autoComplete: 'off',
-                                    },
-                                }}
                             />
                             <TextField
                                 margin="normal"
@@ -169,12 +163,9 @@ export const LoginPage = () => {
                                 fullWidth
                                 label="Senha"
                                 type="password"                                
-                                autoComplete="new-password"
+                                // autoComplete="new-password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                inputProps={{
-                                    autoComplete: 'new-password',
-                                }}
                             />
                         </>
                     )}

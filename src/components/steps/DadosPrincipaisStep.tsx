@@ -1,6 +1,6 @@
 // src/components/steps/DadosPrincipaisStep.tsx
 import React from 'react';
-import { Controller, Control, FieldErrors } from 'react-hook-form';
+import { Controller, Control, FieldErrors, useWatch } from 'react-hook-form';
 import {
     TextField,
     MenuItem,
@@ -11,9 +11,9 @@ import {
     Switch,
     FormControlLabel,
     Typography,
+    Checkbox,
 } from '@mui/material';
 import { ImovelFormData } from '../../types/imovel';
-// ⭐️ Importar o novo componente de máscara
 import { CurrencyFormatInput } from '../CurrencyFormatInput';
 
 interface DadosPrincipaisStepProps {
@@ -22,9 +22,12 @@ interface DadosPrincipaisStepProps {
 }
 
 export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ control, errors }) => {
+    const paraVenda = useWatch({ control, name: 'para_venda' });
+    const paraAluguel = useWatch({ control, name: 'para_aluguel' });
+
     return (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
-            {/* Título (inalterado) */}
+            {/* Título */}
             <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' } }}>
                 <Controller
                     name="titulo"
@@ -43,7 +46,7 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                 />
             </Box>
 
-            {/* Tipo (inalterado) */}
+            {/* Tipo */}
             <Box>
                 <Controller
                     name="tipo"
@@ -71,43 +74,122 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                 />
             </Box>
 
-            {/* ⭐️ Valor venda (CAMPO ATUALIZADO COM MÁSCARA) */}
+            {/* Cidade */}
             <Box>
                 <Controller
-                    name="valor"
+                    name="cidade"
                     control={control}
+                    defaultValue=""
                     render={({ field }) => (
-                        <CurrencyFormatInput
-                            name={field.name}
-                            label="Valor da Venda (R$)"
-                            value={field.value} // RHF passa o valor numérico
-                            onChange={field.onChange} // RHF recebe o valor numérico de volta
-                            error={!!errors.valor}
-                            helperText={errors.valor?.message}
+                        <TextField
+                            {...field}
+                            label="Cidade"
+                            fullWidth
+                            margin="normal"
+                            value={field.value || ''}
                         />
                     )}
                 />
             </Box>
 
-            {/* ⭐️ Valor aluguel (CAMPO ATUALIZADO COM MÁSCARA) */}
-            <Box>
-                <Controller
-                    name="aluguel"
-                    control={control}
-                    render={({ field }) => (
-                        <CurrencyFormatInput
-                            name={field.name}
-                            label="Valor do Aluguel (R$)"
-                            value={field.value} // RHF passa o valor numérico
-                            onChange={field.onChange} // RHF recebe o valor numérico de volta
-                            error={!!errors.aluguel}
-                            helperText={errors.aluguel?.message}
+            {/* Checkboxes para Venda e Aluguel */}
+            <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' } }}>
+                <Box sx={{
+                    border: '1px solid #e0e0e0',
+                    borderRadius: 1,
+                    p: 2,
+                    mb: 2,
+                    backgroundColor: '#f9f9f9'
+                }}>
+                    <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                        Finalidade do Imóvel
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', gap: 3 }}>
+                        <Controller
+                            name="para_venda"
+                            control={control}
+                            render={({ field }) => (
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={field.value}
+                                            onChange={field.onChange}
+                                            color="primary"
+                                        />
+                                    }
+                                    label="Para Venda"
+                                />
+                            )}
                         />
-                    )}
-                />
+
+                        <Controller
+                            name="para_aluguel"
+                            control={control}
+                            render={({ field }) => (
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            checked={field.value}
+                                            onChange={field.onChange}
+                                            color="primary"
+                                        />
+                                    }
+                                    label="Para Aluguel"
+                                />
+                            )}
+                        />
+                    </Box>
+
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                        * Marque uma ou ambas as opções conforme a finalidade do imóvel
+                    </Typography>
+                </Box>
             </Box>
 
-            {/* Endereço (inalterado) */}
+            {/* Valor Venda (condicional) */}
+            <Box>
+                {paraVenda && (
+                    <Controller
+                        name="valor_venda"
+                        control={control}
+                        render={({ field }) => (
+                            <CurrencyFormatInput
+                                name={field.name}
+                                label="Valor da Venda (R$)"
+                                value={field.value}
+                                onChange={field.onChange}
+                                error={!!errors.valor_venda}
+                                helperText={errors.valor_venda?.message}
+                                required={paraVenda}
+                            />
+                        )}
+                    />
+                )}
+            </Box>
+
+            {/* Valor Aluguel (condicional) */}
+            <Box>
+                {paraAluguel && (
+                    <Controller
+                        name="valor_aluguel"
+                        control={control}
+                        render={({ field }) => (
+                            <CurrencyFormatInput
+                                name={field.name}
+                                label="Valor do Aluguel (R$)"
+                                value={field.value}
+                                onChange={field.onChange}
+                                error={!!errors.valor_aluguel}
+                                helperText={errors.valor_aluguel?.message}
+                                required={paraAluguel}
+                            />
+                        )}
+                    />
+                )}
+            </Box>
+
+            {/* Endereço */}
             <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' } }}>
                 <Controller
                     name="endereco"
@@ -128,25 +210,7 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                 />
             </Box>
 
-            {/* Cidade (inalterado) */}
-            <Box>
-                <Controller
-                    name="cidade"
-                    control={control}
-                    defaultValue=""
-                    render={({ field }) => (
-                        <TextField
-                            {...field}
-                            label="Cidade"
-                            fullWidth
-                            margin="normal"
-                            value={field.value || ''}
-                        />
-                    )}
-                />
-            </Box>
-
-            {/* Disponibilidade (inalterado) */}
+            {/* Disponibilidade */}
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Controller
                     name="disponivel"

@@ -96,14 +96,35 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse, s
                     <HighlightText text={imovel.titulo || 'Imóvel sem Título'} highlight={searchTerm} />
                 </Typography>
 
-                {/* aluguel */}
+                {/* ⭐️ NOVO: Badges para finalidade */}
+                <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                    {imovel.para_venda && (
+                        <Chip
+                            label="Venda"
+                            size="small"
+                            color="success"
+                            variant="outlined"
+                            sx={{ height: 20, fontSize: '0.7rem' }}
+                        />
+                    )}
+                    {imovel.para_aluguel && (
+                        <Chip
+                            label="Aluguel"
+                            size="small"
+                            color="info"
+                            variant="outlined"
+                            sx={{ height: 20, fontSize: '0.7rem' }}
+                        />
+                    )}
+                </Box>
+
+                {/* Preços originais (mantidos) */}
                 <Typography variant="h5" color="primary.main" fontWeight="bold" sx={{ mb: 1.5 }}>
-                    {(imovel.aluguel || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {(imovel.valor_aluguel || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </Typography>
 
-                {/* valor */}
                 <Typography variant="h5" color="primary.main" fontWeight="bold" sx={{ mb: 1.5 }}>
-                    {(imovel.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {(imovel.valor_venda || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </Typography>
 
                 {/* --- CARACTERÍSTICAS DO IMÓVEL --- */}

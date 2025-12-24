@@ -1,4 +1,3 @@
-// src/components/ImovelFormModal.tsx
 import React, { useState, useEffect } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -9,7 +8,6 @@ import {
 import { Imovel, ImovelFormData, imovelValidationSchema, normalizeTipoImovel } from '../types/imovel';
 import { DadosPrincipaisStep } from './steps/DadosPrincipaisStep';
 import { DetalhesStep } from './steps/DetalhesStep';
-// ⭐️ NOVO IMPORT: Passo de fotos
 import { ImovelPhotosStep } from './steps/ImovelPhotosStep';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
@@ -17,58 +15,67 @@ import api from '../services/api';
 interface ImovelFormModalProps {
     open: boolean;
     onClose: () => void;
-    // ⭐️ ATUALIZADO: Usamos 'imovelToEdit' para ter o ID
     imovelToEdit?: Imovel | null;
     onSuccess: () => void;
 }
 
-const steps = ['Dados Principais', 'Detalhes', 'Fotos (Opcional)']; // ⭐️ NOVO PASSO
+const steps = ['Dados Principais', 'Detalhes', 'Fotos (Opcional)'];
 
-// Usamos um state local para o imóvel, pois ele pode ser criado no meio do processo
 type ImovelState = Imovel | null;
 
 const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovelToEdit, onSuccess }) => {
     const isEdit = !!imovelToEdit;
-    const { user } = useAuth(); // Usado para o componente de fotos
+    const { user } = useAuth();
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [activeStep, setActiveStep] = useState(0);
-    // ⭐️ NOVO ESTADO: O imóvel que está sendo editado/criado
     const [currentImovel, setCurrentImovel] = useState<ImovelState>(imovelToEdit || null);
-
-    // ⭐️ O ESTADO DE FOTOS SÓ É NECESSÁRIO NO FLUXO DE CRIAÇÃO, POIS ELE TEM QUE SER RECARREGADO
-    // Mas vamos mantê-lo para consistência na edição também.
     const [currentPhotos, setCurrentPhotos] = useState<string[]>(imovelToEdit?.fotos || []);
 
     // Valores padrão completos para o formulário
     const defaultValues: ImovelFormData = {
-        titulo: '', tipo: 'CASA', endereco: '', valor: 0, aluguel: 0,  disponivel: true,
-        cidade: '', descricao: null, detalhes: null, quartos: null, banheiros: null, area_terreno: null, area_construida:null, garagem: false,
+        titulo: '',
+        tipo: 'CASA',
+        endereco: '',
+        disponivel: true,
+        para_venda: false,
+        para_aluguel: false,
+        valor_venda: null,
+        valor_aluguel: null,
+        cidade: '',
+        descricao: null,
+        detalhes: null,
+        quartos: null,
+        banheiros: null,
+        area_terreno: null,
+        area_construida: null,
+        garagem: false,
     };
 
+    // ⭐️ CORRIGIDO: Especifica o tipo genérico corretamente
     const {
         handleSubmit, control, reset,
         formState: { errors }, trigger, getValues,
     } = useForm<ImovelFormData>({
-        resolver: yupResolver(imovelValidationSchema),
+        resolver: yupResolver(imovelValidationSchema) as any, // ⭐️ CAST para any para evitar erro de tipos
         defaultValues,
         mode: 'onBlur',
     });
 
     useEffect(() => {
         if (open) {
-            // Inicialização
             if (isEdit && imovelToEdit) {
                 reset({
                     titulo: imovelToEdit.titulo || '',
                     tipo: normalizeTipoImovel(imovelToEdit.tipo || 'CASA'),
                     endereco: imovelToEdit.endereco || '',
-                    valor: imovelToEdit.valor || 0,
-                    aluguel: imovelToEdit.aluguel || 0,
+                    para_venda: imovelToEdit.para_venda || false,
+                    para_aluguel: imovelToEdit.para_aluguel || false,
+                    valor_venda: imovelToEdit.valor_venda || null,
+                    valor_aluguel: imovelToEdit.valor_aluguel || null,
                     disponivel: imovelToEdit.disponivel ?? true,
                     cidade: imovelToEdit.cidade || '',
-                    // Garante que se vier undefined do banco, vire null para o Yup/Form
                     descricao: imovelToEdit.descricao ?? null,
                     detalhes: imovelToEdit.detalhes ?? null,
                     quartos: imovelToEdit.quartos ?? null,
@@ -89,14 +96,20 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
         }
     }, [open, isEdit, imovelToEdit, reset]);
 
-
-    // Lógica para avançar para o PRÓXIMO passo (Passo 0 -> Passo 1)
     const handleNext = async () => {
         let fieldsToValidate: (keyof ImovelFormData)[] = [];
 
         if (activeStep === 0) {
-            // Valida os campos do Passo 1
-            fieldsToValidate = ['titulo', 'tipo', 'endereco', 'valor', 'aluguel',  'disponivel', 'cidade'];
+            fieldsToValidate = ['titulo', 'tipo', 'endereco', 'disponivel', 'cidade'];
+
+            // Validação condicional
+            const formValues = getValues();
+            if (formValues.para_venda) {
+                fieldsToValidate.push('valor_venda');
+            }
+            if (formValues.para_aluguel) {
+                fieldsToValidate.push('valor_aluguel');
+            }
         }
 
         const isValid = await trigger(fieldsToValidate);
@@ -114,6 +127,12 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
     };
 
     const onDataSubmit: SubmitHandler<ImovelFormData> = async (data) => {
+
+        console.log("🚀 SUBMIT INICIADO - Verificando dados e erros:");
+        console.log("📊 Dados do formulário:", data);
+        console.log("❌ Erros de validação:", errors);
+        console.log("📍 Passo atual:", activeStep);
+
         setLoading(true);
         setError(null);
 
@@ -121,16 +140,16 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
             // ⭐️ Tratamento manual para garantir Tipagem Correta
             const payload = {
                 ...data,
-                // Converte strings para números e garante que campos nulos não sejam strings vazias
-                valor: data.valor ? Number(data.valor) : 0,
-                aluguel: data.aluguel ? Number(data.aluguel) : 0,
+                valor_venda: data.valor_venda ? Number(data.valor_venda) : null,
+                valor_aluguel: data.valor_aluguel ? Number(data.valor_aluguel) : null,
                 quartos: data.quartos ? Number(data.quartos) : null,
                 banheiros: data.banheiros ? Number(data.banheiros) : null,
                 area_terreno: data.area_terreno ? Number(data.area_terreno) : null,
                 area_construida: data.area_construida ? Number(data.area_construida) : null,
-                // Garante booleano
                 garagem: !!data.garagem,
                 disponivel: !!data.disponivel,
+                para_venda: !!data.para_venda,
+                para_aluguel: !!data.para_aluguel,
             };
 
             console.log("Payload Final enviado ao Axios:", payload);
@@ -144,8 +163,6 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
 
             const imovelResult = response.data;
             console.log("Resposta do Servidor:", imovelResult);
-
-            // Se o imovelResult não tiver o campo 'aluguel', o erro é no Schema do Backend!
 
             setCurrentImovel(imovelResult);
             setCurrentPhotos(imovelResult.fotos || []);
@@ -165,7 +182,6 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
         }
     };
 
-    // Função para renderizar o conteúdo do passo atual
     const getStepContent = (step: number) => {
         switch (step) {
             case 0:
@@ -173,7 +189,6 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
             case 1:
                 return <DetalhesStep control={control} errors={errors} />;
             case 2:
-                // Passa o ID do imóvel e a lista de fotos atuais
                 return (
                     <ImovelPhotosStep
                         imovelId={currentImovel?._id}
@@ -198,14 +213,10 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                 ))}
             </Stepper>
 
-            {/* O formulário do React Hook Form é o container principal. 
-                Usamos handleSubmit(onDataSubmit) apenas quando queremos salvar os dados do formulário. */}
             <Box component="form" noValidate>
                 <DialogContent dividers>
                     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
                     {getStepContent(activeStep)}
-
                 </DialogContent>
 
                 <DialogActions sx={{ p: 3, pt: 1 }}>
@@ -213,14 +224,13 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                         Cancelar
                     </Button>
 
-                    {activeStep > 0 && activeStep < steps.length - 1 && ( // Voltar só aparece nos passos de dados
+                    {activeStep > 0 && activeStep < steps.length - 1 && (
                         <Button onClick={handleBack} disabled={loading}>
                             Voltar
                         </Button>
                     )}
 
                     {activeStep === 0 && (
-                        // Passo 0: Apenas avança
                         <Button
                             variant="contained"
                             onClick={handleNext}
@@ -231,21 +241,74 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                         </Button>
                     )}
 
-                    {activeStep === steps.length - 2 && ( // Penúltimo passo (Detalhes)
-                        // Botão que SALVA os dados e AVANÇA para o passo de fotos
+                    {activeStep === steps.length - 2 && (
                         <Button
                             variant="contained"
                             color="primary"
-                            // Chama o submit do React Hook Form, que chama onDataSubmit se a validação passar
-                            onClick={handleSubmit(onDataSubmit)}
+                            onClick={() => {
+                                console.log("🔘 Botão clicado!");
+
+                                // ⭐️ SOLUÇÃO CORRETA: Use desta forma
+                                handleSubmit(async (data) => {
+                                    console.log("✅ Validação passou, dados:", data);
+
+                                    setLoading(true);
+                                    setError(null);
+
+                                    try {
+                                        // ⭐️ Tratamento manual para garantir Tipagem Correta
+                                        const payload = {
+                                            ...data,
+                                            valor_venda: data.valor_venda ? Number(data.valor_venda) : null,
+                                            valor_aluguel: data.valor_aluguel ? Number(data.valor_aluguel) : null,
+                                            quartos: data.quartos ? Number(data.quartos) : null,
+                                            banheiros: data.banheiros ? Number(data.banheiros) : null,
+                                            area_terreno: data.area_terreno ? Number(data.area_terreno) : null,
+                                            area_construida: data.area_construida ? Number(data.area_construida) : null,
+                                            garagem: !!data.garagem,
+                                            disponivel: !!data.disponivel,
+                                            para_venda: !!data.para_venda,
+                                            para_aluguel: !!data.para_aluguel,
+                                        };
+
+                                        console.log("📤 Payload enviado ao Axios:", payload);
+
+                                        let response;
+                                        if (isEdit && currentImovel?._id) {
+                                            response = await api.put(`/imoveis/${currentImovel._id}`, payload);
+                                        } else {
+                                            response = await api.post(`/imoveis`, payload);
+                                        }
+
+                                        const imovelResult = response.data;
+                                        console.log("📥 Resposta do Servidor:", imovelResult);
+
+                                        setCurrentImovel(imovelResult);
+                                        setCurrentPhotos(imovelResult.fotos || []);
+
+                                        // Sincroniza o formulário com o banco
+                                        reset({
+                                            ...imovelResult,
+                                            tipo: normalizeTipoImovel(imovelResult.tipo)
+                                        });
+
+                                        // ⭐️ AVANÇA PARA O PRÓXIMO PASSO
+                                        setActiveStep((prev) => prev + 1);
+                                    } catch (err: any) {
+                                        console.error("❌ Erro na requisição:", err.response?.data);
+                                        setError(err.response?.data?.message || "Erro ao salvar");
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                })();
+                            }}
                             disabled={loading}
                         >
                             {loading ? <CircularProgress size={24} /> : (isEdit ? 'Salvar Dados e Ir para Fotos' : 'Criar Imóvel e Ir para Fotos')}
                         </Button>
                     )}
 
-                    {activeStep === steps.length - 1 && ( // Último passo (Fotos)
-                        // Botão que apenas CONCLUI a modal
+                    {activeStep === steps.length - 1 && (
                         <Button
                             type="button"
                             onClick={() => {
@@ -259,7 +322,6 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                             Concluir
                         </Button>
                     )}
-
                 </DialogActions>
             </Box>
         </Dialog>

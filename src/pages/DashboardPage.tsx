@@ -58,7 +58,7 @@ export const DashboardPage: React.FC = () => {
 
             const aggregated: DashboardMetrics = {
                 totalImoveis: imoveis.length,
-                valorTotalImoveis: imoveis.reduce((acc, cur) => acc + (cur.valor || 0), 0),
+                valorTotalImoveis: imoveis.reduce((acc, cur) => acc + (cur.valor_venda || 0), 0),
                 imoveisDisponiveis: imoveis.filter(i => i.disponivel).length,
                 totalUsuarios: usuarios.length,
                 usuariosAtivos: usuarios.filter(u => u.ativo).length,

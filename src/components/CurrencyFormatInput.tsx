@@ -10,20 +10,15 @@ interface CustomProps {
 }
 
 // O componente de formatação que será usado dentro do Controller
-// Ele se comporta como um input normal, mas formata o valor.
 const NumericFormatCustom = forwardRef<NumericFormatProps, CustomProps>(
     function NumericFormatCustom(props, ref) {
         const { onChange, ...other } = props;
 
-        // A função customizada para lidar com a mudança. 
-        // O valor formatado é convertido de volta para um número (sem formatação)
-        // antes de chamar o `onChange` do React Hook Form.
         const handleValueChange: NumericFormatProps['onValueChange'] = (values) => {
-            // Passa o valor numérico puro (value) para o React Hook Form.
             onChange({
                 target: {
                     name: props.name,
-                    value: values.floatValue ?? 0, // floatValue é o valor numérico puro
+                    value: values.floatValue ?? 0,
                 },
             });
         };
@@ -33,24 +28,26 @@ const NumericFormatCustom = forwardRef<NumericFormatProps, CustomProps>(
                 {...other}
                 getInputRef={ref}
                 onValueChange={handleValueChange}
-                thousandSeparator="." // Separador de milhar (padrão Brasil)
-                decimalSeparator="," // Separador decimal (padrão Brasil)
-                prefix="R$ " // Prefixo de moeda
-                decimalScale={2} // Duas casas decimais
-                fixedDecimalScale // Fixa as casas decimais (ex: 100,00)
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                decimalScale={2}
+                fixedDecimalScale
             />
         );
     },
 );
 
-// Componente principal para usar no formulário
+// ⭐️ ATUALIZE A INTERFACE para incluir 'required' e 'disabled'
 interface CurrencyFormatInputProps {
     name: string;
     label: string;
-    value: number;
-    onChange: (value: number) => void;
+    value: number | null;
+    onChange: (value: number | null) => void;
     error?: boolean;
     helperText?: React.ReactNode;
+    required?: boolean; // ⭐️ ADICIONE
+    disabled?: boolean; // ⭐️ ADICIONE
 }
 
 export const CurrencyFormatInput: React.FC<CurrencyFormatInputProps> = ({
@@ -59,32 +56,35 @@ export const CurrencyFormatInput: React.FC<CurrencyFormatInputProps> = ({
     value,
     onChange,
     error,
-    helperText
+    helperText,
+    required = false, // ⭐️ VALOR PADRÃO
+    disabled = false, // ⭐️ VALOR PADRÃO
 }) => {
-
-    // A propriedade value precisa ser passada como string para o NumericFormat
-    // Por isso, convertemos o 'number' que vem do RHF para 'string' para exibição.
-    const displayValue = value === 0 ? '' : String(value);
+    // Converte o valor para string (vazio se for null)
+    const displayValue = value === null ? '' : String(value);
 
     return (
         <TextField
             label={label}
             fullWidth
-            required
+            required={required} // ⭐️ PASSA A PROP
             error={error}
             helperText={helperText}
             margin="normal"
+            disabled={disabled} // ⭐️ PASSA A PROP
             // Aqui passamos o Custom Input
             InputProps={{
                 inputComponent: NumericFormatCustom as any,
-                // O NumericFormat precisa de uma prop 'value' para controlar a exibição
                 inputProps: {
                     name: name,
                     value: displayValue,
-                    onChange: (e: any) => onChange(e.target.value),
+                    onChange: (e: any) => {
+                        // Converte para número ou null
+                        const numValue = e.target.value === '' ? null : Number(e.target.value);
+                        onChange(numValue);
+                    },
                 }
             }}
-            // O valor do TextField é controlado pelo value real (number)
             value={displayValue}
         />
     );

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
-    Box, Typography, Button, CircularProgress, Alert, Paper, TextField, InputAdornment, Tooltip, IconButton, Menu, MenuItem
+    Box, Typography, Button, CircularProgress, Alert, Paper, TextField, InputAdornment, Tooltip, IconButton, Menu, MenuItem,
+    Checkbox
 } from '@mui/material';
 import {
     DataGrid,
@@ -214,7 +215,7 @@ export const ImoveisPage = () => {
         return tipoMap[tipo] || tipo;
     };
 
-    // Definição das colunas com tipagem explícita
+    // Adicione estas colunas à definição existente:
     const columns: GridColDef<Imovel>[] = [
         {
             field: '_id',
@@ -263,26 +264,50 @@ export const ImoveisPage = () => {
                 />
             ),
         },
+        // ⭐️ MANTENHA OS CAMPOS ORIGINAIS
         {
             field: 'aluguel',
-            headerName: 'Valor (R$)',
+            headerName: 'Aluguel (R$)',
             width: 150,
-            valueGetter: (value, row) => formatValor(row.aluguel || 0)
+            valueGetter: (value, row) => formatValor(row.valor_aluguel || 0)
         },
         {
             field: 'valor',
             headerName: 'Valor (R$)',
             width: 150,
-            valueGetter: (value, row) => formatValor(row.valor || 0)
+            valueGetter: (value, row) => formatValor(row.valor_venda || 0)
+        },
+        // ⭐️ NOVAS COLUNAS: Checkboxes
+        {
+            field: 'para_venda',
+            headerName: 'Venda',
+            width: 100,
+            renderCell: (params: GridRenderCellParams<Imovel>) => (
+                <Checkbox
+                    checked={params.row.para_venda || false}
+                    disabled
+                    color="success"
+                />
+            ),
+        },
+        {
+            field: 'para_aluguel',
+            headerName: 'Aluguel',
+            width: 100,
+            renderCell: (params: GridRenderCellParams<Imovel>) => (
+                <Checkbox
+                    checked={params.row.para_aluguel || false}
+                    disabled
+                    color="primary"
+                />
+            ),
         },
         {
             field: 'disponivel',
             headerName: 'Status',
             width: 130,
-            // O status na tela será "Disponível" ou "Indisponível"
             valueGetter: (value, row) => row.disponivel ? "Disponível" : "Indisponível",
             cellClassName: (params) => {
-                // Classe para cor condicional
                 return params.row.disponivel ? 'status-disponivel' : 'status-indisponivel';
             }
         },
@@ -316,7 +341,6 @@ export const ImoveisPage = () => {
                             height: '100%'
                         }}
                     >
-
                         <Tooltip title="Editar Imóvel" arrow>
                             <IconButton
                                 color="primary"
