@@ -10,6 +10,7 @@ export interface ImovelFormData {
     tipo: ImovelTipo;
     endereco: string;
     valor: number;
+    aluguel: number;
     disponivel: boolean;
     // Campos opcionais com valores padrão
     cidade: string;
@@ -67,6 +68,13 @@ export const imovelValidationSchema = yup.object().shape({
         .min(10, 'O endereço deve ter pelo menos 10 caracteres.'),
 
     valor: yup
+        .number()
+        .typeError('O valor deve ser um número.')
+        .required('O valor é obrigatório.')
+        .min(0, 'O valor não pode ser negativo.')
+        .test('valor-minimo', 'O valor deve ser maior que 0', (value) => value > 0),
+
+    aluguel: yup
         .number()
         .typeError('O valor deve ser um número.')
         .required('O valor é obrigatório.')

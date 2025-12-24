@@ -71,7 +71,7 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                 />
             </Box>
 
-            {/* ⭐️ Valor (CAMPO ATUALIZADO COM MÁSCARA) */}
+            {/* ⭐️ Valor venda (CAMPO ATUALIZADO COM MÁSCARA) */}
             <Box>
                 <Controller
                     name="valor"
@@ -79,11 +79,29 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                     render={({ field }) => (
                         <CurrencyFormatInput
                             name={field.name}
-                            label="Valor (R$)"
+                            label="Valor da Venda (R$)"
                             value={field.value} // RHF passa o valor numérico
                             onChange={field.onChange} // RHF recebe o valor numérico de volta
                             error={!!errors.valor}
                             helperText={errors.valor?.message}
+                        />
+                    )}
+                />
+            </Box>
+
+            {/* ⭐️ Valor aluguel (CAMPO ATUALIZADO COM MÁSCARA) */}
+            <Box>
+                <Controller
+                    name="aluguel"
+                    control={control}
+                    render={({ field }) => (
+                        <CurrencyFormatInput
+                            name={field.name}
+                            label="Valor do Aluguel (R$)"
+                            value={field.value} // RHF passa o valor numérico
+                            onChange={field.onChange} // RHF recebe o valor numérico de volta
+                            error={!!errors.aluguel}
+                            helperText={errors.aluguel?.message}
                         />
                     )}
                 />

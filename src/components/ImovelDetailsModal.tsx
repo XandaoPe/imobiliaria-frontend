@@ -135,6 +135,9 @@ export const ImovelDetailsModal: React.FC<ImovelDetailsModalProps> = ({ open, on
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}>
                         <Chip icon={<BusinessIcon />} label={imovel.empresa?.nome || 'Imobiliária'} color="primary" variant="outlined" sx={{ fontWeight: 'bold' }} />
                         <Typography variant="h4" color="primary.main" sx={{ fontWeight: 800 }}>
+                            {imovel.aluguel?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </Typography>
+                        <Typography variant="h4" color="primary.main" sx={{ fontWeight: 800 }}>
                             {imovel.valor?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </Typography>
                     </Box>

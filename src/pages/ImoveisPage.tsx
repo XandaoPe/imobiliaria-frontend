@@ -264,10 +264,16 @@ export const ImoveisPage = () => {
             ),
         },
         {
+            field: 'aluguel',
+            headerName: 'Valor (R$)',
+            width: 150,
+            valueGetter: (value, row) => formatValor(row.aluguel || 0)
+        },
+        {
             field: 'valor',
             headerName: 'Valor (R$)',
             width: 150,
-            valueGetter: (value, row) => formatValor(row.valor)
+            valueGetter: (value, row) => formatValor(row.valor || 0)
         },
         {
             field: 'disponivel',

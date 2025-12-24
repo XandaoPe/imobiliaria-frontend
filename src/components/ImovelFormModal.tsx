@@ -43,7 +43,7 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
 
     // Valores padrão completos para o formulário
     const defaultValues: ImovelFormData = {
-        titulo: '', tipo: 'CASA', endereco: '', valor: 0, disponivel: true,
+        titulo: '', tipo: 'CASA', endereco: '', valor: 0, aluguel: 0,  disponivel: true,
         cidade: '', descricao: null, detalhes: null, quartos: null, banheiros: null, area_terreno: null, area_construida:null, garagem: false,
     };
 
@@ -65,6 +65,7 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                     tipo: normalizeTipoImovel(imovelToEdit.tipo || 'CASA'),
                     endereco: imovelToEdit.endereco || '',
                     valor: imovelToEdit.valor || 0,
+                    aluguel: imovelToEdit.aluguel || 0,
                     disponivel: imovelToEdit.disponivel ?? true,
                     cidade: imovelToEdit.cidade || '',
                     // Garante que se vier undefined do banco, vire null para o Yup/Form
@@ -95,7 +96,7 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
 
         if (activeStep === 0) {
             // Valida os campos do Passo 1
-            fieldsToValidate = ['titulo', 'tipo', 'endereco', 'valor', 'disponivel', 'cidade'];
+            fieldsToValidate = ['titulo', 'tipo', 'endereco', 'valor', 'aluguel',  'disponivel', 'cidade'];
         }
 
         const isValid = await trigger(fieldsToValidate);
@@ -117,25 +118,48 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
         setError(null);
 
         try {
-            const dadosEnviar = data;
-            let response;
+            // ⭐️ Tratamento manual para garantir Tipagem Correta
+            const payload = {
+                ...data,
+                // Converte strings para números e garante que campos nulos não sejam strings vazias
+                valor: data.valor ? Number(data.valor) : 0,
+                aluguel: data.aluguel ? Number(data.aluguel) : 0,
+                quartos: data.quartos ? Number(data.quartos) : null,
+                banheiros: data.banheiros ? Number(data.banheiros) : null,
+                area_terreno: data.area_terreno ? Number(data.area_terreno) : null,
+                area_construida: data.area_construida ? Number(data.area_construida) : null,
+                // Garante booleano
+                garagem: !!data.garagem,
+                disponivel: !!data.disponivel,
+            };
 
-            if (isEdit && currentImovel) {
-                // FLUXO DE EDIÇÃO: Usando 'api' em vez de 'axios'
-                response = await api.put(`/imoveis/${currentImovel._id}`, dadosEnviar);
+            console.log("Payload Final enviado ao Axios:", payload);
+
+            let response;
+            if (isEdit && currentImovel?._id) {
+                response = await api.put(`/imoveis/${currentImovel._id}`, payload);
             } else {
-                // FLUXO DE CRIAÇÃO: Usando 'api' em vez de 'axios'
-                response = await api.post(`/imoveis`, dadosEnviar);
+                response = await api.post(`/imoveis`, payload);
             }
 
-            const imovelResult = response.data as Imovel;
+            const imovelResult = response.data;
+            console.log("Resposta do Servidor:", imovelResult);
+
+            // Se o imovelResult não tiver o campo 'aluguel', o erro é no Schema do Backend!
+
             setCurrentImovel(imovelResult);
             setCurrentPhotos(imovelResult.fotos || []);
 
-            setActiveStep((prevActiveStep) => prevActiveStep + 1);
+            // Sincroniza o formulário com o banco
+            reset({
+                ...imovelResult,
+                tipo: normalizeTipoImovel(imovelResult.tipo)
+            });
 
+            setActiveStep((prev) => prev + 1);
         } catch (err: any) {
-            // ... resto do seu tratamento de erro
+            console.error("Erro na requisição:", err.response?.data);
+            setError(err.response?.data?.message || "Erro ao salvar");
         } finally {
             setLoading(false);
         }

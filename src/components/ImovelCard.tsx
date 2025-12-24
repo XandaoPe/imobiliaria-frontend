@@ -96,7 +96,12 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse, s
                     <HighlightText text={imovel.titulo || 'Imóvel sem Título'} highlight={searchTerm} />
                 </Typography>
 
-                {/* Valor */}
+                {/* aluguel */}
+                <Typography variant="h5" color="primary.main" fontWeight="bold" sx={{ mb: 1.5 }}>
+                    {(imovel.aluguel || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </Typography>
+
+                {/* valor */}
                 <Typography variant="h5" color="primary.main" fontWeight="bold" sx={{ mb: 1.5 }}>
                     {(imovel.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </Typography>
