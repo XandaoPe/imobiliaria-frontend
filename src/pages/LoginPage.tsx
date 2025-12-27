@@ -80,57 +80,52 @@ export const LoginPage = () => {
         setError('');
         setLoading(true);
 
-        // ⭐️ O payload só inclui o empresaId se estivermos na Etapa de Seleção
-        const payload = {
-            email,
-            senha: password,
-            empresaId: etapa === 'selecao' ? empresaId : undefined
-        };
-
         try {
+            // 1. Tenta obter o Token do Firebase ANTES do login final
+            let pushToken = undefined;
+            try {
+                // Pede permissão e gera o token
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    pushToken = await getFirebaseToken();
+                }
+            } catch (pErr) {
+                console.warn("Permissão de push negada ou erro no Firebase", pErr);
+            }
+
+            // 2. Monta o payload incluindo o pushToken se existir
+            const payload = {
+                email,
+                senha: password,
+                empresaId: etapa === 'selecao' ? empresaId : undefined,
+                pushToken: pushToken // 👈 Enviamos aqui para o AuthService.login capturar
+            };
+
             const response = await api.post('/auth/login', payload);
 
+            // Caso precise selecionar empresa
             if (response.data.requiresSelection) {
-                // ⭐️ ETAPA 1: O backend retornou a lista de empresas e requiresSelection = true
-
-                // Salva a lista de empresas e avança a etapa
                 setEmpresas(response.data.empresas);
                 setEtapa('selecao');
-
-                // Se houver apenas uma empresa, já a pré-seleciona para o próximo envio
                 if (response.data.empresas.length === 1) {
                     setEmpresaId(response.data.empresas[0].id);
                 }
-
                 setLoading(false);
                 return;
             }
 
-            // ⭐️ ETAPA 2 FINALIZADA: O backend retornou o Token
+            // LOGIN SUCESSO
             const token = response.data.access_token;
-
             if (token) {
-                login(token);
-
-                // Extraímos o ID do usuário do token para salvar o pushToken
-                const base64Url = token.split('.')[1];
-                const payload = JSON.parse(window.atob(base64Url));
-
-                // Chama a função passando o ID do usuário e o token para autorizar a requisição
-                salvarTokenPush(payload.sub || payload.id, token);
-
+                login(token); // Atualiza o contexto de autenticação
                 navigate('/home');
             }
 
         } catch (err: any) {
-            // Trata erros de requisição ou credenciais
             let errorMessage = 'Falha na conexão ou erro desconhecido.';
-
             if (err.response) {
-                // Exemplo: 401 Unauthorized, 400 Bad Request
                 errorMessage = err.response.data?.message || err.message;
             }
-
             setError(errorMessage);
         } finally {
             setLoading(false);
