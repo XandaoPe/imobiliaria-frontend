@@ -36,6 +36,7 @@ export const getFirebaseToken = async () => {
 export const onMessageListener = () =>
     new Promise((resolve) => {
         onMessage(messaging, (payload) => {
+            alert('chegou aki')
             resolve(payload);
         });
     });
