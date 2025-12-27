@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import api, { API_URL } from '../services/api';
+import { getFirebaseToken } from '../services/firebaseConfig';
 
 // ⚠️ IMPORTANTE: Ajuste a URL base da sua API NestJS
 
@@ -49,6 +50,30 @@ export const LoginPage = () => {
     if (isAuthenticated) {
         return <Navigate to="/home" replace />;
     }
+
+    const salvarTokenPush = async (userId: string, tokenJWT: string) => {
+        try {
+            // 1. Pede permissão ao usuário
+            const permission = await Notification.requestPermission();
+
+            if (permission === 'granted') {
+                // 2. Busca o token único deste navegador no Firebase
+                const tokenFCM = await getFirebaseToken();
+
+                if (tokenFCM) {
+                    // 3. Salva no banco de dados do seu NestJS
+                    // Assumindo que você tem uma rota PATCH em usuários
+                    await api.patch(`/usuarios/${userId}`,
+                        { pushToken: tokenFCM },
+                        { headers: { Authorization: `Bearer ${tokenJWT}` } }
+                    );
+                    console.log("Notificações configuradas com sucesso!");
+                }
+            }
+        } catch (error) {
+            console.error("Erro no fluxo de notificação:", error);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -86,8 +111,17 @@ export const LoginPage = () => {
 
             if (token) {
                 login(token);
+
+                // Extraímos o ID do usuário do token para salvar o pushToken
+                const base64Url = token.split('.')[1];
+                const payload = JSON.parse(window.atob(base64Url));
+
+                // Chama a função passando o ID do usuário e o token para autorizar a requisição
+                salvarTokenPush(payload.sub || payload.id, token);
+
                 navigate('/home');
             }
+
         } catch (err: any) {
             // Trata erros de requisição ou credenciais
             let errorMessage = 'Falha na conexão ou erro desconhecido.';
