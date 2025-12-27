@@ -8,11 +8,11 @@ importScripts(
 // Essas infos você pega no Console do Firebase > Configurações do Projeto
 const firebaseConfig = {
   apiKey: "AIzaSyDjWrD4Y0N5nfRYEREq6il0TmoA7libZs4",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO_ID",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "1:1027177777810:web:1f9b65a45722ee9fccb44b",
+  authDomain: "sistema-imobiliario4.firebaseapp.com",
+  projectId: "sistema-imobiliario4",
+  storageBucket: "sistema-imobiliario4.appspot.com",
+  messagingSenderId: "1027177777810", // ID REAL
+  appId: "1:1027177777810:web:1f9b65a45722ee9fccb44b", // ID REAL
 };
 
 firebase.initializeApp(firebaseConfig);
