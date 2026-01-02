@@ -10,8 +10,8 @@ const playAlertSound = (type: 'NEW' | 'PENDING') => {
     const gain = audioCtx.createGain();
 
     // Som Agudo para Novo Lead, Som Médio para Leads Pendentes
-    osc.frequency.setValueAtTime(type === 'NEW' ? 880 : 440, audioCtx.currentTime);
-    osc.type = 'sine';
+    osc.frequency.setValueAtTime(type === 'NEW' ? 392 : 440, audioCtx.currentTime);
+    osc.type = type === 'NEW' ? 'triangle' : 'square';
 
     gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
     osc.connect(gain);
