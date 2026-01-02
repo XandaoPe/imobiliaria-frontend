@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Chip, IconButton, Tooltip, TextField,
-    InputAdornment, CircularProgress, Button, Menu, MenuItem
+    InputAdornment, CircularProgress, Button, Menu, MenuItem,
+    Divider
 } from '@mui/material';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,18 +32,25 @@ export const LeadsPage: React.FC = () => {
     const [leads, setLeads] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState('');
-    const [filterStatus, setFilterStatus] = useState('TODOS');
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const lastLeadCount = useRef(0);
     const hasPlayedInitialAlert = useRef(false);
+    const [filterStatus, setFilterStatus] = useState('PENDENTES');
 
     // BUSCA COM FILTROS
     const fetchLeads = useCallback(async (isPolling = false) => {
         if (!isPolling) setLoading(true);
+
         try {
             const params: any = {};
             if (searchText?.trim()) params.search = searchText;
-            if (filterStatus !== 'TODOS') params.status = filterStatus;
+
+            if (filterStatus === 'PENDENTES') {
+                // O backend agora entende que essa string separada por vírgula é um "OR"
+                params.status = 'NOVO,EM_ANDAMENTO';
+            } else if (filterStatus !== 'TODOS') {
+                params.status = filterStatus;
+            }
 
             const response = await axios.get(API_URL + '/leads', {
                 headers: { Authorization: `Bearer ${user?.token}` },
@@ -126,14 +134,21 @@ export const LeadsPage: React.FC = () => {
                     onClick={(e) => setAnchorEl(e.currentTarget)}
                     sx={{ minWidth: 200, height: 56 }}
                 >
-                    {filterStatus === 'TODOS' ? 'Todos os Status' : filterStatus}
+                    {/* Rótulo dinâmico */}
+                    {filterStatus === 'PENDENTES' ? 'Pendentes (Novos/Andamento)' :
+                        filterStatus === 'TODOS' ? 'Todos os Status' : filterStatus}
                 </Button>
 
                 <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+                    {/* Nova opção padrão */}
+                    <MenuItem onClick={() => { setFilterStatus('PENDENTES'); setAnchorEl(null); }}>
+                        <b>Pendentes (Padrão)</b>
+                    </MenuItem>
                     <MenuItem onClick={() => { setFilterStatus('TODOS'); setAnchorEl(null); }}>Todos</MenuItem>
-                    <MenuItem onClick={() => { setFilterStatus('NOVO'); setAnchorEl(null); }}>Novos</MenuItem>
-                    <MenuItem onClick={() => { setFilterStatus('EM_ANDAMENTO'); setAnchorEl(null); }}>Em Andamento</MenuItem>
-                    <MenuItem onClick={() => { setFilterStatus('CONCLUIDO'); setAnchorEl(null); }}>Concluídos</MenuItem>
+                    <Divider /> {/* Opcional: import { Divider } from '@mui/material' */}
+                    <MenuItem onClick={() => { setFilterStatus('NOVO'); setAnchorEl(null); }}>Apenas Novos</MenuItem>
+                    <MenuItem onClick={() => { setFilterStatus('EM_ANDAMENTO'); setAnchorEl(null); }}>Apenas Em Andamento</MenuItem>
+                    <MenuItem onClick={() => { setFilterStatus('CONCLUIDO'); setAnchorEl(null); }}>Apenas Concluídos</MenuItem>
                 </Menu>
             </Box>
 
