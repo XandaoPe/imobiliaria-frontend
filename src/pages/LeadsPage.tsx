@@ -183,7 +183,36 @@ export const LeadsPage: React.FC = () => {
                                     <Typography variant="subtitle2">{lead.nome}</Typography>
                                     <Typography variant="caption" color="text.secondary">{lead.contato}</Typography>
                                 </TableCell>
-                                <TableCell>{lead.imovel?.titulo || 'N/A'}</TableCell>
+                                <TableCell>
+                                    {lead.imovel ? (
+                                        <Box>
+                                            {/* Título do Imóvel */}
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                                {lead.imovel.titulo}
+                                            </Typography>
+
+                                            {/* Endereço e Cidade */}
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                                {lead.imovel.endereco}
+                                                {lead.imovel.cidade ? ` • ${lead.imovel.cidade}` : ''}
+                                            </Typography>
+
+                                            {/* Badge de Venda/Aluguel (Opcional, mas ajuda muito o corretor) */}
+                                            <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5 }}>
+                                                {lead.imovel.para_venda && (
+                                                    <Chip label="Venda" size="small" variant="outlined" sx={{ fontSize: '10px', height: '18px' }} />
+                                                )}
+                                                {lead.imovel.para_aluguel && (
+                                                    <Chip label="Locação" size="small" variant="outlined" sx={{ fontSize: '10px', height: '18px' }} />
+                                                )}
+                                            </Box>
+                                        </Box>
+                                    ) : (
+                                        <Typography variant="body2" color="text.disabled">
+                                            Imóvel não identificado
+                                        </Typography>
+                                    )}
+                                </TableCell>
                                 <TableCell>
                                     <Chip
                                         label={lead.status.replace('_', ' ')}
