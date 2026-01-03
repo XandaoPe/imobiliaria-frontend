@@ -16,6 +16,7 @@ import LocationCityIcon from '@mui/icons-material/LocationCity';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
+import HandshakeIcon from '@mui/icons-material/Handshake';
 
 import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
@@ -146,6 +147,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const baseMenuItems = [
         { text: 'Home', icon: <HomeIcon />, path: '/home', requiredRoles: [] },
         { text: 'Dashboard', icon: <HomeIcon />, path: '/dashboard', requiredRoles: [] },
+        { text: 'Negociações', icon: <HandshakeIcon />, path: '/negociacoes', requiredRoles: [] },
         { text: 'Leads (Interesses)', icon: <ContactPhoneIcon />, path: '/leads', requiredRoles: [] },
         { text: 'Clientes', icon: <GroupIcon />, path: '/clientes', requiredRoles: [] },
         { text: 'Imóveis', icon: <BusinessIcon />, path: '/imoveis', requiredRoles: [] },

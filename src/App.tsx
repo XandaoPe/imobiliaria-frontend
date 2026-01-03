@@ -19,6 +19,7 @@ import { UsuariosPage } from './pages/UsuariosPage';
 import { EmpresasPage } from './pages/EmpresasPage';
 import { LeadsPage } from './pages/LeadsPage';
 import { NotificationBadge } from './components/NotificationBadge';
+import { NegociacaoPage } from './pages/NegociacaoPage';
 
 /**
  * Componente de Rota Protegida
@@ -113,6 +114,7 @@ const App = () => {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/imoveis" element={<ImoveisPage />} />
+              <Route path="/negociacoes" element={<NegociacaoPage />} />
               <Route path="/empresas" element={<EmpresasPage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
               <Route path="/leads" element={<LeadsPage />} />
