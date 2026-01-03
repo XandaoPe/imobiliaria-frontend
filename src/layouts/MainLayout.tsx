@@ -216,7 +216,19 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                                     {nomeEmpresa.toUpperCase()} —
                                 </Box>
                             )}
-                            {" "}Bem-vindo, {user?.nome}!
+                            {" "}Bem-vindo,{" "}
+                            <Box
+                                component="span"
+                                sx={{
+                                    fontWeight: 800,
+                                    color: '#FFD700',
+                                    fontSize: '1.1em', // Aumenta um pouco o tamanho da fonte
+                                    display: 'inline-block'
+                                }}
+                            >
+                                {user?.nome}
+                            </Box>
+                            !
                         </Typography>
                     </Box>
 

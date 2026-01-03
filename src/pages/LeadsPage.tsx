@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Chip, IconButton, Tooltip, TextField,
-    InputAdornment, CircularProgress, Button, Menu, MenuItem
+    InputAdornment, CircularProgress, Button, Menu, MenuItem,
+    Divider
 } from '@mui/material';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,18 +32,25 @@ export const LeadsPage: React.FC = () => {
     const [leads, setLeads] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState('');
-    const [filterStatus, setFilterStatus] = useState('TODOS');
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const lastLeadCount = useRef(0);
     const hasPlayedInitialAlert = useRef(false);
+    const [filterStatus, setFilterStatus] = useState('PENDENTES');
 
     // BUSCA COM FILTROS
     const fetchLeads = useCallback(async (isPolling = false) => {
         if (!isPolling) setLoading(true);
+
         try {
             const params: any = {};
             if (searchText?.trim()) params.search = searchText;
-            if (filterStatus !== 'TODOS') params.status = filterStatus;
+
+            if (filterStatus === 'PENDENTES') {
+                // O backend agora entende que essa string separada por vírgula é um "OR"
+                params.status = 'NOVO,EM_ANDAMENTO';
+            } else if (filterStatus !== 'TODOS') {
+                params.status = filterStatus;
+            }
 
             const response = await axios.get(API_URL + '/leads', {
                 headers: { Authorization: `Bearer ${user?.token}` },
@@ -126,14 +134,21 @@ export const LeadsPage: React.FC = () => {
                     onClick={(e) => setAnchorEl(e.currentTarget)}
                     sx={{ minWidth: 200, height: 56 }}
                 >
-                    {filterStatus === 'TODOS' ? 'Todos os Status' : filterStatus}
+                    {/* Rótulo dinâmico */}
+                    {filterStatus === 'PENDENTES' ? 'Pendentes (Novos/Andamento)' :
+                        filterStatus === 'TODOS' ? 'Todos os Status' : filterStatus}
                 </Button>
 
                 <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+                    {/* Nova opção padrão */}
+                    <MenuItem onClick={() => { setFilterStatus('PENDENTES'); setAnchorEl(null); }}>
+                        <b>Pendentes (Padrão)</b>
+                    </MenuItem>
                     <MenuItem onClick={() => { setFilterStatus('TODOS'); setAnchorEl(null); }}>Todos</MenuItem>
-                    <MenuItem onClick={() => { setFilterStatus('NOVO'); setAnchorEl(null); }}>Novos</MenuItem>
-                    <MenuItem onClick={() => { setFilterStatus('EM_ANDAMENTO'); setAnchorEl(null); }}>Em Andamento</MenuItem>
-                    <MenuItem onClick={() => { setFilterStatus('CONCLUIDO'); setAnchorEl(null); }}>Concluídos</MenuItem>
+                    <Divider /> {/* Opcional: import { Divider } from '@mui/material' */}
+                    <MenuItem onClick={() => { setFilterStatus('NOVO'); setAnchorEl(null); }}>Apenas Novos</MenuItem>
+                    <MenuItem onClick={() => { setFilterStatus('EM_ANDAMENTO'); setAnchorEl(null); }}>Apenas Em Andamento</MenuItem>
+                    <MenuItem onClick={() => { setFilterStatus('CONCLUIDO'); setAnchorEl(null); }}>Apenas Concluídos</MenuItem>
                 </Menu>
             </Box>
 
@@ -168,7 +183,36 @@ export const LeadsPage: React.FC = () => {
                                     <Typography variant="subtitle2">{lead.nome}</Typography>
                                     <Typography variant="caption" color="text.secondary">{lead.contato}</Typography>
                                 </TableCell>
-                                <TableCell>{lead.imovel?.titulo || 'N/A'}</TableCell>
+                                <TableCell>
+                                    {lead.imovel ? (
+                                        <Box>
+                                            {/* Título do Imóvel */}
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                                {lead.imovel.titulo}
+                                            </Typography>
+
+                                            {/* Endereço e Cidade */}
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                                {lead.imovel.endereco}
+                                                {lead.imovel.cidade ? ` • ${lead.imovel.cidade}` : ''}
+                                            </Typography>
+
+                                            {/* Badge de Venda/Aluguel (Opcional, mas ajuda muito o corretor) */}
+                                            <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5 }}>
+                                                {lead.imovel.para_venda && (
+                                                    <Chip label="Venda" size="small" variant="outlined" sx={{ fontSize: '10px', height: '18px' }} />
+                                                )}
+                                                {lead.imovel.para_aluguel && (
+                                                    <Chip label="Locação" size="small" variant="outlined" sx={{ fontSize: '10px', height: '18px' }} />
+                                                )}
+                                            </Box>
+                                        </Box>
+                                    ) : (
+                                        <Typography variant="body2" color="text.disabled">
+                                            Imóvel não identificado
+                                        </Typography>
+                                    )}
+                                </TableCell>
                                 <TableCell>
                                     <Chip
                                         label={lead.status.replace('_', ' ')}
