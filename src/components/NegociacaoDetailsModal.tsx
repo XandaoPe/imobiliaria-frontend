@@ -152,7 +152,7 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                                 <MenuItem value="PROSPECCAO">Prospecção</MenuItem>
                                 <MenuItem value="VISITA">Visita Agendada</MenuItem>
                                 <MenuItem value="PROPOSTA">Proposta Recebida</MenuItem>
-                                <MenuItem value="FECHADO">Venda Concluída 🎉</MenuItem>
+                                <MenuItem value="FECHADO">Venda/Aluguel Concluído 🎉</MenuItem>
                                 <MenuItem value="PERDIDO">Negócio Perdido ❌</MenuItem>
                             </TextField>
                         </Box>
