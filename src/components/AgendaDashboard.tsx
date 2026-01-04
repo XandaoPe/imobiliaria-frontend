@@ -166,12 +166,11 @@ export const AgendaLateral: React.FC<AgendaLateralProps> = ({ open, onClose }) =
                             >
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 1 }}>
                                     <Typography variant="body2" fontWeight="bold" color="primary">
-                                        {/* Usar explicitamente o fuso local do navegador */}
-                                        {new Date(ag.dataHora).toLocaleDateString('pt-BR')} às {
+                                        {new Date(ag.dataHora).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} às {
                                             new Date(ag.dataHora).toLocaleTimeString('pt-BR', {
                                                 hour: '2-digit',
                                                 minute: '2-digit',
-                                                hour12: false // Garante formato 24h
+                                                timeZone: 'America/Sao_Paulo' // FORÇA a exibição no fuso de Brasília
                                             })
                                         }
                                     </Typography>
