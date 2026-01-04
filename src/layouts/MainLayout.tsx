@@ -4,7 +4,7 @@ import {
     ListItem, ListItemButton, ListItemIcon, ListItemText, Divider,
     CssBaseline, Badge, Tooltip
 } from '@mui/material';
-import { Outlet, Link as RouterLink, useLocation } from 'react-router-dom';
+import { Outlet, Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 // Ícones
@@ -51,6 +51,7 @@ const USER_ADMIN_ROLES = [PerfisEnum.ADM_GERAL, PerfisEnum.GERENTE];
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const { logout, user } = useAuth();
+    const navigate = useNavigate();
     const location = useLocation();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [novosLeadsCount, setNovosLeadsCount] = useState(0);
@@ -61,6 +62,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const lastTotalCount = useRef(0);
 
     const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
+
+    const handleLogout = () => {
+        logout();
+        navigate('/', { replace: true }); // Força o redirecionamento para a Landing Page
+    };
 
     // --- Busca Contagem de Leads ---
     const fetchNotificationCount = useCallback(async (isPolling = false) => {
@@ -193,7 +199,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </List>
             <Divider />
             <List>
-                <ListItem disablePadding onClick={logout}>
+                <ListItem disablePadding onClick={handleLogout}>
                     <ListItemButton>
                         <ListItemIcon><LogoutIcon color="error" /></ListItemIcon>
                         <ListItemText primary="Sair" />
@@ -208,26 +214,47 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <CssBaseline />
             <AppBar position="fixed" sx={{ width: { sm: `calc(100% - ${drawerWidth}px)` }, ml: { sm: `${drawerWidth}px` }, zIndex: (theme) => theme.zIndex.drawer + 1 }}>
                 <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <IconButton color="inherit" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2, display: { sm: 'none' } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flexGlow: 1 }}>
+                        <IconButton
+                            color="inherit"
+                            edge="start"
+                            onClick={handleDrawerToggle}
+                            sx={{ mr: { xs: 1, sm: 2 }, display: { sm: 'none' } }}
+                        >
                             <MenuIcon />
                         </IconButton>
 
-                        <Typography variant="h6" noWrap>
+                        {/* Typography com minWidth 0 e noWrap para não quebrar o layout */}
+                        <Typography variant="h6" noWrap sx={{ flexShrink: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {/* Oculta o nome da empresa em telas muito pequenas (xs) */}
                             {nomeEmpresa && (
-                                <Box component="span" sx={{ fontWeight: 800, color: '#FFD700', mr: 1 }}>
+                                <Box component="span" sx={{
+                                    fontWeight: 800,
+                                    color: '#FFD700',
+                                    mr: 1,
+                                    display: { xs: 'none', md: 'inline-block' }
+                                }}>
                                     {nomeEmpresa.toUpperCase()} —
                                 </Box>
                             )}
-                            {" "}Bem-vindo,{" "}
-                            <Box component="span" sx={{ fontWeight: 800, color: '#FFD700', fontSize: '1.1em', display: 'inline-block' }}>
-                                {user?.nome}
-                            </Box>!
+
+                            {/* Texto "Bem-vindo" some no mobile para dar lugar ao nome */}
+                            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                                Bem-vindo,{" "}
+                            </Box>
+
+                            <Box component="span" sx={{
+                                fontWeight: 800,
+                                color: '#FFD700',
+                                fontSize: { xs: '0.9em', sm: '1.1em' }
+                            }}>
+                                {user?.nome.split(' ')[0]} {/* Pega apenas o primeiro nome no mobile */}
+                            </Box>
+                            !
                         </Typography>
                     </Box>
 
-                    {/* ⭐️ SEÇÃO DA AGENDA NA TOOLBAR */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 2 }, flexShrink: 0 }}>
                         <Tooltip title="Agenda de Visitas">
                             <IconButton color="inherit" onClick={() => setAgendaOpen(true)}>
                                 <Badge badgeContent={agendamentosCount} color="error">
@@ -236,6 +263,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                             </IconButton>
                         </Tooltip>
 
+                        {/* Perfil só aparece do tablet para cima */}
                         <Typography variant="caption" sx={{ opacity: 0.8, display: { xs: 'none', md: 'block' } }}>
                             {user?.perfil}
                         </Typography>

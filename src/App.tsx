@@ -29,13 +29,12 @@ import { NegociacaoPage } from './pages/NegociacaoPage';
 const ProtectedRoute = () => {
   const { isAuthenticated } = useAuth();
 
+  // Se NÃO estiver logado, manda para a Landing Page ("/")
   if (!isAuthenticated) {
-    // Se o usuário tentar acessar qualquer rota interna sem estar logado,
-    // ele é enviado para a Landing Page principal.
     return <Navigate to="/" replace />;
   }
 
-  // Se autenticado, renderiza o layout principal com o Outlet para as rotas filhas
+  // Se estiver logado, renderiza o Layout com o Outlet (conteúdo das sub-rotas)
   return <MainLayout />;
 };
 
