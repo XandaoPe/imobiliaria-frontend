@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button,
-    TextField, MenuItem, Box, Typography, Divider, Paper
+    TextField, MenuItem, Box, Typography, Divider, Paper,
+    Chip, IconButton, Alert, Collapse
 } from '@mui/material';
 import {
     Timeline, TimelineItem, TimelineSeparator, TimelineConnector,
     TimelineContent, TimelineDot, TimelineOppositeContent
 } from '@mui/lab';
-import { Chip, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import api from '../services/api';
@@ -24,47 +24,138 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
     const [novaDescricao, setNovaDescricao] = useState('');
     const [novoStatus, setNovoStatus] = useState<StatusNegociacao | ''>('');
     const [loading, setLoading] = useState(false);
+    const [dataVisita, setDataVisita] = useState('');
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    // Dentro do seu componente NegociacaoDetailsModal
+    const [statusAgenda, setStatusAgenda] = useState<{ loading: boolean, msg: string, color: string } | null>(null);
+    const [horaVisita, setHoraVisita] = useState('');
+const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
+
+    const gerarHorarios = () => {
+        const horarios = [];
+        for (let h = 6; h <= 22; h++) {
+            const hora = h < 10 ? `0${h}` : h;
+            horarios.push(`${hora}:00`);
+            if (h !== 22) horarios.push(`${hora}:30`);
+        }
+        return horarios;
+    };
+
+    const getHorariosDisponiveis = () => {
+        const todos = [];
+        for (let h = 6; h <= 22; h++) {
+            const hora = String(h).padStart(2, '0');
+            todos.push(`${hora}:00`);
+            if (h !== 22) todos.push(`${hora}:30`);
+        }
+
+        const hojeStr = new Date().toISOString().split("T")[0];
+        const agora = new Date();
+
+        return todos.filter(h => {
+            // 1. Remove se já estiver ocupado no banco
+            if (horariosBloqueados.includes(h)) return false;
+
+            // 2. Se for hoje, remove horas que já passaram
+            if (dataVisita === hojeStr) {
+                const [hora, min] = h.split(':').map(Number);
+                const dataSlot = new Date();
+                dataSlot.setHours(hora, min, 0);
+                if (dataSlot <= agora) return false;
+            }
+
+            return true;
+        });
+    };
+
+        // Efeito para verificar automaticamente
+    useEffect(() => {
+        const verificar = async () => {
+            if (!negociacao?.imovel?._id || !dataVisita || !horaVisita || novoStatus !== 'VISITA') {
+                setStatusAgenda(null);
+                return;
+            }
+
+            // Monta a data completa: YYYY-MM-DD + HH:mm
+            const dataCompleta = `${dataVisita}T${horaVisita}:00`;
+            setStatusAgenda({ loading: true, msg: 'Verificando agenda...', color: 'info.main' });
+
+            try {
+                const { data } = await api.get(`/agendamentos/check-disponibilidade`, {
+                    params: { data: dataCompleta, imovelId: negociacao.imovel._id }
+                });
+
+                if (data.disponivel) {
+                    setStatusAgenda({ loading: false, msg: '✅ Horário disponível', color: 'success.main' });
+                } else {
+                    setStatusAgenda({ loading: false, msg: '⚠️ Atenção: Já existe uma visita neste horário!', color: 'error.main' });
+                }
+            } catch (e) { setStatusAgenda(null); }
+        };
+        verificar();
+    }, [dataVisita, horaVisita, novoStatus, negociacao?.imovel?._id]);
+
+    // Limpa os estados quando o modal abre/fecha ou a negociação muda
+    useEffect(() => {
+        setNovaDescricao('');
+        setNovoStatus('');
+        setDataVisita('');
+        setErrorMsg(null);
+    }, [open, negociacao]);
+
+    // Efeito para buscar horários ocupados quando mudar a data ou o imóvel
+    useEffect(() => {
+        const buscarOcupados = async () => {
+            if (dataVisita && negociacao?.imovel?._id) {
+                try {
+                    const { data } = await api.get('/agendamentos/horarios-ocupados', {
+                        params: { imovelId: negociacao.imovel._id, data: dataVisita }
+                    });
+                    setHorariosBloqueados(data); // Ex: ["10:30", "15:00"]
+                } catch (e) { console.error(e); }
+            }
+        };
+        buscarOcupados();
+    }, [dataVisita, negociacao?.imovel?._id]);
 
     if (!negociacao) return null;
 
     const handleAddHistorico = async () => {
-        // Se não houver descrição nem novo status, não faz nada
+        // Validação básica de frontend
         if (!novaDescricao && !novoStatus) return;
 
+        if (novoStatus === 'VISITA' && !dataVisita) {
+            setErrorMsg("Por favor, informe a data e hora para o agendamento da visita.");
+            return;
+        }
+
         setLoading(true);
+        setErrorMsg(null);
+
         try {
+            const dataAgendamentoCompleta = `${dataVisita}T${horaVisita}:00`;
+
             await api.patch(`/negociacoes/${negociacao._id}`, {
-                // Se não houver descrição mas houver novo status, registra a mudança automaticamente
-                descricao: novaDescricao || `Status alterado para ${novoStatus}`,
-                status: novoStatus || negociacao.status
+                status: novoStatus || undefined,
+                descricao: novaDescricao || undefined,
+                dataAgendamento: novoStatus === 'VISITA' ? dataAgendamentoCompleta : undefined
             });
 
-            // 1. Limpa os campos locais
-            setNovaDescricao('');
-            setNovoStatus('');
-
-            // 2. Notifica o componente pai para recarregar a lista do banco de dados
+            // Sucesso: Notifica pai e fecha
             onUpdate();
-
-            // 3. FECHA O MODAL (Adicionado aqui para automação)
             onClose();
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Erro ao atualizar negociação", error);
-            alert("Erro ao salvar interação.");
+
+            // Captura a mensagem de erro amigável do Backend (ex: Conflito de agenda)
+            const mensagem = error.response?.data?.message || "Erro ao salvar interação.";
+            setErrorMsg(Array.isArray(mensagem) ? mensagem[0] : mensagem);
         } finally {
             setLoading(false);
         }
     };
 
-    // Tipagem explícita para os eventos de mudança
-    const handleDescricaoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setNovaDescricao(e.target.value);
-    };
-
-    const handleStatusChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setNovoStatus(e.target.value as StatusNegociacao);
-    };
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -76,7 +167,7 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
             </DialogTitle>
 
             <DialogContent dividers>
-                {/* CABEÇALHO RESUMO COM BOX FLEX */}
+                {/* CABEÇALHO RESUMO */}
                 <Box sx={{
                     display: 'flex',
                     flexDirection: { xs: 'column', sm: 'row' },
@@ -109,7 +200,7 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                         {negociacao.historico?.map((item, index) => (
                             <TimelineItem key={index}>
                                 <TimelineOppositeContent color="text.secondary" sx={{ flex: 0.2, py: '12px', px: 2 }}>
-                                    {item.data ? new Date(item.data).toLocaleDateString() : '---'}
+                                    {item.data ? new Date(item.data).toLocaleDateString('pt-BR') : '---'}
                                 </TimelineOppositeContent>
                                 <TimelineSeparator>
                                     <TimelineDot color="primary" variant="outlined" />
@@ -117,7 +208,8 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                                 </TimelineSeparator>
                                 <TimelineContent sx={{ py: '12px', px: 2 }}>
                                     <Paper elevation={0} sx={{ p: 1.5, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
-                                        <Typography variant="body2">{item.descricao}</Typography>
+                                        <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5 }}>{item.usuario_nome || 'Sistema'}</Typography>
+                                        <Typography variant="body2" color="text.primary">{item.descricao}</Typography>
                                     </Paper>
                                 </TimelineContent>
                             </TimelineItem>
@@ -125,52 +217,125 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                     </Timeline>
                 </Box>
 
-                {/* FORMULÁRIO COM BOX FLEX */}
-                <Paper variant="outlined" sx={{ p: 2, bgcolor: '#fffef0', borderColor: '#ffe58f' }}>
-                    <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#856404' }}>
-                        <AddCommentIcon fontSize="small" /> Registrar Nova Interação
+                {/* ALERTA DE ERRO */}
+                <Collapse in={!!errorMsg}>
+                    <Alert
+                        severity="error"
+                        sx={{ mb: 2 }}
+                        onClose={() => setErrorMsg(null)}
+                    >
+                        {errorMsg}
+                    </Alert>
+                </Collapse>
+
+                {/* FORMULÁRIO DE REGISTRO */}
+                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#fffef0', borderColor: '#ffe58f' }}>
+                    <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#856404', mb: 1, fontSize: '0.8rem' }}>
+                        <AddCommentIcon sx={{ fontSize: 18 }} /> Registrar Nova Interação
                     </Typography>
 
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 1.5, alignItems: 'flex-start' }}>
                             <TextField
                                 fullWidth
+                                size="small"
                                 label="O que aconteceu?"
                                 multiline
                                 rows={2}
                                 value={novaDescricao}
-                                onChange={handleDescricaoChange}
+                                onChange={(e) => setNovaDescricao(e.target.value)}
+                                placeholder="Descreva o contato..."
+                                inputProps={{ style: { fontSize: '0.85rem' } }}
                             />
-                            <TextField
-                                select
-                                label="Mudar Status"
-                                sx={{ minWidth: { md: 220 } }}
-                                value={novoStatus}
-                                onChange={handleStatusChange}
-                            >
-                                <MenuItem value="">Manter Atual</MenuItem>
-                                <MenuItem value="PROSPECCAO">Prospecção</MenuItem>
-                                <MenuItem value="VISITA">Visita Agendada</MenuItem>
-                                <MenuItem value="PROPOSTA">Proposta Recebida</MenuItem>
-                                <MenuItem value="FECHADO">Venda/Aluguel Concluído 🎉</MenuItem>
-                                <MenuItem value="PERDIDO">Negócio Perdido ❌</MenuItem>
-                            </TextField>
+
+                            <Box sx={{
+                                minWidth: { md: 280 },
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 1.5,
+                                width: { xs: '100%', md: 'auto' }
+                            }}>
+                                <TextField
+                                    select
+                                    fullWidth
+                                    size="small"
+                                    label="Mudar Status"
+                                    value={novoStatus}
+                                    onChange={(e) => setNovoStatus(e.target.value as StatusNegociacao)}
+                                    SelectProps={{ style: { fontSize: '0.85rem' } }}
+                                >
+                                    <MenuItem value="" sx={{ fontSize: '0.85rem' }}>Manter Atual</MenuItem>
+                                    <MenuItem value="PROSPECCAO" sx={{ fontSize: '0.85rem' }}>Prospecção</MenuItem>
+                                    <MenuItem value="VISITA" sx={{ fontSize: '0.85rem' }}>Visita Agendada</MenuItem>
+                                    <MenuItem value="PROPOSTA" sx={{ fontSize: '0.85rem' }}>Proposta Recebida</MenuItem>
+                                    <MenuItem value="FECHADO" sx={{ fontSize: '0.85rem' }}>Concluído 🎉</MenuItem>
+                                    <MenuItem value="PERDIDO" sx={{ fontSize: '0.85rem' }}>Perdido ❌</MenuItem>
+                                </TextField>
+
+                                {novoStatus === 'VISITA' && (
+                                    <Box sx={{
+                                        display: 'flex',
+                                        gap: 1,
+                                        width: '100%',
+                                        alignItems: 'flex-start'
+                                    }}>
+                                        <TextField
+                                            fullWidth
+                                            size="small"
+                                            sx={{ flex: 1.5 }}
+                                            type="date"
+                                            label="Data"
+                                            value={dataVisita}
+                                            onChange={(e) => setDataVisita(e.target.value)}
+                                            InputLabelProps={{ shrink: true }}
+                                            inputProps={{
+                                                style: { fontSize: '0.85rem' },
+                                                min: new Date().toISOString().split("T")[0]
+                                            }}
+                                        />
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            size="small"
+                                            sx={{ flex: 1 }}
+                                            label="Hora"
+                                            value={horaVisita}
+                                            onChange={(e) => setHoraVisita(e.target.value)}
+                                            disabled={!dataVisita}
+                                            SelectProps={{ style: { fontSize: '0.85rem' } }}
+                                        >
+                                            {getHorariosDisponiveis().map(h => (
+                                                <MenuItem key={h} value={h} sx={{ fontSize: '0.85rem' }}>{h}</MenuItem>
+                                            ))}
+                                        </TextField>
+                                    </Box>
+                                )}
+                            </Box>
                         </Box>
+
+                        {/* Mensagem de Feedback da Agenda (compacta) */}
+                        {statusAgenda && (
+                            <Typography variant="caption" sx={{ color: statusAgenda.color, fontWeight: 'bold', mt: -1 }}>
+                                {statusAgenda.msg}
+                            </Typography>
+                        )}
 
                         <Button
                             variant="contained"
                             onClick={handleAddHistorico}
-                            disabled={loading || (!novaDescricao && !novoStatus)}
-                            sx={{ alignSelf: 'flex-end', px: 4 }}
+                            size="small" // Botão menor
+                            disabled={loading || (!novaDescricao && !novoStatus) || (statusAgenda?.msg.includes('Atenção'))}
+                            sx={{ alignSelf: 'flex-end', px: 3, textTransform: 'none' }}
                         >
                             {loading ? 'Salvando...' : 'Salvar Interação'}
                         </Button>
                     </Box>
                 </Paper>
+                
             </DialogContent>
 
             <DialogActions sx={{ p: 2 }}>
-                <Button onClick={onClose} color="inherit">Fechar</Button>
+                <Button onClick={onClose} color="inherit" disabled={loading}>Fechar</Button>
             </DialogActions>
         </Dialog>
     );

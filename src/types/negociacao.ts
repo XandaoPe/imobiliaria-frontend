@@ -6,7 +6,7 @@ export type StatusNegociacao = 'PROSPECCAO' | 'VISITA' | 'PROPOSTA' | 'FECHADO' 
 export interface HistoricoNegociacao {
     data: string;
     descricao: string;
-    usuario: string;
+    usuario_nome?: string;
 }
 
 export interface Negociacao {
