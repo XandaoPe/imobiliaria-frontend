@@ -132,7 +132,6 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
     if (!negociacao) return null;
 
     const handleAddHistorico = async () => {
-        // Validação básica de frontend
         if (!novaDescricao && !novoStatus) return;
 
         if (novoStatus === 'VISITA' && !dataVisita) {
@@ -144,22 +143,29 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
         setErrorMsg(null);
 
         try {
-            const dataAgendamentoCompleta = `${dataVisita}T${horaVisita}:00`;
+            let dataAgendamentoISO = undefined;
+
+            if (novoStatus === 'VISITA') {
+                // Criamos um objeto Date a partir da data e hora selecionadas
+                // Isso interpreta os valores como horário local do dispositivo
+                const [ano, mes, dia] = dataVisita.split('-').map(Number);
+                const [hora, min] = horaVisita.split(':').map(Number);
+                const dateObj = new Date(ano, mes - 1, dia, hora, min);
+
+                // toISOString() enviará para o backend no formato '2024-05-10T09:00:00.000Z'
+                // Onde o 'Z' indica UTC, mas o valor já foi ajustado corretamente
+                dataAgendamentoISO = dateObj.toISOString();
+            }
 
             await api.patch(`/negociacoes/${negociacao._id}`, {
                 status: novoStatus || undefined,
                 descricao: novaDescricao || undefined,
-                dataAgendamento: novoStatus === 'VISITA' ? dataAgendamentoCompleta : undefined
+                dataAgendamento: dataAgendamentoISO
             });
 
-            // Sucesso: Notifica pai e fecha
             onUpdate();
             onClose();
-
         } catch (error: any) {
-            console.error("Erro ao atualizar negociação", error);
-
-            // Captura a mensagem de erro amigável do Backend (ex: Conflito de agenda)
             const mensagem = error.response?.data?.message || "Erro ao salvar interação.";
             setErrorMsg(Array.isArray(mensagem) ? mensagem[0] : mensagem);
         } finally {
