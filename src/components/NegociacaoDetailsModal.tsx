@@ -49,21 +49,24 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
             if (h !== 22) todos.push(`${hora}:30`);
         }
 
-        const hojeStr = new Date().toISOString().split("T")[0];
-        const agora = new Date();
+        const hoje = new Date();
+        // Ajustamos o "hoje" para o fuso de Brasília caso o celular esteja em UTC
+        const hojeBr = new Date(hoje.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+
+        const hojeStr = hojeBr.toISOString().split("T")[0];
+        const horaAtual = hojeBr.getHours();
+        const minAtual = hojeBr.getMinutes();
 
         return todos.filter(h => {
-            // 1. Remove se já estiver ocupado no banco
             if (horariosBloqueados.includes(h)) return false;
 
-            // 2. Se for hoje, remove horas que já passaram
             if (dataVisita === hojeStr) {
-                const [hora, min] = h.split(':').map(Number);
-                const dataSlot = new Date();
-                dataSlot.setHours(hora, min, 0);
-                if (dataSlot <= agora) return false;
+                const [hSlot, mSlot] = h.split(':').map(Number);
+                // Se a hora do slot for menor que a atual, remove.
+                // Se for a mesma hora mas o minuto for menor, remove.
+                if (hSlot < horaAtual) return false;
+                if (hSlot === horaAtual && mSlot <= minAtual) return false;
             }
-
             return true;
         });
     };
@@ -134,7 +137,7 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
     const handleAddHistorico = async () => {
         if (!novaDescricao && !novoStatus) return;
 
-        if (novoStatus === 'VISITA' && !dataVisita) {
+        if (novoStatus === 'VISITA' && (!dataVisita || !horaVisita)) {
             setErrorMsg("Por favor, informe a data e hora para o agendamento da visita.");
             return;
         }
@@ -143,24 +146,18 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
         setErrorMsg(null);
 
         try {
-            let dataAgendamentoISO = undefined;
+            let dataAgendamentoCompleta = undefined;
 
             if (novoStatus === 'VISITA') {
-                // Criamos um objeto Date a partir da data e hora selecionadas
-                // Isso interpreta os valores como horário local do dispositivo
-                const [ano, mes, dia] = dataVisita.split('-').map(Number);
-                const [hora, min] = horaVisita.split(':').map(Number);
-                const dateObj = new Date(ano, mes - 1, dia, hora, min);
-
-                // toISOString() enviará para o backend no formato '2024-05-10T09:00:00.000Z'
-                // Onde o 'Z' indica UTC, mas o valor já foi ajustado corretamente
-                dataAgendamentoISO = dateObj.toISOString();
+                // Montamos a string no formato ISO mas fixando o fuso de Brasília (-03:00)
+                // Isso evita que o celular ou o servidor tentem adivinhar o fuso.
+                dataAgendamentoCompleta = `${dataVisita}T${horaVisita}:00-03:00`;
             }
 
             await api.patch(`/negociacoes/${negociacao._id}`, {
                 status: novoStatus || undefined,
                 descricao: novaDescricao || undefined,
-                dataAgendamento: dataAgendamentoISO
+                dataAgendamento: dataAgendamentoCompleta
             });
 
             onUpdate();
@@ -172,7 +169,6 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
             setLoading(false);
         }
     };
-
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
