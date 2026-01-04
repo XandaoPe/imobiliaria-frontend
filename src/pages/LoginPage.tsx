@@ -232,16 +232,25 @@ export const LoginPage = () => {
                         fullWidth
                         variant="contained"
                         sx={{ mt: 3, mb: 2 }}
-                        // Desabilita se estiver carregando OU se estiver na etapa de seleção e nenhuma empresa for escolhida
                         disabled={loading || (etapa === 'selecao' && !empresaId)}
                     >
                         {loading
                             ? <CircularProgress size={24} color="inherit" />
-                            : etapa === 'credenciais'
-                                ? 'Próximo'
-                                : 'Entrar'
+                            : etapa === 'credenciais' ? 'Próximo' : 'Entrar'
                         }
                     </Button>
+
+                    {/* ⭐️ MENSAGEM DE AGUARDE PERSONALIZADA */}
+                    {loading && (
+                        <Typography
+                            variant="caption"
+                            display="block"
+                            textAlign="center"
+                            sx={{ color: 'text.secondary', fontStyle: 'italic', mt: 1 }}
+                        >
+                            O servidor está acordando... Isso pode levar até 50 segundos no primeiro acesso.
+                        </Typography>
+                    )}
                 </Box>
             </Paper>
         </Box>
