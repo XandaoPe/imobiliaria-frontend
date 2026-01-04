@@ -68,29 +68,40 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
         });
     };
 
-        // Efeito para verificar automaticamente
     useEffect(() => {
         const verificar = async () => {
+            // 1. Se não houver dados suficientes ou o status não for 'VISITA', limpa e sai
             if (!negociacao?.imovel?._id || !dataVisita || !horaVisita || novoStatus !== 'VISITA') {
                 setStatusAgenda(null);
                 return;
             }
 
-            // Monta a data completa: YYYY-MM-DD + HH:mm
             const dataCompleta = `${dataVisita}T${horaVisita}:00`;
             setStatusAgenda({ loading: true, msg: 'Verificando agenda...', color: 'info.main' });
 
             try {
                 const { data } = await api.get(`/agendamentos/check-disponibilidade`, {
-                    params: { data: dataCompleta, imovelId: negociacao.imovel._id }
+                    params: { data: dataCompleta }
                 });
+
+                // ⭐️ LOGICA ALTERADA: 
+                // Só exibe erro se 'disponivel' for falso E o registro conflitante estiver PENDENTE.
+                // Se o backend retornar que não está disponível, mas você quiser permitir 
+                // agendar por cima de cancelados, o backend deve filtrar por status.
 
                 if (data.disponivel) {
                     setStatusAgenda({ loading: false, msg: '✅ Horário disponível', color: 'success.main' });
                 } else {
-                    setStatusAgenda({ loading: false, msg: '⚠️ Atenção: Já existe uma visita neste horário!', color: 'error.main' });
+                    // Se o backend já filtra apenas PENDENTES, a msg de erro aparece aqui.
+                    setStatusAgenda({
+                        loading: false,
+                        msg: '⚠️ Atenção: Já existe uma visita ativa neste horário!',
+                        color: 'error.main'
+                    });
                 }
-            } catch (e) { setStatusAgenda(null); }
+            } catch (e) {
+                setStatusAgenda(null);
+            }
         };
         verificar();
     }, [dataVisita, horaVisita, novoStatus, negociacao?.imovel?._id]);
@@ -109,7 +120,7 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
             if (dataVisita && negociacao?.imovel?._id) {
                 try {
                     const { data } = await api.get('/agendamentos/horarios-ocupados', {
-                        params: { imovelId: negociacao.imovel._id, data: dataVisita }
+                        params: { data: dataVisita } // imovelId removido
                     });
                     setHorariosBloqueados(data); // Ex: ["10:30", "15:00"]
                 } catch (e) { console.error(e); }
@@ -331,7 +342,7 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
                         </Button>
                     </Box>
                 </Paper>
-                
+
             </DialogContent>
 
             <DialogActions sx={{ p: 2 }}>

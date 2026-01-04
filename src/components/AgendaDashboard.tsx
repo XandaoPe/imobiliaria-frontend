@@ -5,6 +5,7 @@ import {
 import EventIcon from '@mui/icons-material/Event';
 import CloseIcon from '@mui/icons-material/Close'; 
 import LocationOnIcon from '@mui/icons-material/LocationOn'; 
+import PersonIcon from '@mui/icons-material/Person'; 
 import api from '../services/api';
 import { GerenciarAgendamentoModal } from './GerenciarAgendamentoModal';
 
@@ -186,12 +187,21 @@ export const AgendaLateral: React.FC<AgendaLateralProps> = ({ open, onClose }) =
                                         sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}
                                     >
                                         <LocationOnIcon sx={{ fontSize: 14 }} />
-                                        {ag.imovel.endereco}
+                                        {`${ag.imovel.endereco}${ag.imovel.cidade ? ` - ${ag.imovel.cidade}` : ''}`}
                                     </Typography>
                                 )}
 
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                                     <b>Cliente:</b> {ag.cliente?.nome}
+                                </Typography>
+
+                                <Typography
+                                    variant="caption"
+                                    color="blue"
+                                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.2, fontSize: '18' }}
+                                >
+                                    <PersonIcon sx={{ fontSize: 18}} />
+                                    Corretor: <b>{ag.usuarioCorretor?.nome || 'Não informado'}</b>
                                 </Typography>
 
                                 {ag.observacoes && ag.observacoes.trim() !== "" && (
