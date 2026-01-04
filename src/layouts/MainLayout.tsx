@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Box, AppBar, Toolbar, Typography, IconButton, Drawer, List,
     ListItem, ListItemButton, ListItemIcon, ListItemText, Divider,
-    CssBaseline, Badge
+    CssBaseline, Badge, Tooltip
 } from '@mui/material';
 import { Outlet, Link as RouterLink, useLocation } from 'react-router-dom';
 import axios from 'axios';
@@ -16,35 +16,28 @@ import LocationCityIcon from '@mui/icons-material/LocationCity';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
+import HandshakeIcon from '@mui/icons-material/Handshake';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'; // ⭐️ NOVO
 
 import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
 import { API_URL } from '../services/api';
+import { AgendaLateral } from '../components/AgendaDashboard';
 
 const drawerWidth = 240;
 
-// --- Função de Som ---
+// --- Função de Som (Lead) ---
 const playLeadSound = (isNew: boolean) => {
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-
-    // Se o navegador suspendeu o áudio, tenta retomar
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
-
+    if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-
     osc.type = 'sine';
     osc.frequency.setValueAtTime(isNew ? 1200 : 440, audioCtx.currentTime);
-    // Subi para 1200Hz (mais "alerta")
-
     gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
-
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-
     osc.start();
     osc.stop(audioCtx.currentTime + 0.8);
 };
@@ -61,27 +54,23 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const location = useLocation();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [novosLeadsCount, setNovosLeadsCount] = useState(0);
+    const [agendamentosCount, setAgendamentosCount] = useState(0); // ⭐️ ESTADO PARA AGENDA
     const [nomeEmpresa, setNomeEmpresa] = useState<string>('');
+    const [agendaOpen, setAgendaOpen] = useState(false); // ⭐️ CONTROLE DA AGENDA
 
-    // Refs para controlar disparos de som
     const lastTotalCount = useRef(0);
-    const hasPlayedInitial = useRef(false);
 
     const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
+    // --- Busca Contagem de Leads ---
     const fetchNotificationCount = useCallback(async (isPolling = false) => {
         if (!user?.token) return;
         try {
             const response = await axios.get(`${API_URL}/leads/count`, {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
-
             const count = response.data.count ?? 0;
-
-            if (isPolling && count > lastTotalCount.current) {
-                playLeadSound(true);
-            }
-
+            if (isPolling && count > lastTotalCount.current) playLeadSound(true);
             setNovosLeadsCount(count);
             lastTotalCount.current = count;
         } catch (error) {
@@ -89,53 +78,66 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         }
     }, [user?.token]);
 
-    const fetchEmpresaData = useCallback(async () => {
+    // --- ⭐️ Busca Contagem de Agendamentos do Dia ---
+    const fetchAgendamentosCount = useCallback(async () => {
         if (!user?.token) return;
-
         try {
-            // 1. Extraindo o empresaId manualmente do Token (Payload é a parte do meio)
-            const base64Url = user.token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const payload = JSON.parse(window.atob(base64));
-
-            const empresaId = payload.empresaId; // Aqui está o seu ID do log: 6940...
-
-            if (!empresaId) {
-                console.warn("EmpresaId não encontrado no token.");
-                return;
-            }
-
-            // 2. Buscando o nome da empresa usando o ID extraído
-            const response = await axios.get(`${API_URL}/empresas/${empresaId}`, {
+            const response = await axios.get(`${API_URL}/agendamentos`, {
                 headers: { Authorization: `Bearer ${user.token}` }
             });
 
+            // ⭐️ Filtra APENAS os agendamentos com status PENDENTE
+            // Isso garante que o Badge na Toolbar mostre apenas o que o corretor precisa agir
+            const pendentes = response.data.filter((a: any) => a.status === 'PENDENTE');
+
+            setAgendamentosCount(pendentes.length);
+        } catch (error) {
+            console.error("Erro ao buscar contagem de agenda", error);
+        }
+    }, [user?.token]);
+
+    const fetchEmpresaData = useCallback(async () => {
+        if (!user?.token) return;
+        try {
+            const base64Url = user.token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const payload = JSON.parse(window.atob(base64));
+            const empresaId = payload.empresaId;
+            if (!empresaId) return;
+
+            const response = await axios.get(`${API_URL}/empresas/${empresaId}`, {
+                headers: { Authorization: `Bearer ${user.token}` }
+            });
             setNomeEmpresa(response.data.nome);
         } catch (error) {
-            console.error("Erro ao extrair/buscar dados da empresa:", error);
+            console.error("Erro ao buscar dados da empresa:", error);
         }
     }, [user?.token]);
 
     useEffect(() => {
         fetchEmpresaData();
-        fetchNotificationCount(false); // Busca inicial
+        fetchNotificationCount(false);
+        fetchAgendamentosCount(); // ⭐️ Busca inicial da agenda
 
         const interval = setInterval(() => {
-            // REMOVIDO o "if location.pathname" para garantir que o badge atualize e o som toque sempre
-            // mas passamos true apenas se não estivermos na tela de leads para evitar som repetitivo
             const deveTocarSom = location.pathname !== '/leads';
             fetchNotificationCount(deveTocarSom);
-        }, 2000); // Reduzido para 2 segundos para ser mais responsivo
+            fetchAgendamentosCount(); // ⭐️ Atualiza contador da agenda a cada 10s
+        }, 10000);
 
-        // Evento customizado para quando você limpa leads na tela de leads, o layout atualizar o badge
-        const updateHandler = () => fetchNotificationCount(false);
+        const updateHandler = () => {
+            fetchNotificationCount(false);
+            fetchAgendamentosCount();
+        };
         window.addEventListener('updateLeadsCount', updateHandler);
+        window.addEventListener('updateAgenda', updateHandler); // Evento para quando criar agendamento
 
         return () => {
             clearInterval(interval);
             window.removeEventListener('updateLeadsCount', updateHandler);
+            window.removeEventListener('updateAgenda', updateHandler);
         };
-    }, [fetchNotificationCount, location.pathname, fetchEmpresaData]);
+    }, [fetchNotificationCount, fetchAgendamentosCount, location.pathname, fetchEmpresaData]);
 
     const hasPermission = (requiredRoles: PerfisEnum[]) => {
         if (requiredRoles.length === 0) return true;
@@ -146,6 +148,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const baseMenuItems = [
         { text: 'Home', icon: <HomeIcon />, path: '/home', requiredRoles: [] },
         { text: 'Dashboard', icon: <HomeIcon />, path: '/dashboard', requiredRoles: [] },
+        { text: 'Negociações', icon: <HandshakeIcon />, path: '/negociacoes', requiredRoles: [] },
         { text: 'Leads (Interesses)', icon: <ContactPhoneIcon />, path: '/leads', requiredRoles: [] },
         { text: 'Clientes', icon: <GroupIcon />, path: '/clientes', requiredRoles: [] },
         { text: 'Imóveis', icon: <BusinessIcon />, path: '/imoveis', requiredRoles: [] },
@@ -217,24 +220,26 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                                 </Box>
                             )}
                             {" "}Bem-vindo,{" "}
-                            <Box
-                                component="span"
-                                sx={{
-                                    fontWeight: 800,
-                                    color: '#FFD700',
-                                    fontSize: '1.1em', // Aumenta um pouco o tamanho da fonte
-                                    display: 'inline-block'
-                                }}
-                            >
+                            <Box component="span" sx={{ fontWeight: 800, color: '#FFD700', fontSize: '1.1em', display: 'inline-block' }}>
                                 {user?.nome}
-                            </Box>
-                            !
+                            </Box>!
                         </Typography>
                     </Box>
 
-                    <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                        {user?.perfil}
-                    </Typography>
+                    {/* ⭐️ SEÇÃO DA AGENDA NA TOOLBAR */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Tooltip title="Agenda de Visitas">
+                            <IconButton color="inherit" onClick={() => setAgendaOpen(true)}>
+                                <Badge badgeContent={agendamentosCount} color="error">
+                                    <CalendarMonthIcon />
+                                </Badge>
+                            </IconButton>
+                        </Tooltip>
+
+                        <Typography variant="caption" sx={{ opacity: 0.8, display: { xs: 'none', md: 'block' } }}>
+                            {user?.perfil}
+                        </Typography>
+                    </Box>
                 </Toolbar>
             </AppBar>
 
@@ -251,6 +256,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <Toolbar />
                 {children ? children : <Outlet />}
             </Box>
+
+            {/* ⭐️ COMPONENTE DA AGENDA LATERAL */}
+            <AgendaLateral
+                open={agendaOpen}
+                onClose={() => setAgendaOpen(false)}
+            />
         </Box>
     );
 };

@@ -13,6 +13,10 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { API_URL } from '../services/api';
 
+import HistoryIcon from '@mui/icons-material/History';
+import SendIcon from '@mui/icons-material/Send';
+import { Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText } from '@mui/material';
+
 // --- Função de Som Suave ---
 const playBeep = () => {
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -36,6 +40,10 @@ export const LeadsPage: React.FC = () => {
     const lastLeadCount = useRef(0);
     const hasPlayedInitialAlert = useRef(false);
     const [filterStatus, setFilterStatus] = useState('PENDENTES');
+    const [openHistory, setOpenHistory] = useState(false);
+    const [selectedLead, setSelectedLead] = useState<any>(null);
+    const [newNote, setNewNote] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
 
     // BUSCA COM FILTROS
     const fetchLeads = useCallback(async (isPolling = false) => {
@@ -107,6 +115,28 @@ export const LeadsPage: React.FC = () => {
         );
         fetchLeads();
         window.dispatchEvent(new Event('updateLeadsCount'));
+    };
+
+    const handleOpenHistory = (lead: any) => {
+        setSelectedLead(lead);
+        setOpenHistory(true);
+    };
+
+    const handleAddNote = async () => {
+        setIsSaving(true)
+        if (!newNote.trim()) return;
+        try {
+            await axios.post(`${API_URL}/leads/${selectedLead._id}/historico`,
+                { descricao: newNote },
+                { headers: { Authorization: `Bearer ${user?.token}` } }
+            );
+            setNewNote('');
+            fetchLeads(); // Recarrega para mostrar a nova nota
+            setOpenHistory(false); // Opcional: fechar ou manter aberto
+        } catch (error) {
+            console.error("Erro ao salvar histórico", error);
+        }
+        setIsSaving(false)
     };
 
     return (
@@ -228,6 +258,12 @@ export const LeadsPage: React.FC = () => {
                                 <TableCell align="center">
                                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
 
+                                        <Tooltip title="Histórico de Conversas">
+                                            <IconButton color="secondary" onClick={() => handleOpenHistory(lead)}>
+                                                <HistoryIcon />
+                                            </IconButton>
+                                        </Tooltip>
+
                                         {/* ÍCONE WHATSAPP (Sempre Visível) */}
                                         <Tooltip title="WhatsApp">
                                             <IconButton
@@ -290,6 +326,45 @@ export const LeadsPage: React.FC = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+            <Dialog open={openHistory} onClose={() => setOpenHistory(false)} fullWidth maxWidth="sm">
+                <DialogTitle>Histórico: {selectedLead?.nome}</DialogTitle>
+                <DialogContent dividers>
+                    <List>
+                        {selectedLead?.historico?.map((h: any, index: number) => (
+                            <ListItem key={index} alignItems="flex-start" sx={{ bgcolor: '#f9f9f9', mb: 1, borderRadius: 1 }}>
+                                <ListItemText
+                                    primary={h.descricao}
+                                    secondary={`${new Date(h.data).toLocaleString('pt-BR')} - por ${h.autor}`}
+                                />
+                            </ListItem>
+                        ))}
+                        {(!selectedLead?.historico || selectedLead.historico.length === 0) && (
+                            <Typography variant="body2" color="text.secondary">Nenhuma conversa registrada ainda.</Typography>
+                        )}
+                    </List>
+                    <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                        <TextField
+                            fullWidth
+                            label="Nova anotação..."
+                            variant="outlined"
+                            size="small"
+                            value={newNote}
+                            onChange={(e) => setNewNote(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleAddNote()}
+                        />
+                        <Button
+                            variant="contained"
+                            onClick={handleAddNote}
+                            endIcon={<SendIcon />}
+                            disabled={!newNote.trim() || isSaving}                        >
+                            Salvar
+                        </Button>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenHistory(false)}>Fechar</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };
