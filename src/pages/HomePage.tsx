@@ -1,24 +1,30 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { Box, Typography, CircularProgress, Alert, ToggleButtonGroup, ToggleButton, Button, Container, useTheme, TextField, InputAdornment, IconButton, Tooltip } from '@mui/material';
-import { Home as HomeIcon, FilterList as FilterIcon, Search as SearchIcon, Clear as ClearIcon } from '@mui/icons-material';
+import {
+    Box, Typography, CircularProgress, Container, useTheme,
+    TextField, InputAdornment, IconButton, Tooltip
+} from '@mui/material';
+import {
+    Search as SearchIcon,
+    Clear as ClearIcon,
+    ArrowBack as ArrowBackIcon
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ImovelCard from '../components/ImovelCard';
-import { ArrowBack as ArrowBackIcon } from '@mui/icons-material'; // Importe o ícone de voltar
 import { ImovelDetailsModal } from '../components/ImovelDetailsModal';
 import { LeadModal } from '../components/LeadModal';
 import { API_URL } from '../services/api';
 
 export const HomePage: React.FC = () => {
-    const navigate = useNavigate(); // Hook para navegação
+    const navigate = useNavigate();
     const { user } = useAuth();
     const theme = useTheme();
     const token = user?.token || null;
 
     const [imoveis, setImoveis] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searching, setSearching] = useState(false);
+    const [loading, setLoading] = useState(true); // Loading inicial do sistema
+    const [searching, setSearching] = useState(false); // Loading apenas do input de busca
     const [searchTerm, setSearchTerm] = useState('');
     const [filter, setFilter] = useState('TODOS');
     const [selectedImovel, setSelectedImovel] = useState<any | null>(null);
@@ -26,7 +32,6 @@ export const HomePage: React.FC = () => {
     const [leadModalOpen, setLeadModalOpen] = useState(false);
     const [imovelParaLead, setImovelParaLead] = useState<any | null>(null);
 
-    // Função para abrir a modal de formulário
     const handleOpenInteresse = (imovel: any) => {
         setImovelParaLead(imovel);
         setLeadModalOpen(true);
@@ -45,21 +50,20 @@ export const HomePage: React.FC = () => {
     const fetchImoveis = useCallback(async () => {
         setSearching(true);
         try {
-            const url = token ? API_URL + '/imoveis' : API_URL + '/imoveis/publico';
+            const url = token ? `${API_URL}/imoveis` : `${API_URL}/imoveis/publico`;
             const response = await axios.get(url, {
                 params: { search: searchTerm },
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
             setImoveis(response.data);
         } catch (err) {
-            console.error(err);
+            console.error("Erro ao buscar imóveis:", err);
         } finally {
             setLoading(false);
             setSearching(false);
         }
     }, [token, searchTerm]);
 
-    // Lógica de Debounce
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
             fetchImoveis();
@@ -77,9 +81,16 @@ export const HomePage: React.FC = () => {
 
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: '#f8f9fa' }}>
+            {/* CABEÇALHO E BUSCA */}
             <Box sx={{ bgcolor: 'background.paper', pt: 4, pb: 3, mb: 4, borderBottom: '1px solid #eee' }}>
                 <Container maxWidth="lg">
-                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: 'center', gap: 3 }}>
+                    <Box sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'column', md: 'row' },
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 3
+                    }}>
                         <Tooltip title="Voltar para a página inicial" arrow>
                             <IconButton
                                 onClick={() => navigate('/')}
@@ -91,7 +102,10 @@ export const HomePage: React.FC = () => {
                                 <ArrowBackIcon />
                             </IconButton>
                         </Tooltip>
-                        <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main' }}>Catálogo</Typography>
+
+                        <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                            Catálogo
+                        </Typography>
 
                         <TextField
                             placeholder="Buscar cidade, título..."
@@ -120,30 +134,79 @@ export const HomePage: React.FC = () => {
                 </Container>
             </Box>
 
-            <Container maxWidth="lg">
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                    {filteredImoveis.map((imovel: any) => (
-                        <Box key={imovel._id} sx={{ flex: '0 0 calc(33.333% - 16px)' }}>
-                            <ImovelCard
-                                imovel={imovel}
-                                onClick={() => handleOpenModal(imovel)}
-                                // RECOLOCANDO A FUNÇÃO NO CARD DA VITRINE
-                                onInteresse={() => handleOpenInteresse(imovel)}
-                                searchTerm={searchTerm}
-                            />
+            {/* CONTEÚDO PRINCIPAL */}
+            <Container maxWidth="lg" sx={{ pb: 8 }}>
+                {loading ? (
+                    /* ⭐️ ESTADO DE CARREGAMENTO COM MENSAGEM PARA O RENDER/VERCEL */
+                    <Box sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: '40vh',
+                        textAlign: 'center',
+                        gap: 2
+                    }}>
+                        <CircularProgress size={60} thickness={4} />
+                        <Box>
+                            <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                                Carregando Imóveis...
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 400, mt: 1 }}>
+                                Nossos servidores gratuitos estão "acordando".
+                                Isso pode levar até 50 segundos no primeiro acesso do dia.
+                                Agradecemos a paciência!
+                            </Typography>
                         </Box>
-                    ))}
-                </Box>
+                    </Box>
+                ) : (
+                    <Box sx={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 3,
+                        justifyContent: { xs: 'center', sm: 'flex-start' }
+                    }}>
+                        {filteredImoveis.length > 0 ? (
+                            filteredImoveis.map((imovel: any) => (
+                                <Box
+                                    key={imovel._id}
+                                    sx={{
+                                        // Responsividade: 1 card (xs), 2 cards (sm), 3 cards (md+)
+                                        flex: {
+                                            xs: '0 0 100%',
+                                            sm: '0 0 calc(50% - 12px)',
+                                            md: '0 0 calc(33.333% - 16px)'
+                                        }
+                                    }}
+                                >
+                                    <ImovelCard
+                                        imovel={imovel}
+                                        onClick={() => handleOpenModal(imovel)}
+                                        onInteresse={() => handleOpenInteresse(imovel)}
+                                        searchTerm={searchTerm}
+                                    />
+                                </Box>
+                            ))
+                        ) : (
+                            <Box sx={{ width: '100%', textAlign: 'center', py: 10 }}>
+                                <Typography variant="h6" color="text.secondary">
+                                    Nenhum imóvel encontrado para sua busca.
+                                </Typography>
+                            </Box>
+                        )}
+                    </Box>
+                )}
             </Container>
+
+            {/* MODAIS */}
             {selectedImovel && (
                 <ImovelDetailsModal
                     open={modalOpen}
                     onClose={handleCloseModal}
                     imovel={selectedImovel}
-                    // PASSANDO A FUNÇÃO PARA DENTRO DA MODAL DE DETALHES TAMBÉM!
                     onInteresse={() => {
-                        handleCloseModal(); // Fecha a de detalhes
-                        handleOpenInteresse(selectedImovel); // Abre a de formulário
+                        handleCloseModal();
+                        handleOpenInteresse(selectedImovel);
                     }}
                 />
             )}
