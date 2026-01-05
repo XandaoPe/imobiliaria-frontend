@@ -49,24 +49,31 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
             if (h !== 22) todos.push(`${hora}:30`);
         }
 
-        const hoje = new Date();
-        // Ajustamos o "hoje" para o fuso de Brasília caso o celular esteja em UTC
-        const hojeBr = new Date(hoje.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+        // 1. Pegamos a data/hora exatamente como o usuário vê no celular (Fuso de Brasília)
+        const agoraBr = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
 
-        const hojeStr = hojeBr.toISOString().split("T")[0];
-        const horaAtual = hojeBr.getHours();
-        const minAtual = hojeBr.getMinutes();
+        // 2. Formatamos hoje como YYYY-MM-DD sem usar ISOString (que mudaria o dia se fosse tarde da noite)
+        const ano = agoraBr.getFullYear();
+        const mes = String(agoraBr.getMonth() + 1).padStart(2, '0');
+        const dia = String(agoraBr.getDate()).padStart(2, '0');
+        const hojeStr = `${ano}-${mes}-${dia}`;
+
+        const horaAtual = agoraBr.getHours();
+        const minAtual = agoraBr.getMinutes();
 
         return todos.filter(h => {
+            // Remove horários que já estão ocupados no banco
             if (horariosBloqueados.includes(h)) return false;
 
+            // Se a data selecionada for HOJE (no fuso local), filtramos as horas que já passaram
             if (dataVisita === hojeStr) {
                 const [hSlot, mSlot] = h.split(':').map(Number);
-                // Se a hora do slot for menor que a atual, remove.
-                // Se for a mesma hora mas o minuto for menor, remove.
                 if (hSlot < horaAtual) return false;
                 if (hSlot === horaAtual && mSlot <= minAtual) return false;
             }
+
+            // Se for AMANHÃ ou qualquer data futura, o filtro de dataVisita === hojeStr não entra,
+            // e todos os horários (que não estejam bloqueados) aparecem.
             return true;
         });
     };
