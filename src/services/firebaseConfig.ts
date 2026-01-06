@@ -1,7 +1,7 @@
+// src/services/firebaseConfig.ts - VERSÃO CORRIGIDA
 import { initializeApp } from "firebase/app";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
 
-// ⚠️ Substitua pelos dados que você copiou do passo 5 acima
 const firebaseConfig = {
     apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
     authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
@@ -11,32 +11,100 @@ const firebaseConfig = {
     appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
-
 const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
 
-export const getFirebaseToken = async () => {
+// Verifica se o Firebase Messaging é suportado
+let messaging: any = null;
+
+export const initializeMessaging = async () => {
     try {
-        const token = await getToken(messaging, {
-            vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY
-        });
-        if (token) {
-            return token;
+        const supported = await isSupported();
+        if (supported) {
+            const { getMessaging } = await import("firebase/messaging");
+            messaging = getMessaging(app);
+            console.log('✅ Firebase Messaging inicializado');
         } else {
-            console.warn('Nenhum token de registro disponível. Solicite permissão.');
+            console.warn('⚠️ Firebase Messaging não é suportado neste navegador');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao inicializar Firebase Messaging:', error);
+    }
+    return messaging;
+};
+
+export const getFirebaseToken = async (): Promise<string | null> => {
+    try {
+        if (!messaging) {
+            messaging = await initializeMessaging();
+        }
+
+        if (!messaging) {
+            console.warn('Messaging não disponível');
             return null;
         }
-    } catch (err) {
-        console.error('Erro ao obter token Firebase:', err);
+
+        // Verifica se o service worker está registrado
+        if (!('serviceWorker' in navigator)) {
+            console.warn('Service Worker não suportado');
+            return null;
+        }
+
+        const registration = await navigator.serviceWorker.ready;
+        if (!registration) {
+            console.warn('Service Worker não registrado');
+            return null;
+        }
+
+        // Solicita permissão se necessário
+        let permission = Notification.permission;
+        if (permission === 'default') {
+            permission = await Notification.requestPermission();
+        }
+
+        if (permission !== 'granted') {
+            console.warn('Permissão de notificação não concedida:', permission);
+            return null;
+        }
+
+        // Obtém o token
+        const token = await getToken(messaging, {
+            vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY,
+            serviceWorkerRegistration: registration
+        });
+
+        if (token) {
+            console.log('✅ Token FCM obtido:', token.substring(0, 20) + '...');
+            return token;
+        } else {
+            console.warn('Nenhum token disponível');
+            return null;
+        }
+
+    } catch (error: any) {
+        console.error('❌ Erro ao obter token FCM:', error);
+
+        // Erros específicos do Firebase
+        if (error.code === 'messaging/permission-blocked') {
+            console.error('Permissão bloqueada pelo usuário');
+        } else if (error.code === 'messaging/permission-default') {
+            console.error('Usuário ainda não decidiu sobre a permissão');
+        } else if (error.code === 'messaging/unsupported-browser') {
+            console.error('Navegador não suportado');
+        }
+
         return null;
     }
 };
 
-// Listener para mensagens quando o app está aberto (foreground)
 export const onMessageListener = () =>
     new Promise((resolve) => {
-        onMessage(messaging, (payload) => {
-            alert('chegou aki')
-            resolve(payload);
-        });
+        if (messaging) {
+            onMessage(messaging, (payload) => {
+                console.log('📲 Mensagem recebida em primeiro plano:', payload);
+                resolve(payload);
+            });
+        }
     });
+
+// Inicializa na importação
+initializeMessaging();
