@@ -2,6 +2,8 @@
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
 
+import { deleteToken } from "firebase/messaging";
+
 // ⚠️ CONFIGURAÇÃO COMPLETA DO FIREBASE (use suas chaves reais)
 const firebaseConfig = {
     apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyDjWrD4Y0N5nfRYEREq6il0TmoA7libZs4",
@@ -35,13 +37,55 @@ const initializeFirebase = async () => {
             console.warn('⚠️ Firebase Messaging não é suportado neste navegador');
         }
     } catch (error) {
-        console.error('❌ Erro ao inicializar Firebase:', error);
+        console.error('❌ Error ao inicializar Firebase:', error);
         // Não quebra o app - apenas não teremos notificações
     }
 };
 
 // Inicializa o Firebase
 initializeFirebase();
+
+export const limparTokenAntesLogin = async (): Promise<void> => {
+    try {
+        if (!messaging) return;
+
+        // 1. Remove token atual
+        await deleteToken(messaging);
+
+        // 2. Remove subscription do Service Worker
+        if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription) {
+                await subscription.unsubscribe();
+            }
+        }
+
+        // 3. Limpa cache local
+        localStorage.removeItem('fcmTokenCache');
+
+        console.log('✅ Token antigo removido');
+    } catch (error) {
+        console.warn('Error ao limpar token:', error);
+    }
+};
+
+// ⭐️ FUNÇÃO PARA FORÇAR NOVO TOKEN
+export const getNovoToken = async (): Promise<string | null> => {
+    try {
+        // Limpa token antigo primeiro
+        await limparTokenAntesLogin();
+
+        // Aguarda um memento
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Gera novo token
+        return await getFirebaseToken();
+    } catch (error) {
+        console.error('Error ao gerar novo token:', error);
+        return null;
+    }
+};
 
 export const getFirebaseToken = async (): Promise<string | null> => {
     if (!messaging) {
@@ -81,9 +125,9 @@ export const getFirebaseToken = async (): Promise<string | null> => {
             return null;
         }
     } catch (err: any) {
-        console.error('❌ Erro ao obter token Firebase:', err);
+        console.error('❌ Error ao obter token Firebase:', err);
 
-        // Erros comuns
+        // Errors comuns
         if (err.code === 'messaging/permission-blocked') {
             console.error('Permissão bloqueada pelo usuário');
         } else if (err.code === 'messaging/unsupported-browser') {
