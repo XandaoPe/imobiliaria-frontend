@@ -17,7 +17,6 @@ import {
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import api, { API_URL } from '../services/api';
-import { getFirebaseToken, getNovoToken } from '../services/firebaseConfig';
 
 // ⚠️ IMPORTANTE: Ajuste a URL base da sua API NestJS
 
