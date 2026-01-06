@@ -23,6 +23,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
 import { API_URL } from '../services/api';
 import { AgendaLateral } from '../components/AgendaDashboard';
+import { AtivarNotificacoes } from '../components/AtivarNotificacoes';
 
 const drawerWidth = 240;
 
@@ -255,6 +256,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 2 }, flexShrink: 0 }}>
+                        <AtivarNotificacoes />
                         <Tooltip title="Agenda de Visitas">
                             <IconButton color="inherit" onClick={() => setAgendaOpen(true)}>
                                 <Badge badgeContent={agendamentosCount} color="error">

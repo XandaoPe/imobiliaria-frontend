@@ -51,55 +51,20 @@ export const LoginPage = () => {
         return <Navigate to="/home" replace />;
     }
 
-    const salvarTokenPush = async (userId: string, tokenJWT: string) => {
-        try {
-            // 1. Pede permissão ao usuário
-            const permission = await Notification.requestPermission();
-
-            if (permission === 'granted') {
-                // 2. Busca o token único deste navegador no Firebase
-                const tokenFCM = await getFirebaseToken();
-
-                if (tokenFCM) {
-                    // 3. Salva no banco de dados do seu NestJS
-                    // Assumindo que você tem uma rota PATCH em usuários
-                    await api.patch(`/usuarios/${userId}`,
-                        { pushToken: tokenFCM },
-                        { headers: { Authorization: `Bearer ${tokenJWT}` } }
-                    );
-                    console.log("Notificações configuradas com sucesso!");
-                }
-            }
-        } catch (error) {
-            console.error("Erro no fluxo de notificação:", error);
-        }
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setLoading(true);
 
         try {
-            // 1. Tenta obter o Token do Firebase
-            let pushToken = undefined;
-            try {
-                // Pede permissão e gera o token
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    // Usa getNovoToken em vez de getFirebaseToken
-                    pushToken = await getNovoToken();
-                }
-            } catch (pErr) {
-                console.warn("Erro no Firebase", pErr);
-            }
+            // ⭐️ REMOVA TODO O CÓDIGO DO FIREBASE AQUI
+            // NÃO tenta obter token FCM durante o login
 
-            // 2. Monta o payload
             const payload = {
                 email,
                 senha: password,
                 empresaId: etapa === 'selecao' ? empresaId : undefined,
-                pushToken: pushToken
+                // NÃO envie pushToken no login
             };
 
             const response = await api.post('/auth/login', payload);
@@ -117,19 +82,16 @@ export const LoginPage = () => {
             // LOGIN SUCESSO
             const token = response.data.access_token;
             if (token) {
-                // ⭐️ DECODIFICA O TOKEN PARA PEGAR O USER ID
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                const userId = payload.sub;
-
-                // ⭐️ SALVA O ID DO USUÁRIO NO LOCALSTORAGE
-                localStorage.setItem('currentUserId', userId);
-
                 login(token);
                 navigate('/home');
             }
 
         } catch (err: any) {
-            // ... tratamento de erro ...
+            let errorMessage = 'Falha na conexão ou erro desconhecido.';
+            if (err.response) {
+                errorMessage = err.response.data?.message || err.message;
+            }
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
