@@ -1,6 +1,8 @@
 // src/services/firebaseConfig.ts
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
+import { deleteToken } from "firebase/messaging";
+
 
 // ⚠️ CONFIGURAÇÃO COMPLETA DO FIREBASE (use suas chaves reais)
 const firebaseConfig = {
@@ -43,57 +45,6 @@ const initializeFirebase = async () => {
 // Inicializa o Firebase
 initializeFirebase();
 
-export const getFirebaseToken = async (): Promise<string | null> => {
-    if (!messaging) {
-        console.warn('Firebase Messaging não está disponível');
-        return null;
-    }
-
-    try {
-        // Verifica permissão
-        let permission = Notification.permission;
-
-        if (permission === 'default') {
-            console.log('Solicitando permissão de notificação...');
-            permission = await Notification.requestPermission();
-        }
-
-        if (permission !== 'granted') {
-            console.warn('Permissão de notificação não concedida:', permission);
-            return null;
-        }
-
-        // Chave VAPID - use a correta do seu projeto
-        const vapidKey = process.env.REACT_APP_FIREBASE_VAPID_KEY ||
-            "BMOGp1Qttb9wbQLHfsW85RW9znVFXiiukT9tNzzAdUN0_Evj9jmC-5821_KGJv3X30XvmUarpgIyABnBnRpzVCg";
-
-        console.log('Obtendo token FCM com VAPID key...');
-        const token = await getToken(messaging, { vapidKey });
-
-        if (token) {
-            console.log('✅ Token FCM obtido com sucesso');
-            console.log('Token (início):', token.substring(0, 30) + '...');
-            return token;
-        } else {
-            console.warn('Nenhum token FCM disponível. Verifique:');
-            console.warn('1. Service Worker está registrado?');
-            console.warn('2. VAPID key está correta?');
-            return null;
-        }
-    } catch (err: any) {
-        console.error('❌ Erro ao obter token Firebase:', err);
-
-        // Erros comuns
-        if (err.code === 'messaging/permission-blocked') {
-            console.error('Permissão bloqueada pelo usuário');
-        } else if (err.code === 'messaging/unsupported-browser') {
-            console.error('Navegador não suportado');
-        }
-
-        return null;
-    }
-};
-
 // Listener para mensagens quando o app está aberto (foreground)
 export const onMessageListener = () =>
     new Promise((resolve) => {
@@ -120,5 +71,119 @@ export const onMessageListener = () =>
         }
     });
 
-// Exporta para uso em outros lugares
+export const limparTokenFirebase = async (): Promise<void> => {
+    try {
+        if (!messaging) {
+            console.warn('Messaging não disponível para limpar');
+            return;
+        }
+
+        // 1. Remove o token do Firebase
+        await deleteToken(messaging);
+        console.log('✅ Token Firebase removido');
+
+        // 2. Remove a subscription do Service Worker
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.getSubscription();
+                if (subscription) {
+                    await subscription.unsubscribe();
+                    console.log('✅ Subscription removida');
+                }
+            } catch (swError) {
+                console.warn('Erro ao remover subscription:', swError);
+            }
+        }
+
+        // 3. Limpa cache local
+        localStorage.removeItem('fcmToken');
+        sessionStorage.removeItem('fcmToken');
+
+    } catch (error) {
+        console.error('❌ Erro ao limpar token Firebase:', error);
+    }
+};
+
+// ⭐️ FUNÇÃO PARA GERAR NOVO TOKEN (com cache local)
+export const getFirebaseToken = async (): Promise<string | null> => {
+    try {
+        // Verifica se já tem token em cache (por usuário)
+        const userId = localStorage.getItem('currentUserId');
+        const cachedTokenKey = `fcmToken_${userId}`;
+        const cachedToken = localStorage.getItem(cachedTokenKey);
+
+        if (cachedToken) {
+            console.log('✅ Usando token FCM em cache para usuário:', userId);
+            return cachedToken;
+        }
+
+        if (!messaging) {
+            console.warn('Firebase Messaging não está disponível');
+            return null;
+        }
+
+        // Verifica permissão
+        let permission = Notification.permission;
+
+        if (permission === 'default') {
+            console.log('Solicitando permissão de notificação...');
+            permission = await Notification.requestPermission();
+        }
+
+        if (permission !== 'granted') {
+            console.warn('Permissão de notificação não concedida:', permission);
+            return null;
+        }
+
+        // Chave VAPID
+        const vapidKey = process.env.REACT_APP_FIREBASE_VAPID_KEY ||
+            "BMOGp1Qttb9wbQLHfsW85RW9znVFXiiukT9tNzzAdUN0_Evj9jmC-5821_KGJv3X30XvmUarpgIyABnBnRpzVCg";
+
+        console.log('Gerando NOVO token FCM...');
+        const token = await getToken(messaging, { vapidKey });
+
+        if (token) {
+            console.log('✅ Novo token FCM gerado');
+
+            // Salva no cache local com ID do usuário
+            if (userId) {
+                localStorage.setItem(cachedTokenKey, token);
+                console.log('Token salvo em cache para usuário:', userId);
+            }
+
+            return token;
+        }
+
+        return null;
+
+    } catch (err: any) {
+        console.error('❌ Erro ao obter token Firebase:', err);
+        return null;
+    }
+};
+
+export const forcarNovoToken = async (): Promise<string | null> => {
+    try {
+        // 1. Limpa token antigo
+        await limparTokenFirebase();
+
+        // 2. Remove cache local
+        const userId = localStorage.getItem('currentUserId');
+        if (userId) {
+            localStorage.removeItem(`fcmToken_${userId}`);
+        }
+
+        // 3. Aguarda um momento
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // 4. Gera novo token
+        return await getFirebaseToken();
+
+    } catch (error) {
+        console.error('Erro ao forçar novo token:', error);
+        return null;
+    }
+};
+
 export { messaging };

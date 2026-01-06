@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
 import { UsuarioLogado, PerfisEnum } from '../types/usuario';
+import { limparTokenFirebase } from '../services/firebaseConfig';
 import api from '../services/api';
 
 // 1. Interface para o Payload do JWT (Como ele vem decodificado)
@@ -150,10 +151,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = () => {
+        // ⭐️ NOVO: Limpa o token Firebase antes de fazer logout
+        limparTokenFirebase().catch(err => {
+            console.warn('Erro ao limpar token Firebase:', err);
+        });
+
         localStorage.removeItem('token');
-        localStorage.removeItem('usuarioLogado'); // Limpar o objeto de usuário também
+        localStorage.removeItem('usuarioLogado');
         setToken(null);
         setUser(null);
+
+        // Redireciona para a página inicial
+        window.location.href = '/';
     };
 
     const isAuthenticated = !!token && !!user;

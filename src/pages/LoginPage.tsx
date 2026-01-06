@@ -81,10 +81,9 @@ export const LoginPage = () => {
         setLoading(true);
 
         try {
-            // 1. Tenta obter o Token do Firebase ANTES do login final
+            // 1. Tenta obter o Token do Firebase
             let pushToken = undefined;
             try {
-                // Pede permissão e gera o token
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
                     pushToken = await getFirebaseToken();
@@ -93,17 +92,16 @@ export const LoginPage = () => {
                 console.warn("Permissão de push negada ou erro no Firebase", pErr);
             }
 
-            // 2. Monta o payload incluindo o pushToken se existir
+            // 2. Monta o payload
             const payload = {
                 email,
                 senha: password,
                 empresaId: etapa === 'selecao' ? empresaId : undefined,
-                pushToken: pushToken // 👈 Enviamos aqui para o AuthService.login capturar
+                pushToken: pushToken
             };
 
             const response = await api.post('/auth/login', payload);
 
-            // Caso precise selecionar empresa
             if (response.data.requiresSelection) {
                 setEmpresas(response.data.empresas);
                 setEtapa('selecao');
@@ -117,7 +115,14 @@ export const LoginPage = () => {
             // LOGIN SUCESSO
             const token = response.data.access_token;
             if (token) {
-                login(token); // Atualiza o contexto de autenticação
+                // ⭐️ DECODIFICA O TOKEN PARA PEGAR O USER ID
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const userId = payload.sub;
+
+                // ⭐️ SALVA O ID DO USUÁRIO NO LOCALSTORAGE
+                localStorage.setItem('currentUserId', userId);
+
+                login(token);
                 navigate('/home');
             }
 
