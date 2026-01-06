@@ -1,63 +1,60 @@
-// src/services/firebaseConfig.ts - VERSÃO CORRIGIDA
+// src/services/firebaseConfig.ts
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
 
+// ⚠️ CONFIGURAÇÃO COMPLETA DO FIREBASE (use suas chaves reais)
 const firebaseConfig = {
-    apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-    authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.REACT_APP_FIREBASE_APP_ID
+    apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyDjWrD4Y0N5nfRYEREq6il0TmoA7libZs4",
+    authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "sistema-imobiliario4.firebaseapp.com",
+    projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "sistema-imobiliario4",
+    storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "sistema-imobiliario4.appspot.com",
+    messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "1027177777810",
+    appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:1027177777810:web:1f9b65a45722ee9fccb44b"
 };
 
-const app = initializeApp(firebaseConfig);
+console.log('🔥 Firebase Config:', {
+    projectId: firebaseConfig.projectId,
+    messagingSenderId: firebaseConfig.messagingSenderId
+});
 
-// Verifica se o Firebase Messaging é suportado
+// Inicialização segura
+let app;
 let messaging: any = null;
 
-export const initializeMessaging = async () => {
+// Função assíncrona para inicialização
+const initializeFirebase = async () => {
     try {
-        const supported = await isSupported();
-        if (supported) {
-            const { getMessaging } = await import("firebase/messaging");
+        app = initializeApp(firebaseConfig);
+
+        // Verifica se o navegador suporta Firebase Messaging
+        const messagingSupported = await isSupported();
+        if (messagingSupported) {
             messaging = getMessaging(app);
             console.log('✅ Firebase Messaging inicializado');
         } else {
             console.warn('⚠️ Firebase Messaging não é suportado neste navegador');
         }
     } catch (error) {
-        console.error('❌ Erro ao inicializar Firebase Messaging:', error);
+        console.error('❌ Erro ao inicializar Firebase:', error);
+        // Não quebra o app - apenas não teremos notificações
     }
-    return messaging;
 };
 
+// Inicializa o Firebase
+initializeFirebase();
+
 export const getFirebaseToken = async (): Promise<string | null> => {
+    if (!messaging) {
+        console.warn('Firebase Messaging não está disponível');
+        return null;
+    }
+
     try {
-        if (!messaging) {
-            messaging = await initializeMessaging();
-        }
-
-        if (!messaging) {
-            console.warn('Messaging não disponível');
-            return null;
-        }
-
-        // Verifica se o service worker está registrado
-        if (!('serviceWorker' in navigator)) {
-            console.warn('Service Worker não suportado');
-            return null;
-        }
-
-        const registration = await navigator.serviceWorker.ready;
-        if (!registration) {
-            console.warn('Service Worker não registrado');
-            return null;
-        }
-
-        // Solicita permissão se necessário
+        // Verifica permissão
         let permission = Notification.permission;
+
         if (permission === 'default') {
+            console.log('Solicitando permissão de notificação...');
             permission = await Notification.requestPermission();
         }
 
@@ -66,29 +63,30 @@ export const getFirebaseToken = async (): Promise<string | null> => {
             return null;
         }
 
-        // Obtém o token
-        const token = await getToken(messaging, {
-            vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY,
-            serviceWorkerRegistration: registration
-        });
+        // Chave VAPID - use a correta do seu projeto
+        const vapidKey = process.env.REACT_APP_FIREBASE_VAPID_KEY ||
+            "BMOGp1Qttb9wbQLHfsW85RW9znVFXiiukT9tNzzAdUN0_Evj9jmC-5821_KGJv3X30XvmUarpgIyABnBnRpzVCg";
+
+        console.log('Obtendo token FCM com VAPID key...');
+        const token = await getToken(messaging, { vapidKey });
 
         if (token) {
-            console.log('✅ Token FCM obtido:', token.substring(0, 20) + '...');
+            console.log('✅ Token FCM obtido com sucesso');
+            console.log('Token (início):', token.substring(0, 30) + '...');
             return token;
         } else {
-            console.warn('Nenhum token disponível');
+            console.warn('Nenhum token FCM disponível. Verifique:');
+            console.warn('1. Service Worker está registrado?');
+            console.warn('2. VAPID key está correta?');
             return null;
         }
+    } catch (err: any) {
+        console.error('❌ Erro ao obter token Firebase:', err);
 
-    } catch (error: any) {
-        console.error('❌ Erro ao obter token FCM:', error);
-
-        // Erros específicos do Firebase
-        if (error.code === 'messaging/permission-blocked') {
+        // Erros comuns
+        if (err.code === 'messaging/permission-blocked') {
             console.error('Permissão bloqueada pelo usuário');
-        } else if (error.code === 'messaging/permission-default') {
-            console.error('Usuário ainda não decidiu sobre a permissão');
-        } else if (error.code === 'messaging/unsupported-browser') {
+        } else if (err.code === 'messaging/unsupported-browser') {
             console.error('Navegador não suportado');
         }
 
@@ -96,15 +94,31 @@ export const getFirebaseToken = async (): Promise<string | null> => {
     }
 };
 
+// Listener para mensagens quando o app está aberto (foreground)
 export const onMessageListener = () =>
     new Promise((resolve) => {
         if (messaging) {
-            onMessage(messaging, (payload) => {
+            onMessage(messaging, (payload: any) => {
                 console.log('📲 Mensagem recebida em primeiro plano:', payload);
+
+                // Mostra notificação mesmo em primeiro plano
+                if (payload.notification && Notification.permission === 'granted') {
+                    const title = payload.notification.title || 'Nova Notificação';
+                    const body = payload.notification.body || '';
+
+                    new Notification(title, {
+                        body: body,
+                        icon: '/logo192.png'
+                    });
+                }
+
                 resolve(payload);
             });
+        } else {
+            console.warn('Messaging não disponível para onMessageListener');
+            resolve(null);
         }
     });
 
-// Inicializa na importação
-initializeMessaging();
+// Exporta para uso em outros lugares
+export { messaging };

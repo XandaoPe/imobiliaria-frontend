@@ -1,37 +1,42 @@
-// public/firebase-messaging-sw.js - VERSÃO SIMPLIFICADA
+// public/firebase-messaging-sw.js
+console.log("🔥 Firebase Messaging Service Worker carregado");
+
 self.addEventListener("install", (event) => {
-  console.log("Service Worker: Instalado");
+  console.log("✅ Service Worker instalado");
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  console.log("Service Worker: Ativado");
+  console.log("✅ Service Worker ativado");
   event.waitUntil(clients.claim());
 });
 
+// Handler para mensagens push
 self.addEventListener("push", (event) => {
-  console.log("Service Worker: Push recebido");
+  console.log("📲 Evento push recebido");
 
   let data = {};
   try {
     data = event.data.json();
-  } catch (e) {
+  } catch {
     data = {
       notification: {
         title: "Nova Notificação",
-        body: "Clique para ver mais detalhes",
+        body: "Você tem uma nova mensagem",
       },
     };
   }
 
   const options = {
-    body: data.notification?.body || "Nova mensagem",
+    body: data.notification?.body || "",
     icon: "/logo192.png",
     badge: "/logo192.png",
-    tag: "push-notification",
     data: data.data || {},
     requireInteraction: true,
-    actions: [{ action: "open", title: "Abrir" }],
+    actions: [
+      { action: "open", title: "Abrir" },
+      { action: "close", title: "Fechar" },
+    ],
   };
 
   event.waitUntil(
@@ -42,59 +47,25 @@ self.addEventListener("push", (event) => {
   );
 });
 
+// Handler para clique em notificação
 self.addEventListener("notificationclick", (event) => {
-  console.log("Service Worker: Notificação clicada");
+  console.log("👆 Notificação clicada:", event.notification.tag);
   event.notification.close();
 
-  const url = event.notification.data?.url || "/";
+  const url = event.notification.data?.url || "/leads";
 
   event.waitUntil(
-    clients.matchAll({ type: "window" }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url === url && "focus" in client) {
-          return client.focus();
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if (client.url.includes(url) && "focus" in client) {
+            return client.focus();
+          }
         }
-      }
-      if (clients.openWindow) {
-        return clients.openWindow(url);
-      }
-    })
-  );
-});
-
-// Se estiver usando Firebase, adicione também:
-importScripts(
-  "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"
-);
-importScripts(
-  "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"
-);
-
-firebase.initializeApp({
-  apiKey: "AIzaSyDjWrD4Y0N5nfRYEREq6il0TmoA7libZs4",
-  authDomain: "sistema-imobiliario4.firebaseapp.com",
-  projectId: "sistema-imobiliario4",
-  storageBucket: "sistema-imobiliaria4.appspot.com",
-  messagingSenderId: "1027177777810",
-  appId: "1:1027177777810:web:1f9b65a45722ee9fccb44b",
-});
-
-const messaging = firebase.messaging();
-
-messaging.onBackgroundMessage((payload) => {
-  console.log("Firebase: Mensagem em background", payload);
-
-  const notificationTitle = payload.notification?.title || "Nova Notificação";
-  const notificationOptions = {
-    body: payload.notification?.body || "",
-    icon: "/logo192.png",
-    badge: "/logo192.png",
-    tag: "firebase-notification",
-    data: payload.data || {},
-  };
-
-  return self.registration.showNotification(
-    notificationTitle,
-    notificationOptions
+        if (clients.openWindow) {
+          return clients.openWindow(url);
+        }
+      })
   );
 });
