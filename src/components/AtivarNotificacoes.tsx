@@ -68,7 +68,7 @@ export const AtivarNotificacoes = () => {
 
             <Snackbar
                 open={open}
-                autoHideDuration={6000}
+                autoHideDuration={4000}
                 onClose={() => setOpen(false)}
             >
                 <Alert onClose={() => setOpen(false)} severity="info" sx={{ width: '100%' }}>
