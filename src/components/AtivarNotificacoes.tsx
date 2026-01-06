@@ -58,7 +58,7 @@ export const AtivarNotificacoes = () => {
         <>
             <Button
                 variant="outlined"
-                startIcon={<NotificationsIcon />}
+                startIcon={<NotificationsIcon sx={{ color: 'gray' }} />}
                 onClick={ativarNotificacoes}
                 disabled={loading}
                 size="small"
