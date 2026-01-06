@@ -1,6 +1,7 @@
 // src/services/firebaseConfig.ts
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
+import { deleteToken } from "firebase/messaging";
 
 // ⚠️ CONFIGURAÇÃO COMPLETA DO FIREBASE (use suas chaves reais)
 const firebaseConfig = {
@@ -42,6 +43,48 @@ const initializeFirebase = async () => {
 
 // Inicializa o Firebase
 initializeFirebase();
+
+export const limparTokenAntesLogin = async (): Promise<void> => {
+    try {
+        if (!messaging) return;
+
+        // 1. Remove token atual
+        await deleteToken(messaging);
+
+        // 2. Remove subscription do Service Worker
+        if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription) {
+                await subscription.unsubscribe();
+            }
+        }
+
+        // 3. Limpa cache local
+        localStorage.removeItem('fcmTokenCache');
+
+        console.log('✅ Token antigo removido');
+    } catch (error) {
+        console.warn('Erro ao limpar token:', error);
+    }
+};
+
+// ⭐️ FUNÇÃO PARA FORÇAR NOVO TOKEN
+export const getNovoToken = async (): Promise<string | null> => {
+    try {
+        // Limpa token antigo primeiro
+        await limparTokenAntesLogin();
+
+        // Aguarda um momento
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Gera novo token
+        return await getFirebaseToken();
+    } catch (error) {
+        console.error('Erro ao gerar novo token:', error);
+        return null;
+    }
+};
 
 export const getFirebaseToken = async (): Promise<string | null> => {
     if (!messaging) {

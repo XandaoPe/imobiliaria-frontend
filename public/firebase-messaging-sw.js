@@ -13,7 +13,7 @@ self.addEventListener("activate", (event) => {
 
 // Handler para mensagens push
 self.addEventListener("push", (event) => {
-  console.log("📲 Evento push recebido");
+  console.log("📲 Push recebido no Service Worker");
 
   let data = {};
   try {
@@ -32,6 +32,7 @@ self.addEventListener("push", (event) => {
     icon: "/logo192.png",
     badge: "/logo192.png",
     data: data.data || {},
+    tag: "push-notification-" + Date.now(), // ⭐️ TAG ÚNICA
     requireInteraction: true,
     actions: [
       { action: "open", title: "Abrir" },

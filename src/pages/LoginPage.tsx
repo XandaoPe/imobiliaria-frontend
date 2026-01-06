@@ -17,7 +17,7 @@ import {
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import api, { API_URL } from '../services/api';
-import { getFirebaseToken } from '../services/firebaseConfig';
+import { getFirebaseToken, getNovoToken } from '../services/firebaseConfig';
 
 // ⚠️ IMPORTANTE: Ajuste a URL base da sua API NestJS
 
@@ -81,52 +81,21 @@ export const LoginPage = () => {
         setLoading(true);
 
         try {
-            // 1. Tenta obter o Token do Firebase ANTES do login final
+            // ⭐️ GERA NOVO TOKEN ÚNICO PARA ESTE LOGIN
             let pushToken = undefined;
             try {
-                // Pede permissão e gera o token
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    pushToken = await getFirebaseToken();
+                    // Usa getNovoToken em vez de getFirebaseToken
+                    pushToken = await getNovoToken();
                 }
             } catch (pErr) {
-                console.warn("Permissão de push negada ou erro no Firebase", pErr);
+                console.warn("Erro no Firebase", pErr);
             }
 
-            // 2. Monta o payload incluindo o pushToken se existir
-            const payload = {
-                email,
-                senha: password,
-                empresaId: etapa === 'selecao' ? empresaId : undefined,
-                pushToken: pushToken // 👈 Enviamos aqui para o AuthService.login capturar
-            };
-
-            const response = await api.post('/auth/login', payload);
-
-            // Caso precise selecionar empresa
-            if (response.data.requiresSelection) {
-                setEmpresas(response.data.empresas);
-                setEtapa('selecao');
-                if (response.data.empresas.length === 1) {
-                    setEmpresaId(response.data.empresas[0].id);
-                }
-                setLoading(false);
-                return;
-            }
-
-            // LOGIN SUCESSO
-            const token = response.data.access_token;
-            if (token) {
-                login(token); // Atualiza o contexto de autenticação
-                navigate('/home');
-            }
-
+            // ... resto do código ...
         } catch (err: any) {
-            let errorMessage = 'Falha na conexão ou erro desconhecido.';
-            if (err.response) {
-                errorMessage = err.response.data?.message || err.message;
-            }
-            setError(errorMessage);
+            // ... tratamento de erro ...
         } finally {
             setLoading(false);
         }
