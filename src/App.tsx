@@ -20,6 +20,7 @@ import { EmpresasPage } from './pages/EmpresasPage';
 import { LeadsPage } from './pages/LeadsPage';
 import { NotificationBadge } from './components/NotificationBadge';
 import { NegociacaoPage } from './pages/NegociacaoPage';
+import { FinanceiroPage } from './pages/FinanceiroPage';
 
 /**
  * Componente de Rota Protegida
@@ -115,6 +116,7 @@ const App = () => {
               <Route path="/imoveis" element={<ImoveisPage />} />
               <Route path="/negociacoes" element={<NegociacaoPage />} />
               <Route path="/empresas" element={<EmpresasPage />} />
+              <Route path="/financeiro" element={<FinanceiroPage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
               <Route path="/leads" element={<LeadsPage />} />
             </Route>
