@@ -51,6 +51,7 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
         area_terreno: null,
         area_construida: null,
         garagem: false,
+        proprietario: '',
     };
 
     // ⭐️ CORRIGIDO: Especifica o tipo genérico corretamente
@@ -66,6 +67,12 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
     useEffect(() => {
         if (open) {
             if (isEdit && imovelToEdit) {
+                // ⭐️ CORREÇÃO DO ERRO DE TIPAGEM AQUI:
+                // Verificamos se 'proprietario' é um objeto antes de acessar ._id
+                const proprietarioId = typeof imovelToEdit.proprietario === 'object' && imovelToEdit.proprietario !== null
+                    ? (imovelToEdit.proprietario as any)._id
+                    : imovelToEdit.proprietario;
+
                 reset({
                     titulo: imovelToEdit.titulo || '',
                     tipo: normalizeTipoImovel(imovelToEdit.tipo || 'CASA'),
@@ -83,6 +90,7 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                     area_terreno: imovelToEdit.area_terreno ?? null,
                     area_construida: imovelToEdit.area_construida ?? null,
                     garagem: imovelToEdit.garagem ?? false,
+                    proprietario: proprietarioId || '', // ⭐️ Valor seguro
                 });
                 setCurrentImovel(imovelToEdit);
                 setCurrentPhotos(imovelToEdit.fotos || []);
@@ -98,28 +106,15 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
 
     const handleNext = async () => {
         let fieldsToValidate: (keyof ImovelFormData)[] = [];
-
         if (activeStep === 0) {
-            fieldsToValidate = ['titulo', 'tipo', 'endereco', 'disponivel', 'cidade'];
-
-            // Validação condicional
+            // ⭐️ Adicionado 'proprietario' na validação do primeiro passo
+            fieldsToValidate = ['titulo', 'tipo', 'endereco', 'disponivel', 'cidade', 'proprietario'];
             const formValues = getValues();
-            if (formValues.para_venda) {
-                fieldsToValidate.push('valor_venda');
-            }
-            if (formValues.para_aluguel) {
-                fieldsToValidate.push('valor_aluguel');
-            }
+            if (formValues.para_venda) fieldsToValidate.push('valor_venda');
+            if (formValues.para_aluguel) fieldsToValidate.push('valor_aluguel');
         }
-
         const isValid = await trigger(fieldsToValidate);
-
-        if (isValid) {
-            setActiveStep((prevActiveStep) => prevActiveStep + 1);
-        } else {
-            setError(null);
-            console.error("Validação do passo falhou.");
-        }
+        if (isValid) setActiveStep((prev) => prev + 1);
     };
 
     const handleBack = () => {

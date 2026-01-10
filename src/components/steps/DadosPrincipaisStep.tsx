@@ -1,5 +1,4 @@
-// src/components/steps/DadosPrincipaisStep.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Controller, Control, FieldErrors, useWatch } from 'react-hook-form';
 import {
     TextField,
@@ -12,9 +11,17 @@ import {
     FormControlLabel,
     Typography,
     Checkbox,
+    Autocomplete,
+    CircularProgress
 } from '@mui/material';
 import { ImovelFormData } from '../../types/imovel';
 import { CurrencyFormatInput } from '../CurrencyFormatInput';
+import api from '../../services/api';
+
+interface Cliente {
+    _id: string;
+    nome: string;
+}
 
 interface DadosPrincipaisStepProps {
     control: Control<ImovelFormData>;
@@ -25,8 +32,73 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
     const paraVenda = useWatch({ control, name: 'para_venda' });
     const paraAluguel = useWatch({ control, name: 'para_aluguel' });
 
+    const [clientes, setClientes] = useState<Cliente[]>([]);
+    const [loadingClientes, setLoadingClientes] = useState(false);
+
+    useEffect(() => {
+        const fetchClientes = async () => {
+            setLoadingClientes(true);
+            try {
+                const response = await api.get('/clientes');
+                setClientes(response.data);
+            } catch (error) {
+                console.error("Erro ao carregar clientes:", error);
+            } finally {
+                setLoadingClientes(false);
+            }
+        };
+        fetchClientes();
+    }, []);
+
     return (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
+
+            {/* Seleção do Proprietário */}
+            <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' }, mt: 1 }}>
+                <Controller
+                    name="proprietario"
+                    control={control}
+                    render={({ field }) => (
+                        <Autocomplete
+                            {...field}
+                            options={clientes}
+                            getOptionLabel={(option) => (typeof option === 'string' ? option : option.nome || '')}
+                            loading={loadingClientes}
+                            // ⭐️ CORREÇÃO DO ERRO TS(2367):
+                            // Forçamos a comparação entre os IDs (string com string)
+                            isOptionEqualToValue={(option, value) => {
+                                if (!value) return false;
+                                const valueId = typeof value === 'object' ? (value as Cliente)._id : value;
+                                return option._id === valueId;
+                            }}
+                            // Garante que o Autocomplete entenda que o valor interno é o objeto Cliente
+                            value={clientes.find(c => c._id === field.value) || null}
+                            onChange={(_, data) => {
+                                field.onChange(data ? data._id : '');
+                            }}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Proprietário (Cliente)"
+                                    required
+                                    error={!!errors.proprietario}
+                                    helperText={errors.proprietario?.message}
+                                    InputProps={{
+                                        ...params.InputProps,
+                                        endAdornment: (
+                                            <React.Fragment>
+                                                {loadingClientes ? <CircularProgress color="inherit" size={20} /> : null}
+                                                {params.InputProps.endAdornment}
+                                            </React.Fragment>
+                                        ),
+                                    }}
+                                />
+                            )}
+                        />
+                    )}
+                />
+            </Box>
+
             {/* Título */}
             <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' } }}>
                 <Controller
@@ -54,21 +126,13 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                     render={({ field }) => (
                         <FormControl fullWidth margin="normal" required error={!!errors.tipo}>
                             <InputLabel id="tipo-label">Tipo do Imóvel</InputLabel>
-                            <Select
-                                {...field}
-                                labelId="tipo-label"
-                                label="Tipo do Imóvel"
-                            >
+                            <Select {...field} labelId="tipo-label" label="Tipo do Imóvel">
                                 <MenuItem value="CASA">Casa</MenuItem>
                                 <MenuItem value="APARTAMENTO">Apartamento</MenuItem>
                                 <MenuItem value="TERRENO">Terreno</MenuItem>
                                 <MenuItem value="COMERCIAL">Comercial</MenuItem>
                             </Select>
-                            {errors.tipo && (
-                                <Typography color="error" variant="caption">
-                                    {errors.tipo.message}
-                                </Typography>
-                            )}
+                            {errors.tipo && <Typography color="error" variant="caption">{errors.tipo.message}</Typography>}
                         </FormControl>
                     )}
                 />
@@ -79,7 +143,6 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                 <Controller
                     name="cidade"
                     control={control}
-                    defaultValue=""
                     render={({ field }) => (
                         <TextField
                             {...field}
@@ -92,62 +155,36 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                 />
             </Box>
 
-            {/* Checkboxes para Venda e Aluguel */}
+            {/* Finalidade do Imóvel */}
             <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' } }}>
-                <Box sx={{
-                    border: '1px solid #e0e0e0',
-                    borderRadius: 1,
-                    p: 2,
-                    mb: 2,
-                    backgroundColor: '#f9f9f9'
-                }}>
-                    <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
-                        Finalidade do Imóvel
-                    </Typography>
-
+                <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2, mb: 1, mt: 1, backgroundColor: '#f9f9f9' }}>
+                    <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>Finalidade do Imóvel</Typography>
                     <Box sx={{ display: 'flex', gap: 3 }}>
                         <Controller
                             name="para_venda"
                             control={control}
                             render={({ field }) => (
                                 <FormControlLabel
-                                    control={
-                                        <Checkbox
-                                            checked={field.value}
-                                            onChange={field.onChange}
-                                            color="primary"
-                                        />
-                                    }
+                                    control={<Checkbox checked={!!field.value} onChange={field.onChange} color="primary" />}
                                     label="Para Venda"
                                 />
                             )}
                         />
-
                         <Controller
                             name="para_aluguel"
                             control={control}
                             render={({ field }) => (
                                 <FormControlLabel
-                                    control={
-                                        <Checkbox
-                                            checked={field.value}
-                                            onChange={field.onChange}
-                                            color="primary"
-                                        />
-                                    }
+                                    control={<Checkbox checked={!!field.value} onChange={field.onChange} color="primary" />}
                                     label="Para Aluguel"
                                 />
                             )}
                         />
                     </Box>
-
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                        * Marque uma ou ambas as opções conforme a finalidade do imóvel
-                    </Typography>
                 </Box>
             </Box>
 
-            {/* Valor Venda (condicional) */}
+            {/* Valor Venda */}
             <Box>
                 {paraVenda && (
                     <Controller
@@ -155,20 +192,18 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                         control={control}
                         render={({ field }) => (
                             <CurrencyFormatInput
-                                name={field.name}
+                                {...field}
                                 label="Valor da Venda (R$)"
-                                value={field.value}
-                                onChange={field.onChange}
                                 error={!!errors.valor_venda}
                                 helperText={errors.valor_venda?.message}
-                                required={paraVenda}
+                                required={!!paraVenda}
                             />
                         )}
                     />
                 )}
             </Box>
 
-            {/* Valor Aluguel (condicional) */}
+            {/* Valor Aluguel */}
             <Box>
                 {paraAluguel && (
                     <Controller
@@ -176,13 +211,11 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                         control={control}
                         render={({ field }) => (
                             <CurrencyFormatInput
-                                name={field.name}
+                                {...field}
                                 label="Valor do Aluguel (R$)"
-                                value={field.value}
-                                onChange={field.onChange}
                                 error={!!errors.valor_aluguel}
                                 helperText={errors.valor_aluguel?.message}
-                                required={paraAluguel}
+                                required={!!paraAluguel}
                             />
                         )}
                     />
@@ -211,19 +244,13 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
             </Box>
 
             {/* Disponibilidade */}
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                 <Controller
                     name="disponivel"
                     control={control}
                     render={({ field }) => (
                         <FormControlLabel
-                            control={
-                                <Switch
-                                    checked={field.value}
-                                    onChange={field.onChange}
-                                    color="primary"
-                                />
-                            }
+                            control={<Switch checked={!!field.value} onChange={field.onChange} color="primary" />}
                             label={field.value ? "Disponível" : "Indisponível"}
                         />
                     )}

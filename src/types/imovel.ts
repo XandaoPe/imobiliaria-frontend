@@ -21,6 +21,7 @@ export interface ImovelFormData {
     area_terreno: number | null;
     area_construida: number | null;
     garagem: boolean;
+    proprietario: string ;
 }
 
 export interface EmpresaInfo {
@@ -159,4 +160,8 @@ export const imovelValidationSchema = yup.object().shape({
     garagem: yup
         .boolean()
         .default(false),
+
+    proprietario: yup
+        .string()
+        .required('Selecione o proprietário do imóvel.'),
 });
