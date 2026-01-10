@@ -82,7 +82,7 @@ const App = () => {
             {/* --- ROTAS PÚBLICAS --- */}
             {/* A Landing Page é a porta de entrada (/) */}
             <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
-            <Route path="/validar/:id" element={<PublicRoute><ValidarReciboPage /></PublicRoute>} />
+            <Route path="/financeiro/validar/:id" element={<ValidarReciboPage />} />
 
             {/* Rota de Login separada */}
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
