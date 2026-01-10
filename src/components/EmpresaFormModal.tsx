@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button,
-    CircularProgress, Alert, FormControlLabel, Switch, Box, Typography
+    CircularProgress, Alert, FormControlLabel, Switch, Box, Typography,
+    Avatar, IconButton, Divider
 } from '@mui/material';
 import { useForm, SubmitHandler, Controller } from 'react-hook-form';
-import {
-    Empresa,
-    EmpresaFormInputs,
-    CreateEmpresaFormData,
-    UpdateEmpresaFormData
-} from '../types/empresa';
+import { PhotoCamera, CloudUpload, AssignmentInd } from '@mui/icons-material';
+import { Empresa, EmpresaFormInputs } from '../types/empresa';
 import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
-import { API_URL } from '../services/api';
-
+import api from '../services/api';
 
 interface EmpresaFormModalProps {
     open: boolean;
@@ -28,40 +23,26 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClos
     const isEditing = !!empresaToEdit;
 
     const [loading, setLoading] = useState(false);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [uploadingSign, setUploadingSign] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [formKey, setFormKey] = useState(0);
 
-    // --- FUNÇÕES DE MÁSCARA E NORMALIZAÇÃO (IGUAL AO CLIENTE) ---
+    const [logoUrl, setLogoUrl] = useState<string | null>(null);
+    const [assinaturaUrl, setAssinaturaUrl] = useState<string | null>(null);
+
     const formatTelefone = (telefone: string | null): string => {
         if (!telefone) return '';
         const cleaned = telefone.replace(/\D/g, '');
-        if (cleaned.length <= 10) {
-            return cleaned.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').trim();
-        }
-        if (cleaned.length > 10) {
-            return cleaned.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim();
-        }
-        return cleaned;
+        return cleaned.length <= 10
+            ? cleaned.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').trim()
+            : cleaned.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim();
     };
 
-    const normalizeTelefone = (value: string | null): string => {
-        if (!value) return '';
-        return value.replace(/\D/g, '');
-    };
+    const normalizeTelefone = (value: string | null): string => value ? value.replace(/\D/g, '') : '';
 
-    const {
-        control,
-        handleSubmit,
-        reset,
-        formState: { errors },
-    } = useForm<EmpresaFormInputs>({
-        defaultValues: {
-            nome: '',
-            cnpj: '',
-            fone: '',
-            isAdmGeral: false,
-            ativa: true,
-        }
+    const { control, handleSubmit, reset, formState: { errors } } = useForm<EmpresaFormInputs>({
+        defaultValues: { nome: '', cnpj: '', fone: '', isAdmGeral: false, ativa: true }
     });
 
     useEffect(() => {
@@ -71,186 +52,182 @@ export const EmpresaFormModal: React.FC<EmpresaFormModalProps> = ({ open, onClos
                 reset({
                     nome: empresaToEdit.nome,
                     cnpj: empresaToEdit.cnpj,
-                    // Garante que o telefone venha limpo para o formulário
                     fone: normalizeTelefone(empresaToEdit.fone || ''),
                     isAdmGeral: empresaToEdit.isAdmGeral,
                     ativa: empresaToEdit.ativa,
                 });
+                setLogoUrl(empresaToEdit.logo || null);
+                setAssinaturaUrl(empresaToEdit.assinatura_url || null);
             } else {
-                reset({
-                    nome: '',
-                    cnpj: '',
-                    fone: '',
-                    isAdmGeral: false,
-                    ativa: true,
-                });
+                reset({ nome: '', cnpj: '', fone: '', isAdmGeral: false, ativa: true });
+                setLogoUrl(null);
+                setAssinaturaUrl(null);
             }
             setError(null);
         }
     }, [empresaToEdit, reset, open]);
 
-    const handleClose = () => {
-        reset();
-        onClose();
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'assinatura') => {
+        const file = event.target.files?.[0];
+        if (!file || !empresaToEdit?._id) return;
+
+        const isLogo = type === 'logo';
+        isLogo ? setUploadingLogo(true) : setUploadingSign(true);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const endpoint = isLogo ? 'logo' : 'assinatura';
+            const response = await api.post(`/empresas/${empresaToEdit._id}/${endpoint}`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (isLogo) setLogoUrl(response.data.logo);
+            else setAssinaturaUrl(response.data.assinatura_url);
+
+            onSuccess();
+        } catch (err: any) {
+            setError(`Erro no upload: ${err.response?.data?.message || 'Falha na comunicação'}`);
+        } finally {
+            isLogo ? setUploadingLogo(false) : setUploadingSign(false);
+        }
     };
 
     const onSubmit: SubmitHandler<EmpresaFormInputs> = async (data) => {
         setLoading(true);
         setError(null);
-
-        // Normaliza o telefone antes de enviar para o backend
-        const payloadFinal = {
-            ...data,
-            fone: normalizeTelefone(data.fone || null)
-        };
+        const payloadFinal = { ...data, fone: normalizeTelefone(data.fone || null) };
 
         try {
-            const headers = {
-                Authorization: `Bearer ${user?.token}`,
-            };
-
             if (isEditing) {
                 const { cnpj, ...updatePayload } = payloadFinal;
-                await axios.put(`${API_URL}/empresas/${empresaToEdit!._id}`, updatePayload, { headers });
+                await api.put(`/empresas/${empresaToEdit!._id}`, updatePayload);
             } else {
-                await axios.post(API_URL+`/empresas`, payloadFinal, { headers });
+                await api.post(`/empresas`, payloadFinal);
             }
-
             onSuccess();
-            handleClose();
+            onClose();
         } catch (err: any) {
-            console.error(err);
-            const message = err.response?.data?.message || 'Ocorreu um erro desconhecido.';
+            const message = err.response?.data?.message || 'Erro ao salvar.';
             setError(Array.isArray(message) ? message.join(', ') : message);
         } finally {
             setLoading(false);
         }
     };
 
-    const isAdmGeralUser = user?.perfil === PerfisEnum.ADM_GERAL;
-
     return (
-        <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-            <DialogTitle>{isEditing ? `Editar Empresa: ${empresaToEdit?.nome}` : 'Nova Empresa'}</DialogTitle>
+        <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+            <DialogTitle>{isEditing ? `Editar Empresa` : 'Nova Empresa'}</DialogTitle>
 
             <Box key={formKey} component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
                 <DialogContent dividers>
                     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-                    <Controller
-                        name="nome"
-                        control={control}
-                        rules={{ required: 'O nome da empresa é obrigatório.' }}
-                        render={({ field }) => (
-                            <TextField
-                                {...field}
-                                label="Nome da Empresa/Imobiliária"
-                                fullWidth
-                                variant="outlined"
-                                margin="normal"
-                                error={!!errors.nome}
-                                helperText={errors.nome?.message}
-                                sx={{ mt: 0 }}
-                            />
-                        )}
-                    />
+                    {/* Container Principal Vertical */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
 
-                    <Controller
-                        name="cnpj"
-                        control={control}
-                        rules={{ required: 'O CNPJ é obrigatório.' }}
-                        render={({ field }) => (
-                            <TextField
-                                {...field}
-                                label="CNPJ"
-                                fullWidth
-                                variant="outlined"
-                                margin="normal"
-                                error={!!errors.cnpj}
-                                helperText={errors.cnpj?.message}
-                                disabled={isEditing}
-                            />
-                        )}
-                    />
-                    {isEditing && (
-                        <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: 1, mt: -1 }}>
-                            O CNPJ é uma chave única e não pode ser alterado na edição.
-                        </Typography>
-                    )}
-
-                    {/* CAMPO TELEFONE COM MÁSCARA APLICADA */}
-                    <Controller
-                        name="fone"
-                        control={control}
-                        render={({ field }) => (
-                            <TextField
-                                {...field}
-                                label="Telefone / WhatsApp"
-                                fullWidth
-                                variant="outlined"
-                                margin="normal"
-                                error={!!errors.fone}
-                                helperText={errors.fone?.message}
-                                value={formatTelefone(field.value || null)} // Formata para o usuário
-                                onChange={(e) => {
-                                    const rawValue = normalizeTelefone(e.target.value);
-                                    field.onChange(rawValue); // Salva no state apenas números
-                                }}
-                                inputProps={{ maxLength: 15 }}
-                            />
-                        )}
-                    />
-
-                    <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', mt: 1 }}>
                         <Controller
-                            name="ativa"
+                            name="nome"
                             control={control}
+                            rules={{ required: 'O nome é obrigatório.' }}
                             render={({ field }) => (
-                                <FormControlLabel
-                                    control={
-                                        <Switch
-                                            checked={field.value}
-                                            onChange={(e) => field.onChange(e.target.checked)}
-                                            color="primary"
-                                        />
-                                    }
-                                    label={field.value ? "Ativa" : "Inativa"}
-                                />
+                                <TextField {...field} label="Nome da Empresa/Imobiliária" fullWidth size="small" error={!!errors.nome} helperText={errors.nome?.message} />
                             )}
                         />
 
-                        {isAdmGeralUser && (
+                        {/* Box Horizontal para CNPJ e Telefone */}
+                        <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
                             <Controller
-                                name="isAdmGeral"
+                                name="cnpj"
+                                control={control}
+                                rules={{ required: 'CNPJ obrigatório.' }}
+                                render={({ field }) => (
+                                    <TextField {...field} label="CNPJ" sx={{ flex: 1 }} size="small" disabled={isEditing} error={!!errors.cnpj} helperText={errors.cnpj?.message} />
+                                )}
+                            />
+                            <Controller
+                                name="fone"
                                 control={control}
                                 render={({ field }) => (
-                                    <FormControlLabel
-                                        control={
-                                            <Switch
-                                                checked={field.value}
-                                                onChange={(e) => field.onChange(e.target.checked)}
-                                                color="secondary"
-                                            />
-                                        }
-                                        label="Administração Geral"
+                                    <TextField
+                                        {...field}
+                                        label="Telefone"
+                                        sx={{ flex: 1 }}
+                                        size="small"
+                                        value={formatTelefone(field.value || null)}
+                                        onChange={(e) => field.onChange(normalizeTelefone(e.target.value))}
                                     />
                                 )}
                             />
+                        </Box>
+
+                        {isEditing && (
+                            <Box sx={{ mt: 1 }}>
+                                <Typography variant="subtitle2" color="primary" gutterBottom>Identidade Visual e Assinatura</Typography>
+                                <Divider sx={{ mb: 2 }} />
+
+                                {/* Container das Imagens */}
+                                <Box sx={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-start', gap: 2 }}>
+
+                                    {/* Upload Logo */}
+                                    <Box sx={{ textAlign: 'center', flex: 1 }}>
+                                        <Typography variant="caption" display="block" sx={{ mb: 1 }}>Logo</Typography>
+                                        <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                                            <Avatar src={logoUrl || ''} sx={{ width: 80, height: 80, border: '1px solid #ddd', bgcolor: '#f5f5f5' }}>
+                                                {!logoUrl && <CloudUpload />}
+                                            </Avatar>
+                                            {uploadingLogo && <CircularProgress size={24} sx={{ position: 'absolute', top: 28, left: 28 }} />}
+                                            <IconButton color="primary" component="label" sx={{ position: 'absolute', bottom: -10, right: -10, bgcolor: 'white', boxShadow: 2 }} disabled={uploadingLogo}>
+                                                <input hidden accept="image/*" type="file" onChange={(e) => handleFileUpload(e, 'logo')} />
+                                                <PhotoCamera fontSize="small" />
+                                            </IconButton>
+                                        </Box>
+                                    </Box>
+
+                                    {/* Upload Assinatura */}
+                                    <Box sx={{ textAlign: 'center', flex: 1 }}>
+                                        <Typography variant="caption" display="block" sx={{ mb: 1 }}>Assinatura Digital</Typography>
+                                        <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                                            <Box sx={{ width: 120, height: 80, border: '1px dashed #ccc', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#fafafa', overflow: 'hidden' }}>
+                                                {assinaturaUrl ? <img src={assinaturaUrl} alt="Assinatura" style={{ maxWidth: '100%', maxHeight: '100%' }} /> : <AssignmentInd color="disabled" />}
+                                            </Box>
+                                            {uploadingSign && <CircularProgress size={24} sx={{ position: 'absolute', top: 28, left: 48 }} />}
+                                            <IconButton color="secondary" component="label" sx={{ position: 'absolute', bottom: -10, right: -10, bgcolor: 'white', boxShadow: 2 }} disabled={uploadingSign}>
+                                                <input hidden accept="image/*" type="file" onChange={(e) => handleFileUpload(e, 'assinatura')} />
+                                                <PhotoCamera fontSize="small" />
+                                            </IconButton>
+                                        </Box>
+                                    </Box>
+                                </Box>
+                            </Box>
                         )}
+
+                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                            <Controller
+                                name="ativa"
+                                control={control}
+                                render={({ field }) => (
+                                    <FormControlLabel control={<Switch checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />} label="Ativa" />
+                                )}
+                            />
+                            {user?.perfil === PerfisEnum.ADM_GERAL && (
+                                <Controller
+                                    name="isAdmGeral"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <FormControlLabel control={<Switch color="secondary" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />} label="Adm Geral" />
+                                    )}
+                                />
+                            )}
+                        </Box>
                     </Box>
                 </DialogContent>
 
-                <DialogActions>
-                    <Button onClick={handleClose} disabled={loading} color="secondary">
-                        Cancelar
-                    </Button>
-                    <Button
-                        type="submit"
-                        variant="contained"
-                        disabled={loading}
-                        startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
-                    >
-                        {isEditing ? 'Salvar Empresa' : 'Criar Empresa'}
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={onClose} disabled={loading || uploadingLogo || uploadingSign}>Cancelar</Button>
+                    <Button type="submit" variant="contained" disabled={loading || uploadingLogo || uploadingSign} startIcon={loading && <CircularProgress size={20} />}>
+                        {isEditing ? 'Atualizar Dados' : 'Criar Empresa'}
                     </Button>
                 </DialogActions>
             </Box>

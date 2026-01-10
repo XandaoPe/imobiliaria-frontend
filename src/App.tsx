@@ -21,6 +21,7 @@ import { LeadsPage } from './pages/LeadsPage';
 import { NotificationBadge } from './components/NotificationBadge';
 import { NegociacaoPage } from './pages/NegociacaoPage';
 import { FinanceiroPage } from './pages/FinanceiroPage';
+import { ValidarReciboPage } from './pages/ValidarReciboPage';
 
 /**
  * Componente de Rota Protegida
@@ -80,34 +81,16 @@ const App = () => {
 
             {/* --- ROTAS PÚBLICAS --- */}
             {/* A Landing Page é a porta de entrada (/) */}
-            <Route
-              path="/"
-              element={
-                <PublicRoute>
-                  <LandingPage />
-                </PublicRoute>
-              }
-            />
+            <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
+            <Route path="/validar/:id" element={<PublicRoute><ValidarReciboPage /></PublicRoute>} />
 
             {/* Rota de Login separada */}
-            <Route
-              path="/login"
-              element={
-                <PublicRoute>
-                  <LoginPage />
-                </PublicRoute>
-              }
-            />
+            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
 
             {/* --- ROTA HÍBRIDA (Home) --- */}
             {/* Se logado, renderiza dentro do ProtectedRoute (com Layout/Menu) */}
             {/* Se deslogado, renderiza puramente a HomePage (Vitrine) */}
-            <Route
-              path="/home"
-              element={
-                <HomeRouterWrapper />
-              }
-            />
+            <Route path="/home" element={<HomeRouterWrapper />}/>
 
             {/* --- ROTAS PROTEGIDAS (Necessitam Login) --- */}
             <Route element={<ProtectedRoute />}>
