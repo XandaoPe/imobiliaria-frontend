@@ -1,6 +1,13 @@
 // src/components/AtivarNotificacoes.tsx
 import React, { useState } from 'react';
-import { Button, Alert, Snackbar, CircularProgress } from '@mui/material';
+import {
+    IconButton,
+    Alert,
+    Snackbar,
+    CircularProgress,
+    Tooltip,
+    Box
+} from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import { getFirebaseToken } from '../services/firebaseConfig';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,7 +26,6 @@ export const AtivarNotificacoes = () => {
         setMessage(null);
 
         try {
-            // 1. Solicita permissão
             const permission = await Notification.requestPermission();
 
             if (permission !== 'granted') {
@@ -28,7 +34,6 @@ export const AtivarNotificacoes = () => {
                 return;
             }
 
-            // 2. Obtém token FCM
             const pushToken = await getFirebaseToken();
 
             if (!pushToken) {
@@ -37,7 +42,6 @@ export const AtivarNotificacoes = () => {
                 return;
             }
 
-            // 3. Salva no backend
             await api.patch(`/usuarios/${user.id}`, {
                 pushToken: pushToken
             });
@@ -56,20 +60,35 @@ export const AtivarNotificacoes = () => {
 
     return (
         <>
-            <Button
-                variant="outlined"
-                startIcon={<NotificationsIcon sx={{ color: 'gray' }} />}
-                onClick={ativarNotificacoes}
-                disabled={loading}
-                size="small"
-            >
-                {loading ? <CircularProgress size={20} /> : 'Ativar Notificações'}
-            </Button>
+            <Tooltip title="Ativar Notificações Push" arrow>
+                <Box sx={{ display: 'inline-block', position: 'relative' }}>
+                    <IconButton
+                        onClick={ativarNotificacoes}
+                        disabled={loading}
+                        color="inherit"
+                        sx={{
+                            // Estilização do ícone
+                            color: '#FFD700', // Um dourado mais visível que yellow puro
+                            '&:hover': {
+                                backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                            },
+                        }}
+                    >
+                        {loading ? (
+                            <CircularProgress size={24} color="inherit" />
+                        ) : (
+                            // fontSize maior para destaque (padrão é 24px)
+                            <NotificationsIcon sx={{ fontSize: 28 }} />
+                        )}
+                    </IconButton>
+                </Box>
+            </Tooltip>
 
             <Snackbar
                 open={open}
                 autoHideDuration={4000}
                 onClose={() => setOpen(false)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} // Posicionado no canto
             >
                 <Alert onClose={() => setOpen(false)} severity="info" sx={{ width: '100%' }}>
                     {message}
