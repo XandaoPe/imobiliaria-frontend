@@ -25,21 +25,10 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
     const [novoStatus, setNovoStatus] = useState<StatusNegociacao | ''>('');
     const [loading, setLoading] = useState(false);
     const [dataVisita, setDataVisita] = useState('');
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    // Dentro do seu componente NegociacaoDetailsModal
-    const [statusAgenda, setStatusAgenda] = useState<{ loading: boolean, msg: string, color: string } | null>(null);
     const [horaVisita, setHoraVisita] = useState('');
-const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
-
-    const gerarHorarios = () => {
-        const horarios = [];
-        for (let h = 6; h <= 22; h++) {
-            const hora = h < 10 ? `0${h}` : h;
-            horarios.push(`${hora}:00`);
-            if (h !== 22) horarios.push(`${hora}:30`);
-        }
-        return horarios;
-    };
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [statusAgenda, setStatusAgenda] = useState<{ loading: boolean, msg: string, color: string } | null>(null);
+    const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
 
     const getHorariosDisponiveis = () => {
         const todos = [];
@@ -49,10 +38,7 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
             if (h !== 22) todos.push(`${hora}:30`);
         }
 
-        // 1. Pegamos a data/hora exatamente como o usuário vê no celular (Fuso de Brasília)
         const agoraBr = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
-
-        // 2. Formatamos hoje como YYYY-MM-DD sem usar ISOString (que mudaria o dia se fosse tarde da noite)
         const ano = agoraBr.getFullYear();
         const mes = String(agoraBr.getMonth() + 1).padStart(2, '0');
         const dia = String(agoraBr.getDate()).padStart(2, '0');
@@ -62,25 +48,18 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
         const minAtual = agoraBr.getMinutes();
 
         return todos.filter(h => {
-            // Remove horários que já estão ocupados no banco
             if (horariosBloqueados.includes(h)) return false;
-
-            // Se a data selecionada for HOJE (no fuso local), filtramos as horas que já passaram
             if (dataVisita === hojeStr) {
                 const [hSlot, mSlot] = h.split(':').map(Number);
                 if (hSlot < horaAtual) return false;
                 if (hSlot === horaAtual && mSlot <= minAtual) return false;
             }
-
-            // Se for AMANHÃ ou qualquer data futura, o filtro de dataVisita === hojeStr não entra,
-            // e todos os horários (que não estejam bloqueados) aparecem.
             return true;
         });
     };
 
     useEffect(() => {
         const verificar = async () => {
-            // 1. Se não houver dados suficientes ou o status não for 'VISITA', limpa e sai
             if (!negociacao?.imovel?._id || !dataVisita || !horaVisita || novoStatus !== 'VISITA') {
                 setStatusAgenda(null);
                 return;
@@ -94,15 +73,9 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
                     params: { data: dataCompleta }
                 });
 
-                // ⭐️ LOGICA ALTERADA: 
-                // Só exibe erro se 'disponivel' for falso E o registro conflitante estiver PENDENTE.
-                // Se o backend retornar que não está disponível, mas você quiser permitir 
-                // agendar por cima de cancelados, o backend deve filtrar por status.
-
                 if (data.disponivel) {
                     setStatusAgenda({ loading: false, msg: '✅ Horário disponível', color: 'success.main' });
                 } else {
-                    // Se o backend já filtra apenas PENDENTES, a msg de erro aparece aqui.
                     setStatusAgenda({
                         loading: false,
                         msg: '⚠️ Atenção: Já existe uma visita ativa neste horário!',
@@ -116,23 +89,23 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
         verificar();
     }, [dataVisita, horaVisita, novoStatus, negociacao?.imovel?._id]);
 
-    // Limpa os estados quando o modal abre/fecha ou a negociação muda
     useEffect(() => {
         setNovaDescricao('');
         setNovoStatus('');
         setDataVisita('');
+        setHoraVisita('');
         setErrorMsg(null);
+        setStatusAgenda(null);
     }, [open, negociacao]);
 
-    // Efeito para buscar horários ocupados quando mudar a data ou o imóvel
     useEffect(() => {
         const buscarOcupados = async () => {
             if (dataVisita && negociacao?.imovel?._id) {
                 try {
                     const { data } = await api.get('/agendamentos/horarios-ocupados', {
-                        params: { data: dataVisita } // imovelId removido
+                        params: { data: dataVisita }
                     });
-                    setHorariosBloqueados(data); // Ex: ["10:30", "15:00"]
+                    setHorariosBloqueados(data);
                 } catch (e) { console.error(e); }
             }
         };
@@ -143,7 +116,6 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
 
     const handleAddHistorico = async () => {
         if (!novaDescricao && !novoStatus) return;
-
         if (novoStatus === 'VISITA' && (!dataVisita || !horaVisita)) {
             setErrorMsg("Por favor, informe a data e hora para o agendamento da visita.");
             return;
@@ -154,10 +126,7 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
 
         try {
             let dataAgendamentoCompleta = undefined;
-
             if (novoStatus === 'VISITA') {
-                // Montamos a string no formato ISO mas fixando o fuso de Brasília (-03:00)
-                // Isso evita que o celular ou o servidor tentem adivinhar o fuso.
                 dataAgendamentoCompleta = `${dataVisita}T${horaVisita}:00-03:00`;
             }
 
@@ -177,6 +146,21 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
         }
     };
 
+    // ⭐️ LOGICA DE FORMATAÇÃO DE ENDEREÇO
+    const formatEnderecoCliente = () => {
+        const cliente = negociacao.cliente;
+        if (!cliente) return 'Cliente não identificado';
+
+        // Verifica se os campos existem no objeto vindo do banco
+        if (!cliente.endereco && !cliente.cidade) return 'Endereço não cadastrado';
+
+        const partes = [];
+        if (cliente.endereco) partes.push(cliente.endereco);
+        if (cliente.cidade) partes.push(cliente.cidade);
+
+        return partes.join(' — ');
+    };
+
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle>
@@ -186,35 +170,59 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
                 </Box>
             </DialogTitle>
 
-            <DialogContent dividers>
-                {/* CABEÇALHO RESUMO */}
-                <Box sx={{
-                    display: 'flex',
-                    flexDirection: { xs: 'column', sm: 'row' },
-                    justifyContent: 'space-between',
-                    gap: 2,
-                    mb: 3,
-                    p: 2,
-                    bgcolor: 'action.hover',
-                    borderRadius: 2
-                }}>
-                    <Box>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>CLIENTE</Typography>
-                        <Typography variant="subtitle1" fontWeight="bold">{negociacao.cliente?.nome}</Typography>
-                    </Box>
-                    <Box>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>IMÓVEL</Typography>
-                        <Typography variant="subtitle1" fontWeight="bold">{negociacao.imovel?.titulo}</Typography>
-                    </Box>
-                    <Box sx={{ textAlign: { sm: 'right' } }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>STATUS ATUAL</Typography>
-                        <Chip label={getStatusLabel(negociacao.status)} color="primary" size="small" />
-                    </Box>
+            <DialogContent dividers sx={{ bgcolor: '#fbfbfb' }}>
+
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
+
+                    {/* CARD CLIENTE */}
+                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                        <Typography variant="overline" color="primary" fontWeight="bold">Dados do Cliente</Typography>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, mt: 1 }}>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary">NOME</Typography>
+                                <Typography variant="body2" fontWeight="500">{negociacao.cliente?.nome || 'N/A'}</Typography>
+                            </Box>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary">TELEFONE / WHATSAPP</Typography>
+                                <Typography variant="body2" fontWeight="500">{negociacao.cliente?.telefone || 'Não informado'}</Typography>
+                            </Box>
+                            <Box sx={{ gridColumn: { sm: 'span 2' } }}>
+                                <Typography variant="caption" color="text.secondary">LOCALIZAÇÃO DO CLIENTE</Typography>
+                                <Typography variant="body2" sx={{ color: negociacao.cliente?.endereco ? 'text.primary' : 'text.disabled' }}>
+                                    {formatEnderecoCliente()}
+                                </Typography>
+                            </Box>
+                        </Box>
+                    </Paper>
+
+                    {/* CARD IMÓVEL */}
+                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Box>
+                                <Typography variant="overline" color="secondary" fontWeight="bold">Dados do Imóvel</Typography>
+                                <Typography variant="h6" sx={{ fontSize: '1rem', lineHeight: 1.2, mt: 0.5 }}>
+                                    {negociacao.imovel?.titulo}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                    📍 {negociacao.imovel?.endereco} — <strong>{negociacao.imovel?.cidade}</strong>
+                                </Typography>
+                            </Box>
+
+                            <Box sx={{ textAlign: 'right' }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>FASE ATUAL</Typography>
+                                <Chip
+                                    label={getStatusLabel(negociacao.status)}
+                                    color="primary"
+                                    size="small"
+                                    sx={{ fontWeight: 'bold', mt: 0.5 }}
+                                />
+                            </Box>
+                        </Box>
+                    </Paper>
                 </Box>
 
-                <Divider sx={{ mb: 3 }}>HISTÓRICO DE INTERAÇÕES</Divider>
+                <Divider sx={{ mb: 3 }}><Chip label="HISTÓRICO DE INTERAÇÕES" size="small" variant="outlined" /></Divider>
 
-                {/* TIMELINE */}
                 <Box sx={{ maxHeight: 300, overflowY: 'auto', mb: 3, px: 1 }}>
                     <Timeline position="right">
                         {negociacao.historico?.map((item, index) => (
@@ -237,18 +245,10 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
                     </Timeline>
                 </Box>
 
-                {/* ALERTA DE ERRO */}
                 <Collapse in={!!errorMsg}>
-                    <Alert
-                        severity="error"
-                        sx={{ mb: 2 }}
-                        onClose={() => setErrorMsg(null)}
-                    >
-                        {errorMsg}
-                    </Alert>
+                    <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMsg(null)}>{errorMsg}</Alert>
                 </Collapse>
 
-                {/* FORMULÁRIO DE REGISTRO */}
                 <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#fffef0', borderColor: '#ffe58f' }}>
                     <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#856404', mb: 1, fontSize: '0.8rem' }}>
                         <AddCommentIcon sx={{ fontSize: 18 }} /> Registrar Nova Interação
@@ -265,16 +265,9 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
                                 value={novaDescricao}
                                 onChange={(e) => setNovaDescricao(e.target.value)}
                                 placeholder="Descreva o contato..."
-                                inputProps={{ style: { fontSize: '0.85rem' } }}
                             />
 
-                            <Box sx={{
-                                minWidth: { md: 280 },
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 1.5,
-                                width: { xs: '100%', md: 'auto' }
-                            }}>
+                            <Box sx={{ minWidth: { md: 280 }, display: 'flex', flexDirection: 'column', gap: 1.5, width: { xs: '100%', md: 'auto' } }}>
                                 <TextField
                                     select
                                     fullWidth
@@ -282,50 +275,38 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
                                     label="Mudar Status"
                                     value={novoStatus}
                                     onChange={(e) => setNovoStatus(e.target.value as StatusNegociacao)}
-                                    SelectProps={{ style: { fontSize: '0.85rem' } }}
                                 >
-                                    <MenuItem value="" sx={{ fontSize: '0.85rem' }}>Manter Atual</MenuItem>
-                                    <MenuItem value="PROSPECCAO" sx={{ fontSize: '0.85rem' }}>Prospecção</MenuItem>
-                                    <MenuItem value="VISITA" sx={{ fontSize: '0.85rem' }}>Visita Agendada</MenuItem>
-                                    <MenuItem value="PROPOSTA" sx={{ fontSize: '0.85rem' }}>Proposta Recebida</MenuItem>
-                                    <MenuItem value="FECHADO" sx={{ fontSize: '0.85rem' }}>Concluído 🎉</MenuItem>
-                                    <MenuItem value="PERDIDO" sx={{ fontSize: '0.85rem' }}>Perdido ❌</MenuItem>
+                                    <MenuItem value="">Manter Atual</MenuItem>
+                                    <MenuItem value="PROSPECCAO">Prospecção</MenuItem>
+                                    <MenuItem value="VISITA">Visita Agendada</MenuItem>
+                                    <MenuItem value="PROPOSTA">Proposta Recebida</MenuItem>
+                                    <MenuItem value="FECHADO">Concluído 🎉</MenuItem>
+                                    <MenuItem value="PERDIDO">Perdido ❌</MenuItem>
                                 </TextField>
 
                                 {novoStatus === 'VISITA' && (
-                                    <Box sx={{
-                                        display: 'flex',
-                                        gap: 1,
-                                        width: '100%',
-                                        alignItems: 'flex-start'
-                                    }}>
+                                    <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
                                         <TextField
                                             fullWidth
                                             size="small"
-                                            sx={{ flex: 1.5 }}
                                             type="date"
                                             label="Data"
                                             value={dataVisita}
                                             onChange={(e) => setDataVisita(e.target.value)}
                                             InputLabelProps={{ shrink: true }}
-                                            inputProps={{
-                                                style: { fontSize: '0.85rem' },
-                                                min: new Date().toISOString().split("T")[0]
-                                            }}
+                                            inputProps={{ min: new Date().toISOString().split("T")[0] }}
                                         />
                                         <TextField
                                             select
                                             fullWidth
                                             size="small"
-                                            sx={{ flex: 1 }}
                                             label="Hora"
                                             value={horaVisita}
                                             onChange={(e) => setHoraVisita(e.target.value)}
                                             disabled={!dataVisita}
-                                            SelectProps={{ style: { fontSize: '0.85rem' } }}
                                         >
                                             {getHorariosDisponiveis().map(h => (
-                                                <MenuItem key={h} value={h} sx={{ fontSize: '0.85rem' }}>{h}</MenuItem>
+                                                <MenuItem key={h} value={h}>{h}</MenuItem>
                                             ))}
                                         </TextField>
                                     </Box>
@@ -333,7 +314,6 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
                             </Box>
                         </Box>
 
-                        {/* Mensagem de Feedback da Agenda (compacta) */}
                         {statusAgenda && (
                             <Typography variant="caption" sx={{ color: statusAgenda.color, fontWeight: 'bold', mt: -1 }}>
                                 {statusAgenda.msg}
@@ -343,7 +323,7 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
                         <Button
                             variant="contained"
                             onClick={handleAddHistorico}
-                            size="small" // Botão menor
+                            size="small"
                             disabled={loading || (!novaDescricao && !novoStatus) || (statusAgenda?.msg.includes('Atenção'))}
                             sx={{ alignSelf: 'flex-end', px: 3, textTransform: 'none' }}
                         >
@@ -351,10 +331,9 @@ const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
                         </Button>
                     </Box>
                 </Paper>
-
             </DialogContent>
 
-            <DialogActions sx={{ p: 2 }}>
+            <DialogActions sx={{ p: 2, bgcolor: 'action.hover' }}>
                 <Button onClick={onClose} color="inherit" disabled={loading}>Fechar</Button>
             </DialogActions>
         </Dialog>

@@ -1,4 +1,3 @@
-// src/components/ClienteFormModal.tsx
 import React, { useEffect, useState } from 'react';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -36,6 +35,8 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
         email: '',
         observacoes: null,
         status: 'ATIVO',
+        endereco: '',
+        cidade: ''
     };
 
     const {
@@ -44,7 +45,7 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
         reset,
         formState: { errors },
     } = useForm<ClienteFormData>({
-        resolver: yupResolver(clienteValidationSchema),
+        resolver: yupResolver(clienteValidationSchema) as any, // Adicionado 'as any' para evitar conflitos estritos de tipagem do yup-resolver
         defaultValues,
     });
 
@@ -76,6 +77,8 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                 email: clienteToEdit.email || '',
                 observacoes: clienteToEdit.observacoes || null,
                 status: normalizeStatus(clienteToEdit.status || 'ATIVO'),
+                endereco: clienteToEdit.endereco || '',
+                cidade: clienteToEdit.cidade || ''
             });
         } else {
             reset(defaultValues);
@@ -94,6 +97,8 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                 status: normalizeStatus(data.status),
                 telefone: normalizeTelefone(data.telefone),
                 observacoes: data.observacoes || null,
+                endereco: data.endereco || undefined,
+                cidade: data.cidade || undefined
             };
 
             let clienteSalvo: Cliente | undefined;
@@ -199,6 +204,37 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                             )}
                         />
 
+                        {/* NOVOS CAMPOS: ENDEREÇO E CIDADE */}
+                        <Controller
+                            name="endereco"
+                            control={control}
+                            render={({ field }) => (
+                                <TextField
+                                    {...field}
+                                    label="Endereço / Bairro"
+                                    fullWidth
+                                    value={field.value || ''}
+                                    error={!!errors.endereco}
+                                    helperText={errors.endereco?.message}
+                                />
+                            )}
+                        />
+
+                        <Controller
+                            name="cidade"
+                            control={control}
+                            render={({ field }) => (
+                                <TextField
+                                    {...field}
+                                    label="Cidade/UF"
+                                    fullWidth
+                                    value={field.value || ''}
+                                    error={!!errors.cidade}
+                                    helperText={errors.cidade?.message}
+                                />
+                            )}
+                        />
+
                         <Controller
                             name="status"
                             control={control}
@@ -211,6 +247,7 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                                     required
                                     error={!!errors.status}
                                     helperText={errors.status?.message}
+                                    sx={{ gridColumn: { sm: 'span 2' } }}
                                 >
                                     <MenuItem value="ATIVO">ATIVO</MenuItem>
                                     <MenuItem value="INATIVO">INATIVO</MenuItem>
