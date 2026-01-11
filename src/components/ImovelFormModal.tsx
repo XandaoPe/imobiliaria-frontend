@@ -16,7 +16,7 @@ interface ImovelFormModalProps {
     open: boolean;
     onClose: () => void;
     imovelToEdit?: Imovel | null;
-    onSuccess: () => void;
+    onSuccess: (novoImovel?: Imovel) => void;
 }
 
 const steps = ['Dados Principais', 'Detalhes', 'Fotos (Opcional)'];
@@ -308,7 +308,7 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                             type="button"
                             onClick={() => {
                                 onClose();
-                                onSuccess();
+                                onSuccess(currentImovel || undefined);
                             }}
                             variant="contained"
                             color="primary"

@@ -7,17 +7,22 @@ import {
     Button, MenuItem, Alert, CircularProgress,
     Box,
 } from '@mui/material';
-// IMPORTAÇÃO ATUALIZADA: normalizeTelefone deve estar aqui
-import { Cliente, ClienteFormData, clienteValidationSchema, normalizeCPF, normalizeStatus, normalizeTelefone } from '../types/cliente';
+import {
+    Cliente,
+    ClienteFormData,
+    clienteValidationSchema,
+    normalizeCPF,
+    normalizeStatus,
+    normalizeTelefone
+} from '../types/cliente';
 import api from '../services/api';
 
 interface ClienteFormModalProps {
     open: boolean;
     onClose: () => void;
     clienteToEdit?: Cliente | null;
-    onSuccess: () => void;
+    onSuccess: (novoCliente?: Cliente) => void;
 }
-
 
 export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClose, clienteToEdit, onSuccess }) => {
     const isEdit = !!clienteToEdit;
@@ -52,31 +57,22 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
         return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
     };
 
-    // ⭐️ NOVA FUNÇÃO: Máscara para Telefone (pode ser fixo/celular)
+    // Máscara para Telefone
     const formatTelefone = (telefone: string | null): string => {
         if (!telefone) return '';
         const cleaned = telefone.replace(/\D/g, '');
-
-        // (XX) XXXX-XXXX (10 dígitos: fixo ou celular antigo)
         if (cleaned.length <= 10) {
             return cleaned.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3').trim();
         }
-
-        // (XX) XXXXX-XXXX (11 dígitos: celular com 9º dígito)
-        if (cleaned.length > 10) {
-            return cleaned.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim();
-        }
-
-        return cleaned;
+        return cleaned.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim();
     };
 
     useEffect(() => {
         if (isEdit && clienteToEdit) {
             reset({
                 nome: clienteToEdit.nome || '',
-                // Passa o telefone LIMPO para o reset para que o Controller aplique a máscara
                 cpf: normalizeCPF(clienteToEdit.cpf || ''),
-                telefone: normalizeTelefone(clienteToEdit.telefone || null), // Garante que o valor inicial é limpo (só dígitos)
+                telefone: normalizeTelefone(clienteToEdit.telefone || null),
                 email: clienteToEdit.email || '',
                 observacoes: clienteToEdit.observacoes || null,
                 status: normalizeStatus(clienteToEdit.status || 'ATIVO'),
@@ -100,15 +96,17 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                 observacoes: data.observacoes || null,
             };
 
+            let clienteSalvo: Cliente | undefined;
+
             if (isEdit && clienteToEdit) {
-                // USANDO A INSTÂNCIA 'api' (Já envia o Token automaticamente)
-                await api.put(`/clientes/${clienteToEdit._id}`, dadosEnviar);
+                const res = await api.put(`/clientes/${clienteToEdit._id}`, dadosEnviar);
+                clienteSalvo = res.data;
             } else {
-                // USANDO A INSTÂNCIA 'api'
-                await api.post('/clientes', dadosEnviar);
+                const res = await api.post('/clientes', dadosEnviar);
+                clienteSalvo = res.data;
             }
 
-            onSuccess();
+            onSuccess(clienteSalvo);
             onClose();
 
         } catch (err: any) {
@@ -131,148 +129,114 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                             display: 'grid',
                             gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
                             gap: 2,
-                            mb: 2, // Adicionei margem inferior para separar do campo observações
+                            mb: 2,
                         }}
                     >
-                        <Box>
-                            <Controller
-                                name="nome"
-                                control={control}
-                                render={({ field }) => (
-                                    <TextField
-                                        {...field}
-                                        label="Nome Completo"
-                                        fullWidth
-                                        required
-                                        error={!!errors.nome}
-                                        helperText={errors.nome?.message}
-                                    />
-                                )}
-                            />
-                        </Box>
-
-                        <Box>
-                            <Controller
-                                name="cpf"
-                                control={control}
-                                render={({ field }) => {
-                                    const formattedValue = formatCPF(field.value || '');
-                                    return (
-                                        <TextField
-                                            {...field}
-                                            value={formattedValue}
-                                            onChange={(e) => {
-                                                const rawValue = normalizeCPF(e.target.value);
-                                                field.onChange(rawValue); // Armazena apenas dígitos
-                                            }}
-                                            label="CPF"
-                                            fullWidth
-                                            required
-                                            error={!!errors.cpf}
-                                            helperText={errors.cpf?.message}
-                                            disabled={isEdit}
-                                            inputProps={{
-                                                maxLength: 14
-                                            }}
-                                        />
-                                    );
-                                }}
-                            />
-                        </Box>
-
-                        <Box>
-                            <Controller
-                                name="email"
-                                control={control}
-                                render={({ field }) => (
-                                    <TextField
-                                        {...field}
-                                        label="Email"
-                                        fullWidth
-                                        required
-                                        error={!!errors.email}
-                                        helperText={errors.email?.message}
-                                        type="email"
-                                    />
-                                )}
-                            />
-                        </Box>
-
-                        {/* ⭐️ CAMPO TELEFONE CORRIGIDO COM MÁSCARA */}
-                        <Box>
-                            <Controller
-                                name="telefone"
-                                control={control}
-                                render={({ field }) => {
-                                    const formattedValue = formatTelefone(field.value || ''); // Aplica a máscara para exibição
-                                    return (
-                                        <TextField
-                                            {...field}
-                                            label="Telefone (DDD)"
-                                            fullWidth
-                                            error={!!errors.telefone}
-                                            helperText={errors.telefone?.message}
-                                            value={formattedValue} // Exibe o valor formatado
-                                            onChange={(e) => {
-                                                const rawValue = normalizeTelefone(e.target.value); // Limpa para gravação
-                                                field.onChange(rawValue); // Armazena o valor limpo (só dígitos)
-                                            }}
-                                            inputProps={{
-                                                // 15 caracteres: (99) 99999-9999
-                                                maxLength: 15
-                                            }}
-                                        />
-                                    );
-                                }}
-                            />
-                        </Box>
-
-                        <Box>
-                            <Controller
-                                name="status"
-                                control={control}
-                                render={({ field }) => (
-                                    <TextField
-                                        {...field}
-                                        label="Status"
-                                        select
-                                        fullWidth
-                                        required
-                                        error={!!errors.status}
-                                        helperText={errors.status?.message}
-                                    >
-                                        <MenuItem value="ATIVO">ATIVO</MenuItem>
-                                        <MenuItem value="INATIVO">INATIVO</MenuItem>
-                                    </TextField>
-                                )}
-                            />
-                        </Box>
-                        {/* Box vazio para alinhar o status na primeira coluna quando o grid for 2x2 */}
-                        <Box sx={{ display: { xs: 'none', sm: 'block' } }}></Box>
-                    </Box>
-
-                    {/* Observações - Mantido */}
-                    <Box sx={{ gridColumn: { xs: '1', sm: '1 / span 2' } }}>
                         <Controller
-                            name="observacoes"
+                            name="nome"
                             control={control}
                             render={({ field }) => (
                                 <TextField
                                     {...field}
-                                    label="Observações"
+                                    label="Nome Completo"
                                     fullWidth
-                                    multiline
-                                    rows={3}
-                                    value={field.value || ''}
-                                    onChange={(e) => field.onChange(e.target.value || null)}
+                                    required
+                                    error={!!errors.nome}
+                                    helperText={errors.nome?.message}
                                 />
+                            )}
+                        />
+
+                        <Controller
+                            name="cpf"
+                            control={control}
+                            render={({ field }) => (
+                                <TextField
+                                    {...field}
+                                    label="CPF"
+                                    fullWidth
+                                    required
+                                    value={formatCPF(field.value || '')}
+                                    onChange={(e) => field.onChange(normalizeCPF(e.target.value))}
+                                    error={!!errors.cpf}
+                                    helperText={errors.cpf?.message}
+                                    disabled={isEdit}
+                                    inputProps={{ maxLength: 14 }}
+                                />
+                            )}
+                        />
+
+                        <Controller
+                            name="email"
+                            control={control}
+                            render={({ field }) => (
+                                <TextField
+                                    {...field}
+                                    label="Email"
+                                    fullWidth
+                                    required
+                                    error={!!errors.email}
+                                    helperText={errors.email?.message}
+                                    type="email"
+                                />
+                            )}
+                        />
+
+                        <Controller
+                            name="telefone"
+                            control={control}
+                            render={({ field }) => (
+                                <TextField
+                                    {...field}
+                                    label="Telefone (DDD)"
+                                    fullWidth
+                                    value={formatTelefone(field.value || '')}
+                                    onChange={(e) => field.onChange(normalizeTelefone(e.target.value))}
+                                    error={!!errors.telefone}
+                                    helperText={errors.telefone?.message}
+                                    inputProps={{ maxLength: 15 }}
+                                />
+                            )}
+                        />
+
+                        <Controller
+                            name="status"
+                            control={control}
+                            render={({ field }) => (
+                                <TextField
+                                    {...field}
+                                    label="Status"
+                                    select
+                                    fullWidth
+                                    required
+                                    error={!!errors.status}
+                                    helperText={errors.status?.message}
+                                >
+                                    <MenuItem value="ATIVO">ATIVO</MenuItem>
+                                    <MenuItem value="INATIVO">INATIVO</MenuItem>
+                                </TextField>
                             )}
                         />
                     </Box>
 
+                    <Controller
+                        name="observacoes"
+                        control={control}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                label="Observações"
+                                fullWidth
+                                multiline
+                                rows={3}
+                                value={field.value || ''}
+                                onChange={(e) => field.onChange(e.target.value || null)}
+                            />
+                        )}
+                    />
                 </DialogContent>
 
-                <DialogActions>
+                <DialogActions sx={{ p: 2 }}>
                     <Button onClick={onClose} disabled={loading}>
                         Cancelar
                     </Button>
