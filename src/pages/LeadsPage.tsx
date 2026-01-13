@@ -3,7 +3,7 @@ import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Chip, IconButton, Tooltip, TextField,
     InputAdornment, CircularProgress, Button, Menu, MenuItem,
-    Divider
+    Divider, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText
 } from '@mui/material';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,11 +11,10 @@ import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import { API_URL } from '../services/api';
-
 import HistoryIcon from '@mui/icons-material/History';
 import SendIcon from '@mui/icons-material/Send';
-import { Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText } from '@mui/material';
+import HandshakeIcon from '@mui/icons-material/Handshake';
+import { API_URL } from '../services/api';
 
 // --- Função de Som Suave ---
 const playBeep = () => {
@@ -23,7 +22,7 @@ const playBeep = () => {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // Nota Dó
+    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
     osc.connect(gain);
     gain.connect(audioCtx.destination);
@@ -54,7 +53,6 @@ export const LeadsPage: React.FC = () => {
             if (searchText?.trim()) params.search = searchText;
 
             if (filterStatus === 'PENDENTES') {
-                // O backend agora entende que essa string separada por vírgula é um "OR"
                 params.status = 'NOVO,EM_ANDAMENTO';
             } else if (filterStatus !== 'TODOS') {
                 params.status = filterStatus;
@@ -67,19 +65,14 @@ export const LeadsPage: React.FC = () => {
 
             const currentLeads = response.data;
 
-            // --- LÓGICA SONORA ---
-
-            // 1. Alerta Inicial (ao carregar a página pela primeira vez)
             if (!isPolling && !hasPlayedInitialAlert.current) {
                 const hasPending = currentLeads.some((l: any) => l.status !== 'CONCLUIDO');
                 if (hasPending) {
-                    playBeep(); // Toca uma vez para avisar que há trabalho pendente
+                    playBeep();
                 }
                 hasPlayedInitialAlert.current = true;
             }
 
-            // 2. Alerta de Novo Lead (Polling)
-            // Se a quantidade atual é maior que a anterior, significa que chegou algo novo
             if (isPolling && currentLeads.length > lastLeadCount.current) {
                 playBeep();
             }
@@ -93,16 +86,14 @@ export const LeadsPage: React.FC = () => {
         }
     }, [user?.token, searchText, filterStatus]);
 
-    // Efeito para debounce e mudança de filtro
     useEffect(() => {
         const timer = setTimeout(() => fetchLeads(), 400);
         return () => clearTimeout(timer);
     }, [searchText, filterStatus, fetchLeads]);
 
     useEffect(() => {
-        // Polling a cada 30 segundos
         const interval = setInterval(() => {
-            fetchLeads(true); // O fetchLeads busca a lista completa para a tabela
+            fetchLeads(true);
         }, 30000);
 
         return () => clearInterval(interval);
@@ -123,20 +114,54 @@ export const LeadsPage: React.FC = () => {
     };
 
     const handleAddNote = async () => {
-        setIsSaving(true)
         if (!newNote.trim()) return;
+        setIsSaving(true);
         try {
             await axios.post(`${API_URL}/leads/${selectedLead._id}/historico`,
                 { descricao: newNote },
                 { headers: { Authorization: `Bearer ${user?.token}` } }
             );
             setNewNote('');
-            fetchLeads(); // Recarrega para mostrar a nova nota
-            setOpenHistory(false); // Opcional: fechar ou manter aberto
+            await fetchLeads();
+            setOpenHistory(false);
         } catch (error) {
             console.error("Erro ao salvar histórico", error);
+        } finally {
+            setIsSaving(false);
         }
-        setIsSaving(false)
+    };
+
+    // --- FUNÇÃO DE NEGOCIAÇÃO COM CONFIRMAÇÃO ---
+    const handleStartNegotiation = async () => {
+        if (!selectedLead) return;
+
+        const confirmMsg = `Deseja iniciar a negociação para ${selectedLead.nome}?\n\nUma negociação será criada e o status deste lead será alterado para concluído. Para acompanhá-la ou editá-la, utilize o botão "Negociações" na aba lateral.`;
+
+        if (window.confirm(confirmMsg)) {
+            setIsSaving(true);
+            try {
+                // 1. Registrar no histórico
+                await axios.post(`${API_URL}/leads/${selectedLead._id}/historico`,
+                    { descricao: "Iniciado Negociação" },
+                    { headers: { Authorization: `Bearer ${user?.token}` } }
+                );
+
+                // 2. Atualizar status para concluído
+                await axios.patch(`${API_URL}/leads/${selectedLead._id}/status`,
+                    { status: 'CONCLUIDO' },
+                    { headers: { Authorization: `Bearer ${user?.token}` } }
+                );
+
+                await fetchLeads();
+                window.dispatchEvent(new Event('updateLeadsCount'));
+                setOpenHistory(false);
+            } catch (error) {
+                console.error("Erro ao iniciar negociação", error);
+                alert("Ocorreu um erro ao processar a negociação.");
+            } finally {
+                setIsSaving(false);
+            }
+        }
     };
 
     return (
@@ -164,18 +189,16 @@ export const LeadsPage: React.FC = () => {
                     onClick={(e) => setAnchorEl(e.currentTarget)}
                     sx={{ minWidth: 200, height: 56 }}
                 >
-                    {/* Rótulo dinâmico */}
                     {filterStatus === 'PENDENTES' ? 'Pendentes (Novos/Andamento)' :
                         filterStatus === 'TODOS' ? 'Todos os Status' : filterStatus}
                 </Button>
 
                 <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
-                    {/* Nova opção padrão */}
                     <MenuItem onClick={() => { setFilterStatus('PENDENTES'); setAnchorEl(null); }}>
                         <b>Pendentes (Padrão)</b>
                     </MenuItem>
                     <MenuItem onClick={() => { setFilterStatus('TODOS'); setAnchorEl(null); }}>Todos</MenuItem>
-                    <Divider /> {/* Opcional: import { Divider } from '@mui/material' */}
+                    <Divider />
                     <MenuItem onClick={() => { setFilterStatus('NOVO'); setAnchorEl(null); }}>Apenas Novos</MenuItem>
                     <MenuItem onClick={() => { setFilterStatus('EM_ANDAMENTO'); setAnchorEl(null); }}>Apenas Em Andamento</MenuItem>
                     <MenuItem onClick={() => { setFilterStatus('CONCLUIDO'); setAnchorEl(null); }}>Apenas Concluídos</MenuItem>
@@ -195,17 +218,14 @@ export const LeadsPage: React.FC = () => {
                     </TableHead>
                     <TableBody>
                         {loading ? (
-                            <TableRow><TableCell colSpan={4} align="center"><CircularProgress sx={{ m: 2 }} /></TableCell></TableRow>
+                            <TableRow><TableCell colSpan={5} align="center"><CircularProgress sx={{ m: 2 }} /></TableCell></TableRow>
                         ) : leads.map((lead) => (
                             <TableRow key={lead._id}>
                                 <TableCell>
                                     <Typography variant="body2">
                                         {new Intl.DateTimeFormat('pt-BR', {
-                                            day: '2-digit',
-                                            month: '2-digit',
-                                            year: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
+                                            day: '2-digit', month: '2-digit', year: 'numeric',
+                                            hour: '2-digit', minute: '2-digit'
                                         }).format(new Date(lead.createdAt))}
                                     </Typography>
                                 </TableCell>
@@ -216,18 +236,13 @@ export const LeadsPage: React.FC = () => {
                                 <TableCell>
                                     {lead.imovel ? (
                                         <Box>
-                                            {/* Título do Imóvel */}
                                             <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
                                                 {lead.imovel.titulo}
                                             </Typography>
-
-                                            {/* Endereço e Cidade */}
                                             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
                                                 {lead.imovel.endereco}
                                                 {lead.imovel.cidade ? ` • ${lead.imovel.cidade}` : ''}
                                             </Typography>
-
-                                            {/* Badge de Venda/Aluguel (Opcional, mas ajuda muito o corretor) */}
                                             <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5 }}>
                                                 {lead.imovel.para_venda && (
                                                     <Chip label="Venda" size="small" variant="outlined" sx={{ fontSize: '10px', height: '18px' }} />
@@ -238,9 +253,7 @@ export const LeadsPage: React.FC = () => {
                                             </Box>
                                         </Box>
                                     ) : (
-                                        <Typography variant="body2" color="text.disabled">
-                                            Imóvel não identificado
-                                        </Typography>
+                                        <Typography variant="body2" color="text.disabled">Imóvel não identificado</Typography>
                                     )}
                                 </TableCell>
                                 <TableCell>
@@ -257,14 +270,12 @@ export const LeadsPage: React.FC = () => {
                                 </TableCell>
                                 <TableCell align="center">
                                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-
                                         <Tooltip title="Histórico de Conversas">
                                             <IconButton color="secondary" onClick={() => handleOpenHistory(lead)}>
                                                 <HistoryIcon />
                                             </IconButton>
                                         </Tooltip>
 
-                                        {/* ÍCONE WHATSAPP (Sempre Visível) */}
                                         <Tooltip title="WhatsApp">
                                             <IconButton
                                                 color="success"
@@ -274,19 +285,17 @@ export const LeadsPage: React.FC = () => {
                                             </IconButton>
                                         </Tooltip>
 
-                                        {/* BOTAO INICIAR (Apenas para Novos) */}
                                         {lead.status === 'NOVO' && (
                                             <Tooltip title="Iniciar Atendimento">
                                                 <IconButton
                                                     color="info"
                                                     onClick={() => handleUpdateStatus(lead._id, 'EM_ANDAMENTO')}
                                                 >
-                                                    <CheckCircleOutlineIcon sx={{ opacity: 0.5 }} /> {/* Ou um ícone de Play */}
+                                                    <CheckCircleOutlineIcon sx={{ opacity: 0.5 }} />
                                                 </IconButton>
                                             </Tooltip>
                                         )}
 
-                                        {/* BOTAO CONCLUIR (Para Novos ou Em Andamento) */}
                                         {lead.status !== 'CONCLUIDO' && (
                                             <Tooltip title="Concluir Atendimento">
                                                 <IconButton
@@ -302,7 +311,6 @@ export const LeadsPage: React.FC = () => {
                                             </Tooltip>
                                         )}
 
-                                        {/* BOTAO VOLTAR PARA EM ANDAMENTO (Apenas para Concluídos) */}
                                         {lead.status === 'CONCLUIDO' && (
                                             <Tooltip title="Reabrir / Voltar para Em Andamento">
                                                 <IconButton
@@ -313,12 +321,10 @@ export const LeadsPage: React.FC = () => {
                                                         }
                                                     }}
                                                 >
-                                                    {/* Ícone de desfazer/voltar */}
                                                     <FilterListIcon sx={{ transform: 'scaleX(-1)' }} />
                                                 </IconButton>
                                             </Tooltip>
                                         )}
-
                                     </Box>
                                 </TableCell>
                             </TableRow>
@@ -326,8 +332,24 @@ export const LeadsPage: React.FC = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+
             <Dialog open={openHistory} onClose={() => setOpenHistory(false)} fullWidth maxWidth="sm">
-                <DialogTitle>Histórico: {selectedLead?.nome}</DialogTitle>
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="h6" component="span">Histórico: {selectedLead?.nome}</Typography>
+
+                    {selectedLead?.status !== 'CONCLUIDO' && (
+                        <Button
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            startIcon={<HandshakeIcon />}
+                            onClick={handleStartNegotiation}
+                            disabled={isSaving}
+                        >
+                            Iniciar Negociação
+                        </Button>
+                    )}
+                </DialogTitle>
                 <DialogContent dividers>
                     <List>
                         {selectedLead?.historico?.map((h: any, index: number) => (
@@ -351,12 +373,14 @@ export const LeadsPage: React.FC = () => {
                             value={newNote}
                             onChange={(e) => setNewNote(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleAddNote()}
+                            disabled={isSaving}
                         />
                         <Button
                             variant="contained"
                             onClick={handleAddNote}
-                            endIcon={<SendIcon />}
-                            disabled={!newNote.trim() || isSaving}                        >
+                            endIcon={isSaving ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+                            disabled={!newNote.trim() || isSaving}
+                        >
                             Salvar
                         </Button>
                     </Box>
