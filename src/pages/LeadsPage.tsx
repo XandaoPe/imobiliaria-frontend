@@ -3,7 +3,8 @@ import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Chip, IconButton, Tooltip, TextField,
     InputAdornment, CircularProgress, Button, Menu, MenuItem,
-    Divider, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText
+    Divider, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText,
+    Stack
 } from '@mui/material';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -14,6 +15,7 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import HistoryIcon from '@mui/icons-material/History';
 import SendIcon from '@mui/icons-material/Send';
 import HandshakeIcon from '@mui/icons-material/Handshake';
+import CloseIcon from '@mui/icons-material/Close';
 import { API_URL } from '../services/api';
 import { NegociacaoFormModal } from '../components/NegociacaoFormModal';
 
@@ -46,6 +48,9 @@ export const LeadsPage: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [openNegociacaoModal, setOpenNegociacaoModal] = useState(false);
     const [negociacaoData, setNegociacaoData] = useState<any>(null);
+
+    // Estado para o novo Dialog de Decisão de Fechamento
+    const [openFinishDialog, setOpenFinishDialog] = useState(false);
 
     // BUSCA COM FILTROS
     const fetchLeads = useCallback(async (isPolling = false) => {
@@ -134,33 +139,50 @@ export const LeadsPage: React.FC = () => {
         }
     };
 
-    // --- FUNÇÃO DE NEGOCIAÇÃO COM CONFIRMAÇÃO ---
+    // --- FUNÇÃO PARA ABRIR O DIALOG DE CONCLUSÃO ---
+    const handleOpenFinishDecision = (lead: any) => {
+        setSelectedLead(lead);
+        setOpenFinishDialog(true);
+    };
+
+    // --- LOGICA DE CONVERSÃO PARA NEGOCIAÇÃO ---
     const handleStartNegotiation = async () => {
         if (!selectedLead) return;
 
-        if (window.confirm(`Deseja converter o lead ${selectedLead.nome} em uma negociação?`)) {
-            setIsSaving(true);
-            try {
-                // Preparamos os dados. Se o backend já vinculou um Cliente ID ao Lead, usamos ele.
-                setNegociacaoData({
-                    cliente: selectedLead.clienteId || null, // Assume que o lead pode ter a ref do cliente
-                    imovel: selectedLead.imovel || null
-                });
+        setIsSaving(true);
+        try {
+            setNegociacaoData({
+                cliente: selectedLead.clienteId || null,
+                imovel: selectedLead.imovel || null
+            });
 
-                // Opcional: Marcar lead como concluído/convertido
-                await axios.patch(`${API_URL}/leads/${selectedLead._id}/status`,
-                    { status: 'CONCLUIDO' },
-                    { headers: { Authorization: `Bearer ${user?.token}` } }
-                );
+            await axios.patch(`${API_URL}/leads/${selectedLead._id}/status`,
+                { status: 'CONCLUIDO' },
+                { headers: { Authorization: `Bearer ${user?.token}` } }
+            );
 
-                setOpenHistory(false);
-                setOpenNegociacaoModal(true);
-                fetchLeads();
-            } catch (error) {
-                console.error("Erro ao converter lead", error);
-            } finally {
-                setIsSaving(false);
-            }
+            setOpenHistory(false);
+            setOpenFinishDialog(false); // Fecha o dialog de decisão se estiver aberto
+            setOpenNegociacaoModal(true);
+            fetchLeads();
+        } catch (error) {
+            console.error("Erro ao converter lead", error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // --- APENAS CONCLUIR ---
+    const handleJustFinish = async () => {
+        if (!selectedLead) return;
+        setIsSaving(true);
+        try {
+            await handleUpdateStatus(selectedLead._id, 'CONCLUIDO');
+            setOpenFinishDialog(false);
+        } catch (error) {
+            console.error("Erro ao concluir lead", error);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -270,7 +292,7 @@ export const LeadsPage: React.FC = () => {
                                 </TableCell>
                                 <TableCell align="center">
                                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                                        <Tooltip title="Histórico de Conversas">
+                                        <Tooltip title="Histórico de Conversas/Inicio de Negociação">
                                             <IconButton color="secondary" onClick={() => handleOpenHistory(lead)}>
                                                 <HistoryIcon />
                                             </IconButton>
@@ -297,14 +319,10 @@ export const LeadsPage: React.FC = () => {
                                         )}
 
                                         {lead.status !== 'CONCLUIDO' && (
-                                            <Tooltip title="Concluir Atendimento">
+                                            <Tooltip title="Concluir Atendimento ou Iniciar Negociação">
                                                 <IconButton
                                                     color="primary"
-                                                    onClick={() => {
-                                                        if (window.confirm(`Deseja realmente concluir o atendimento de ${lead.nome}?`)) {
-                                                            handleUpdateStatus(lead._id, 'CONCLUIDO');
-                                                        }
-                                                    }}
+                                                    onClick={() => handleOpenFinishDecision(lead)}
                                                 >
                                                     <CheckCircleOutlineIcon />
                                                 </IconButton>
@@ -333,6 +351,7 @@ export const LeadsPage: React.FC = () => {
                 </Table>
             </TableContainer>
 
+            {/* DIALOG DE HISTÓRICO */}
             <Dialog open={openHistory} onClose={() => setOpenHistory(false)} fullWidth maxWidth="sm">
                 <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="h6" component="span">Histórico: {selectedLead?.nome}</Typography>
@@ -387,6 +406,43 @@ export const LeadsPage: React.FC = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpenHistory(false)}>Fechar</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* --- NOVO DIALOG: DECISÃO DE CONCLUSÃO --- */}
+            <Dialog open={openFinishDialog} onClose={() => setOpenFinishDialog(false)}>
+                <DialogTitle>Concluir Atendimento</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Como deseja finalizar o atendimento de <b>{selectedLead?.nome}</b>?
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 3, justifyContent: 'center' }}>
+                    <Stack spacing={2} direction="row">
+                        <Button
+                            variant="outlined"
+                            color="inherit"
+                            startIcon={<CloseIcon />}
+                            onClick={() => setOpenFinishDialog(false)}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handleJustFinish}
+                        >
+                            Concluir e Encerrar
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="success"
+                            startIcon={<HandshakeIcon />}
+                            onClick={handleStartNegotiation}
+                        >
+                            Concluir e Iniciar Negociação
+                        </Button>
+                    </Stack>
                 </DialogActions>
             </Dialog>
 
