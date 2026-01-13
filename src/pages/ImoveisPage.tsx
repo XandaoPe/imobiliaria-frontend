@@ -173,6 +173,10 @@ export const ImoveisPage = () => {
     };
 
     const handleOpenEdit = (imovel: Imovel) => {
+        console.log('🔍 Imóvel para editar completo:', imovel);
+        console.log('🔍 Proprietário do imóvel:', imovel.proprietario);
+        console.log('🔍 Tipo do proprietário:', typeof imovel.proprietario);
+
         setImovelToEdit(imovel);
         setOpenModal(true);
     };

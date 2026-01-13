@@ -66,12 +66,41 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
 
     useEffect(() => {
         if (open) {
+            console.log('ImovelFormModal....imovelToEdit?.proprietario...', imovelToEdit?.proprietario);
+
+            // ⭐️ DEBUG: Verificar a estrutura completa
+            console.log('imovelToEdit completo:', imovelToEdit);
+
             if (isEdit && imovelToEdit) {
-                // ⭐️ CORREÇÃO DO ERRO DE TIPAGEM AQUI:
-                // Verificamos se 'proprietario' é um objeto antes de acessar ._id
-                const proprietarioId = typeof imovelToEdit.proprietario === 'object' && imovelToEdit.proprietario !== null
-                    ? (imovelToEdit.proprietario as any)._id
-                    : imovelToEdit.proprietario;
+                // ⭐️ FUNÇÃO PARA EXTRAIR O ID DE QUALQUER FORMATO
+                const extractProprietarioId = (proprietario: any): string => {
+                    if (!proprietario) return '';
+
+                    console.log('Extraindo ID de:', proprietario);
+
+                    // Se já for string (ID)
+                    if (typeof proprietario === 'string') {
+                        return proprietario;
+                    }
+
+                    // Se for objeto com _id
+                    if (typeof proprietario === 'object' && proprietario !== null) {
+                        // Pode vir como { _id: '...', nome: '...' } ou { _id: { $oid: '...' }, nome: '...' }
+                        if (proprietario._id) {
+                            // Se _id for objeto MongoDB
+                            if (typeof proprietario._id === 'object' && proprietario._id.$oid) {
+                                return proprietario._id.$oid;
+                            }
+                            // Se _id for string
+                            return String(proprietario._id);
+                        }
+                    }
+
+                    return '';
+                };
+
+                const proprietarioId = extractProprietarioId(imovelToEdit.proprietario);
+                console.log('ID extraído para o formulário:', proprietarioId);
 
                 reset({
                     titulo: imovelToEdit.titulo || '',
@@ -90,8 +119,9 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                     area_terreno: imovelToEdit.area_terreno ?? null,
                     area_construida: imovelToEdit.area_construida ?? null,
                     garagem: imovelToEdit.garagem ?? false,
-                    proprietario: proprietarioId || '', // ⭐️ Valor seguro
+                    proprietario: proprietarioId,
                 });
+
                 setCurrentImovel(imovelToEdit);
                 setCurrentPhotos(imovelToEdit.fotos || []);
             } else {
@@ -103,6 +133,8 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
             setActiveStep(0);
         }
     }, [open, isEdit, imovelToEdit, reset]);
+
+    console.log("ImovelFormModal...currentImovel?.proprietario...", currentImovel?.proprietario);
 
     const handleNext = async () => {
         let fieldsToValidate: (keyof ImovelFormData)[] = [];

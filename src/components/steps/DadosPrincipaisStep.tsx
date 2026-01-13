@@ -51,53 +51,50 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
     }, []);
 
     return (
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
-
-            {/* Seleção do Proprietário */}
-            <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' }, mt: 1 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
+                {/* Seleção do Proprietário */}
+                <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' }, mt: 1 }}>
                 <Controller
                     name="proprietario"
                     control={control}
-                    render={({ field }) => (
-                        <Autocomplete
-                            {...field}
-                            options={clientes}
-                            getOptionLabel={(option) => (typeof option === 'string' ? option : option.nome || '')}
-                            loading={loadingClientes}
-                            // ⭐️ CORREÇÃO DO ERRO TS(2367):
-                            // Forçamos a comparação entre os IDs (string com string)
-                            isOptionEqualToValue={(option, value) => {
-                                if (!value) return false;
-                                const valueId = typeof value === 'object' ? (value as Cliente)._id : value;
-                                return option._id === valueId;
-                            }}
-                            // Garante que o Autocomplete entenda que o valor interno é o objeto Cliente
-                            value={clientes.find(c => c._id === field.value) || null}
-                            onChange={(_, data) => {
-                                field.onChange(data ? data._id : '');
-                            }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Proprietário (Cliente)"
-                                    required
-                                    error={!!errors.proprietario}
-                                    helperText={errors.proprietario?.message}
-                                    InputProps={{
-                                        ...params.InputProps,
-                                        endAdornment: (
-                                            <React.Fragment>
-                                                {loadingClientes ? <CircularProgress color="inherit" size={20} /> : null}
-                                                {params.InputProps.endAdornment}
-                                            </React.Fragment>
-                                        ),
-                                    }}
-                                />
-                            )}
-                        />
-                    )}
+                    render={({ field }) => {
+                        return (
+                            <Autocomplete
+                                options={clientes}
+                                getOptionLabel={(option) => option.nome}
+                                loading={loadingClientes}
+                                value={
+                                    clientes.find(cliente => cliente._id === field.value) || null
+                                }
+                                onChange={(_, data) => {
+                                    field.onChange(data ? data._id : '');
+                                }}
+                                isOptionEqualToValue={(option, value) => {
+                                    return option._id === value?._id;
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Proprietário (Cliente)"
+                                        required
+                                        error={!!errors.proprietario}
+                                        helperText={errors.proprietario?.message}
+                                        InputProps={{
+                                            ...params.InputProps,
+                                            endAdornment: (
+                                                <React.Fragment>
+                                                    {loadingClientes ? <CircularProgress color="inherit" size={20} /> : null}
+                                                    {params.InputProps.endAdornment}
+                                                </React.Fragment>
+                                            ),
+                                        }}
+                                    />
+                                )}
+                            />
+                        );
+                    }}
                 />
-            </Box>
+                </Box>
 
             {/* Título */}
             <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' } }}>

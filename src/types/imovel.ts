@@ -3,7 +3,7 @@ import * as yup from 'yup';
 // Tipos baseados no backend
 export type ImovelTipo = 'CASA' | 'APARTAMENTO' | 'TERRENO' | 'COMERCIAL';
 
-// Interface para dados do formulário
+// Interface para dados do formulário (aceita string vazia)
 export interface ImovelFormData {
     titulo: string;
     tipo: ImovelTipo;
@@ -21,7 +21,7 @@ export interface ImovelFormData {
     area_terreno: number | null;
     area_construida: number | null;
     garagem: boolean;
-    proprietario: string ;
+    proprietario: string; // ⭐️ Mantém como string obrigatória para o formulário
 }
 
 export interface EmpresaInfo {
@@ -30,14 +30,81 @@ export interface EmpresaInfo {
     fone?: string;
 }
 
-// Interface principal do Imóvel
-export interface Imovel extends ImovelFormData {
+// Interface principal do Imóvel (separada do formulário)
+export interface Imovel {
     _id: string;
+    titulo: string;
+    tipo: ImovelTipo;
+    endereco: string;
+    para_venda: boolean;
+    para_aluguel: boolean;
+    valor_venda: number | null;
+    valor_aluguel: number | null;
+    disponivel: boolean;
+    cidade: string;
+    descricao: string | null;
+    detalhes: string | null;
+    quartos: number | null;
+    banheiros: number | null;
+    area_terreno: number | null;
+    area_construida: number | null;
+    garagem: boolean;
     fotos: string[];
     empresa: string | EmpresaInfo;
+    // ⭐️ ATUALIZADO: Suporta tanto string (ID) quanto objeto Cliente
+    proprietario?: string | {
+        _id: string;
+        nome: string;
+        [key: string]: any; // outras propriedades do cliente
+    };
     createdAt?: string;
     updatedAt?: string;
 }
+
+// Função para extrair o ID do proprietário de qualquer formato
+export const extractProprietarioId = (proprietario: string | { _id: string;[key: string]: any } | undefined): string => {
+    if (!proprietario) return '';
+
+    if (typeof proprietario === 'object' && proprietario !== null) {
+        return proprietario._id || '';
+    }
+
+    return proprietario || '';
+};
+
+// Função para obter o nome do proprietário (se disponível)
+export const getProprietarioNome = (proprietario: string | { _id: string; nome: string;[key: string]: any } | undefined): string => {
+    if (!proprietario) return '';
+
+    if (typeof proprietario === 'object' && proprietario !== null) {
+        return proprietario.nome || '';
+    }
+
+    return '';
+};
+
+// Função para converter Imovel para ImovelFormData (para edição)
+export const imovelToFormData = (imovel: Imovel): ImovelFormData => {
+    return {
+        titulo: imovel.titulo,
+        tipo: imovel.tipo,
+        endereco: imovel.endereco,
+        para_venda: imovel.para_venda,
+        para_aluguel: imovel.para_aluguel,
+        valor_venda: imovel.valor_venda,
+        valor_aluguel: imovel.valor_aluguel,
+        disponivel: imovel.disponivel,
+        cidade: imovel.cidade,
+        descricao: imovel.descricao,
+        detalhes: imovel.detalhes,
+        quartos: imovel.quartos,
+        banheiros: imovel.banheiros,
+        area_terreno: imovel.area_terreno,
+        area_construida: imovel.area_construida,
+        garagem: imovel.garagem,
+        proprietario: extractProprietarioId(imovel.proprietario), // ⭐️ Extrai apenas o ID
+    };
+};
 
 // Função para normalizar tipo
 export const normalizeTipoImovel = (tipo: string): ImovelTipo => {
@@ -163,5 +230,6 @@ export const imovelValidationSchema = yup.object().shape({
 
     proprietario: yup
         .string()
-        .required('Selecione o proprietário do imóvel.'),
+        .required('Selecione o proprietário do imóvel.')
+        .min(1, 'Selecione um proprietário válido.'),
 });
