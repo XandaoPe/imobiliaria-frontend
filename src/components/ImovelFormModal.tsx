@@ -11,6 +11,8 @@ import { DetalhesStep } from './steps/DetalhesStep';
 import { ImovelPhotosStep } from './steps/ImovelPhotosStep';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+// Importação da modal de cliente (Ajuste o caminho conforme seu projeto)
+import { ClienteFormModal } from './ClienteFormModal';
 
 interface ImovelFormModalProps {
     open: boolean;
@@ -33,7 +35,9 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
     const [currentImovel, setCurrentImovel] = useState<ImovelState>(imovelToEdit || null);
     const [currentPhotos, setCurrentPhotos] = useState<string[]>(imovelToEdit?.fotos || []);
 
-    // Valores padrão completos para o formulário
+    // Controle da Modal de Cliente
+    const [isClienteModalOpen, setIsClienteModalOpen] = useState(false);
+
     const defaultValues: ImovelFormData = {
         titulo: '',
         tipo: 'CASA',
@@ -54,53 +58,33 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
         proprietario: '',
     };
 
-    // ⭐️ CORRIGIDO: Especifica o tipo genérico corretamente
     const {
-        handleSubmit, control, reset,
+        handleSubmit, control, reset, setValue,
         formState: { errors }, trigger, getValues,
     } = useForm<ImovelFormData>({
-        resolver: yupResolver(imovelValidationSchema) as any, // ⭐️ CAST para any para evitar erro de tipos
+        resolver: yupResolver(imovelValidationSchema) as any,
         defaultValues,
         mode: 'onBlur',
     });
 
     useEffect(() => {
         if (open) {
-            console.log('ImovelFormModal....imovelToEdit?.proprietario...', imovelToEdit?.proprietario);
-
-            // ⭐️ DEBUG: Verificar a estrutura completa
-            console.log('imovelToEdit completo:', imovelToEdit);
-
             if (isEdit && imovelToEdit) {
-                // ⭐️ FUNÇÃO PARA EXTRAIR O ID DE QUALQUER FORMATO
                 const extractProprietarioId = (proprietario: any): string => {
                     if (!proprietario) return '';
-
-                    console.log('Extraindo ID de:', proprietario);
-
-                    // Se já for string (ID)
-                    if (typeof proprietario === 'string') {
-                        return proprietario;
-                    }
-
-                    // Se for objeto com _id
+                    if (typeof proprietario === 'string') return proprietario;
                     if (typeof proprietario === 'object' && proprietario !== null) {
-                        // Pode vir como { _id: '...', nome: '...' } ou { _id: { $oid: '...' }, nome: '...' }
                         if (proprietario._id) {
-                            // Se _id for objeto MongoDB
                             if (typeof proprietario._id === 'object' && proprietario._id.$oid) {
                                 return proprietario._id.$oid;
                             }
-                            // Se _id for string
                             return String(proprietario._id);
                         }
                     }
-
                     return '';
                 };
 
                 const proprietarioId = extractProprietarioId(imovelToEdit.proprietario);
-                console.log('ID extraído para o formulário:', proprietarioId);
 
                 reset({
                     titulo: imovelToEdit.titulo || '',
@@ -134,12 +118,9 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
         }
     }, [open, isEdit, imovelToEdit, reset]);
 
-    console.log("ImovelFormModal...currentImovel?.proprietario...", currentImovel?.proprietario);
-
     const handleNext = async () => {
         let fieldsToValidate: (keyof ImovelFormData)[] = [];
         if (activeStep === 0) {
-            // ⭐️ Adicionado 'proprietario' na validação do primeiro passo
             fieldsToValidate = ['titulo', 'tipo', 'endereco', 'disponivel', 'cidade', 'proprietario'];
             const formValues = getValues();
             if (formValues.para_venda) fieldsToValidate.push('valor_venda');
@@ -154,17 +135,10 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
     };
 
     const onDataSubmit: SubmitHandler<ImovelFormData> = async (data) => {
-
-        console.log("🚀 SUBMIT INICIADO - Verificando dados e erros:");
-        console.log("📊 Dados do formulário:", data);
-        console.log("❌ Erros de validação:", errors);
-        console.log("📍 Passo atual:", activeStep);
-
         setLoading(true);
         setError(null);
 
         try {
-            // ⭐️ Tratamento manual para garantir Tipagem Correta
             const payload = {
                 ...data,
                 valor_venda: data.valor_venda ? Number(data.valor_venda) : null,
@@ -179,8 +153,6 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                 para_aluguel: !!data.para_aluguel,
             };
 
-            console.log("Payload Final enviado ao Axios:", payload);
-
             let response;
             if (isEdit && currentImovel?._id) {
                 response = await api.put(`/imoveis/${currentImovel._id}`, payload);
@@ -189,20 +161,11 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
             }
 
             const imovelResult = response.data;
-            console.log("Resposta do Servidor:", imovelResult);
-
             setCurrentImovel(imovelResult);
             setCurrentPhotos(imovelResult.fotos || []);
-
-            // Sincroniza o formulário com o banco
-            reset({
-                ...imovelResult,
-                tipo: normalizeTipoImovel(imovelResult.tipo)
-            });
-
+            reset({ ...imovelResult, tipo: normalizeTipoImovel(imovelResult.tipo) });
             setActiveStep((prev) => prev + 1);
         } catch (err: any) {
-            console.error("Erro na requisição:", err.response?.data);
             setError(err.response?.data?.message || "Erro ao salvar");
         } finally {
             setLoading(false);
@@ -212,7 +175,13 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
     const getStepContent = (step: number) => {
         switch (step) {
             case 0:
-                return <DadosPrincipaisStep control={control} errors={errors} />;
+                return (
+                    <DadosPrincipaisStep
+                        control={control}
+                        errors={errors}
+                        onAddCliente={() => setIsClienteModalOpen(true)}
+                    />
+                );
             case 1:
                 return <DetalhesStep control={control} errors={errors} />;
             case 2:
@@ -229,129 +198,73 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle>{currentImovel?._id ? `Editar Imóvel: ${currentImovel.titulo}` : 'Novo Imóvel'}</DialogTitle>
+        <>
+            <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+                <DialogTitle>{currentImovel?._id ? `Editar Imóvel: ${currentImovel.titulo}` : 'Novo Imóvel'}</DialogTitle>
 
-            <Stepper activeStep={activeStep} sx={{ p: 3, pb: 1 }}>
-                {steps.map((label) => (
-                    <Step key={label}>
-                        <StepLabel>{label}</StepLabel>
-                    </Step>
-                ))}
-            </Stepper>
+                <Stepper activeStep={activeStep} sx={{ p: 3, pb: 1 }}>
+                    {steps.map((label) => (
+                        <Step key={label}><StepLabel>{label}</StepLabel></Step>
+                    ))}
+                </Stepper>
 
-            <Box component="form" noValidate>
-                <DialogContent dividers>
-                    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-                    {getStepContent(activeStep)}
-                </DialogContent>
+                <Box component="form" noValidate>
+                    <DialogContent dividers>
+                        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+                        {getStepContent(activeStep)}
+                    </DialogContent>
 
-                <DialogActions sx={{ p: 3, pt: 1 }}>
-                    <Button onClick={onClose} disabled={loading}>
-                        Cancelar
-                    </Button>
+                    <DialogActions sx={{ p: 3, pt: 1 }}>
+                        <Button onClick={onClose} disabled={loading}>Cancelar</Button>
 
-                    {activeStep > 0 && activeStep < steps.length - 1 && (
-                        <Button onClick={handleBack} disabled={loading}>
-                            Voltar
-                        </Button>
-                    )}
+                        {activeStep > 0 && activeStep < steps.length - 1 && (
+                            <Button onClick={handleBack} disabled={loading}>Voltar</Button>
+                        )}
 
-                    {activeStep === 0 && (
-                        <Button
-                            variant="contained"
-                            onClick={handleNext}
-                            disabled={loading}
-                            type="button"
-                        >
-                            Próximo
-                        </Button>
-                    )}
+                        {activeStep === 0 && (
+                            <Button variant="contained" onClick={handleNext} disabled={loading}>Próximo</Button>
+                        )}
 
-                    {activeStep === steps.length - 2 && (
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => {
-                                console.log("🔘 Botão clicado!");
+                        {activeStep === steps.length - 2 && (
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={handleSubmit(onDataSubmit)}
+                                disabled={loading}
+                            >
+                                {loading ? <CircularProgress size={24} /> : (isEdit ? 'Salvar Dados e Ir para Fotos' : 'Criar Imóvel e Ir para Fotos')}
+                            </Button>
+                        )}
 
-                                // ⭐️ SOLUÇÃO CORRETA: Use desta forma
-                                handleSubmit(async (data) => {
-                                    console.log("✅ Validação passou, dados:", data);
+                        {activeStep === steps.length - 1 && (
+                            <Button
+                                onClick={() => {
+                                    onClose();
+                                    onSuccess(currentImovel || undefined);
+                                }}
+                                variant="contained"
+                                color="primary"
+                                disabled={loading}
+                            >
+                                Concluir
+                            </Button>
+                        )}
+                    </DialogActions>
+                </Box>
+            </Dialog>
 
-                                    setLoading(true);
-                                    setError(null);
-
-                                    try {
-                                        // ⭐️ Tratamento manual para garantir Tipagem Correta
-                                        const payload = {
-                                            ...data,
-                                            valor_venda: data.valor_venda ? Number(data.valor_venda) : null,
-                                            valor_aluguel: data.valor_aluguel ? Number(data.valor_aluguel) : null,
-                                            quartos: data.quartos ? Number(data.quartos) : null,
-                                            banheiros: data.banheiros ? Number(data.banheiros) : null,
-                                            area_terreno: data.area_terreno ? Number(data.area_terreno) : null,
-                                            area_construida: data.area_construida ? Number(data.area_construida) : null,
-                                            garagem: !!data.garagem,
-                                            disponivel: !!data.disponivel,
-                                            para_venda: !!data.para_venda,
-                                            para_aluguel: !!data.para_aluguel,
-                                        };
-
-                                        console.log("📤 Payload enviado ao Axios:", payload);
-
-                                        let response;
-                                        if (isEdit && currentImovel?._id) {
-                                            response = await api.put(`/imoveis/${currentImovel._id}`, payload);
-                                        } else {
-                                            response = await api.post(`/imoveis`, payload);
-                                        }
-
-                                        const imovelResult = response.data;
-                                        console.log("📥 Resposta do Servidor:", imovelResult);
-
-                                        setCurrentImovel(imovelResult);
-                                        setCurrentPhotos(imovelResult.fotos || []);
-
-                                        // Sincroniza o formulário com o banco
-                                        reset({
-                                            ...imovelResult,
-                                            tipo: normalizeTipoImovel(imovelResult.tipo)
-                                        });
-
-                                        // ⭐️ AVANÇA PARA O PRÓXIMO PASSO
-                                        setActiveStep((prev) => prev + 1);
-                                    } catch (err: any) {
-                                        console.error("❌ Erro na requisição:", err.response?.data);
-                                        setError(err.response?.data?.message || "Erro ao salvar");
-                                    } finally {
-                                        setLoading(false);
-                                    }
-                                })();
-                            }}
-                            disabled={loading}
-                        >
-                            {loading ? <CircularProgress size={24} /> : (isEdit ? 'Salvar Dados e Ir para Fotos' : 'Criar Imóvel e Ir para Fotos')}
-                        </Button>
-                    )}
-
-                    {activeStep === steps.length - 1 && (
-                        <Button
-                            type="button"
-                            onClick={() => {
-                                onClose();
-                                onSuccess(currentImovel || undefined);
-                            }}
-                            variant="contained"
-                            color="primary"
-                            disabled={loading}
-                        >
-                            Concluir
-                        </Button>
-                    )}
-                </DialogActions>
-            </Box>
-        </Dialog>
+            {/* Modal de Cliente vinculada ao campo proprietário */}
+            <ClienteFormModal
+                open={isClienteModalOpen}
+                onClose={() => setIsClienteModalOpen(false)}
+                onSuccess={(novoCliente) => {
+                    if (novoCliente && novoCliente._id) {
+                        setValue('proprietario', novoCliente._id, { shouldValidate: true });
+                    }
+                    setIsClienteModalOpen(false);
+                }}
+            />
+        </>
     );
 };
 

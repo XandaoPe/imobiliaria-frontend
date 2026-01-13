@@ -45,11 +45,10 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
         reset,
         formState: { errors },
     } = useForm<ClienteFormData>({
-        resolver: yupResolver(clienteValidationSchema) as any, // Adicionado 'as any' para evitar conflitos estritos de tipagem do yup-resolver
+        resolver: yupResolver(clienteValidationSchema) as any,
         defaultValues,
     });
 
-    // Função para formatar CPF para exibição
     const formatCPF = (cpf: string): string => {
         const cleaned = cpf.replace(/\D/g, '');
         if (cleaned.length <= 3) return cleaned;
@@ -58,7 +57,6 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
         return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
     };
 
-    // Máscara para Telefone
     const formatTelefone = (telefone: string | null): string => {
         if (!telefone) return '';
         const cleaned = telefone.replace(/\D/g, '');
@@ -69,22 +67,24 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
     };
 
     useEffect(() => {
-        if (isEdit && clienteToEdit) {
-            reset({
-                nome: clienteToEdit.nome || '',
-                cpf: normalizeCPF(clienteToEdit.cpf || ''),
-                telefone: normalizeTelefone(clienteToEdit.telefone || null),
-                email: clienteToEdit.email || '',
-                observacoes: clienteToEdit.observacoes || null,
-                status: normalizeStatus(clienteToEdit.status || 'ATIVO'),
-                endereco: clienteToEdit.endereco || '',
-                cidade: clienteToEdit.cidade || ''
-            });
-        } else {
-            reset(defaultValues);
+        if (open) {
+            if (isEdit && clienteToEdit) {
+                reset({
+                    nome: clienteToEdit.nome || '',
+                    cpf: normalizeCPF(clienteToEdit.cpf || ''),
+                    telefone: normalizeTelefone(clienteToEdit.telefone || null),
+                    email: clienteToEdit.email || '',
+                    observacoes: clienteToEdit.observacoes || null,
+                    status: normalizeStatus(clienteToEdit.status || 'ATIVO'),
+                    endereco: clienteToEdit.endereco || '',
+                    cidade: clienteToEdit.cidade || ''
+                });
+            } else {
+                reset(defaultValues);
+            }
+            setError(null);
         }
-        setError(null);
-    }, [isEdit, clienteToEdit, reset]);
+    }, [open, isEdit, clienteToEdit, reset]);
 
     const onSubmit: SubmitHandler<ClienteFormData> = async (data) => {
         setLoading(true);
@@ -101,7 +101,7 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                 cidade: data.cidade || undefined
             };
 
-            let clienteSalvo: Cliente | undefined;
+            let clienteSalvo: Cliente;
 
             if (isEdit && clienteToEdit) {
                 const res = await api.put(`/clientes/${clienteToEdit._id}`, dadosEnviar);
@@ -129,26 +129,12 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                 <DialogContent dividers>
                     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-                    <Box
-                        sx={{
-                            display: 'grid',
-                            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                            gap: 2,
-                            mb: 2,
-                        }}
-                    >
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
                         <Controller
                             name="nome"
                             control={control}
                             render={({ field }) => (
-                                <TextField
-                                    {...field}
-                                    label="Nome Completo"
-                                    fullWidth
-                                    required
-                                    error={!!errors.nome}
-                                    helperText={errors.nome?.message}
-                                />
+                                <TextField {...field} label="Nome Completo" fullWidth required error={!!errors.nome} helperText={errors.nome?.message} />
                             )}
                         />
 
@@ -175,15 +161,7 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                             name="email"
                             control={control}
                             render={({ field }) => (
-                                <TextField
-                                    {...field}
-                                    label="Email"
-                                    fullWidth
-                                    required
-                                    error={!!errors.email}
-                                    helperText={errors.email?.message}
-                                    type="email"
-                                />
+                                <TextField {...field} label="Email" fullWidth required error={!!errors.email} helperText={errors.email?.message} type="email" />
                             )}
                         />
 
@@ -204,19 +182,11 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                             )}
                         />
 
-                        {/* NOVOS CAMPOS: ENDEREÇO E CIDADE */}
                         <Controller
                             name="endereco"
                             control={control}
                             render={({ field }) => (
-                                <TextField
-                                    {...field}
-                                    label="Endereço / Bairro"
-                                    fullWidth
-                                    value={field.value || ''}
-                                    error={!!errors.endereco}
-                                    helperText={errors.endereco?.message}
-                                />
+                                <TextField {...field} label="Endereço / Bairro" fullWidth value={field.value || ''} error={!!errors.endereco} helperText={errors.endereco?.message} />
                             )}
                         />
 
@@ -224,14 +194,7 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                             name="cidade"
                             control={control}
                             render={({ field }) => (
-                                <TextField
-                                    {...field}
-                                    label="Cidade/UF"
-                                    fullWidth
-                                    value={field.value || ''}
-                                    error={!!errors.cidade}
-                                    helperText={errors.cidade?.message}
-                                />
+                                <TextField {...field} label="Cidade/UF" fullWidth value={field.value || ''} error={!!errors.cidade} helperText={errors.cidade?.message} />
                             )}
                         />
 
@@ -274,9 +237,7 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
                 </DialogContent>
 
                 <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={onClose} disabled={loading}>
-                        Cancelar
-                    </Button>
+                    <Button onClick={onClose} disabled={loading}>Cancelar</Button>
                     <Button type="submit" variant="contained" color="primary" disabled={loading}>
                         {loading ? <CircularProgress size={24} /> : (isEdit ? 'Salvar Alterações' : 'Criar Cliente')}
                     </Button>
