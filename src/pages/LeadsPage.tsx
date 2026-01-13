@@ -126,7 +126,10 @@ export const LeadsPage: React.FC = () => {
         setIsSaving(true);
         try {
             await axios.post(`${API_URL}/leads/${selectedLead._id}/historico`,
-                { descricao: newNote },
+                {
+                    descricao: newNote,
+                    autor: user?.nome || 'Consultor' // Adicionado autor para consistência
+                },
                 { headers: { Authorization: `Bearer ${user?.token}` } }
             );
             setNewNote('');
@@ -145,28 +148,45 @@ export const LeadsPage: React.FC = () => {
         setOpenFinishDialog(true);
     };
 
-    // --- LOGICA DE CONVERSÃO PARA NEGOCIAÇÃO ---
+    // --- LOGICA DE CONVERSÃO PARA NEGOCIAÇÃO CORRIGIDA ---
     const handleStartNegotiation = async () => {
         if (!selectedLead) return;
 
         setIsSaving(true);
         try {
+            // 1. Grava o histórico de "Iniciado Negociação" no LEAD antes de concluir
+            await axios.post(`${API_URL}/leads/${selectedLead._id}/historico`,
+                {
+                    descricao: "Iniciado Negociação",
+                    autor: user?.nome || 'Consultor',
+                    data: new Date().toISOString()
+                },
+                { headers: { Authorization: `Bearer ${user?.token}` } }
+            );
+
+            // 2. Prepara os dados para a modal de negociação
             setNegociacaoData({
                 cliente: selectedLead.clienteId || null,
                 imovel: selectedLead.imovel || null
             });
 
+            // 3. Atualiza o status do lead para CONCLUIDO
             await axios.patch(`${API_URL}/leads/${selectedLead._id}/status`,
                 { status: 'CONCLUIDO' },
                 { headers: { Authorization: `Bearer ${user?.token}` } }
             );
 
+            // 4. Fecha controles e abre a modal de Nova Negociação
             setOpenHistory(false);
-            setOpenFinishDialog(false); // Fecha o dialog de decisão se estiver aberto
+            setOpenFinishDialog(false);
             setOpenNegociacaoModal(true);
-            fetchLeads();
+
+            await fetchLeads();
+            window.dispatchEvent(new Event('updateLeadsCount'));
+
         } catch (error) {
-            console.error("Erro ao converter lead", error);
+            console.error("Erro ao converter lead e gravar histórico", error);
+            alert("Erro ao iniciar negociação no histórico do lead.");
         } finally {
             setIsSaving(false);
         }
@@ -177,6 +197,15 @@ export const LeadsPage: React.FC = () => {
         if (!selectedLead) return;
         setIsSaving(true);
         try {
+            // Opcional: Gravar que foi concluído sem venda no histórico
+            await axios.post(`${API_URL}/leads/${selectedLead._id}/historico`,
+                {
+                    descricao: "Atendimento Concluído/Encerrado",
+                    autor: user?.nome || 'Consultor'
+                },
+                { headers: { Authorization: `Bearer ${user?.token}` } }
+            );
+
             await handleUpdateStatus(selectedLead._id, 'CONCLUIDO');
             setOpenFinishDialog(false);
         } catch (error) {
@@ -409,7 +438,7 @@ export const LeadsPage: React.FC = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* --- NOVO DIALOG: DECISÃO DE CONCLUSÃO --- */}
+            {/* --- DIALOG: DECISÃO DE CONCLUSÃO --- */}
             <Dialog open={openFinishDialog} onClose={() => setOpenFinishDialog(false)}>
                 <DialogTitle>Concluir Atendimento</DialogTitle>
                 <DialogContent>
@@ -431,6 +460,7 @@ export const LeadsPage: React.FC = () => {
                             variant="contained"
                             color="primary"
                             onClick={handleJustFinish}
+                            disabled={isSaving}
                         >
                             Concluir e Encerrar
                         </Button>
@@ -439,6 +469,7 @@ export const LeadsPage: React.FC = () => {
                             color="success"
                             startIcon={<HandshakeIcon />}
                             onClick={handleStartNegotiation}
+                            disabled={isSaving}
                         >
                             Concluir e Iniciar Negociação
                         </Button>

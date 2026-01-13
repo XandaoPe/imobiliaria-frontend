@@ -5,7 +5,7 @@ import {
     Box, Typography, Divider, createFilterOptions
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { useNavigate } from 'react-router-dom'; // Importado para o redirecionamento
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Cliente } from '../types/cliente';
 import { Imovel } from '../types/imovel';
@@ -36,7 +36,7 @@ interface NegociacaoFormModalProps {
 const filter = createFilterOptions<any>();
 
 export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, onClose, onSuccess, initialData }) => {
-    const navigate = useNavigate(); // Hook de navegação instanciado
+    const navigate = useNavigate();
 
     const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
     const [selectedImovel, setSelectedImovel] = useState<Imovel | null>(null);
@@ -71,16 +71,16 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
     useEffect(() => {
         if (open) {
             fetchData();
-            // Preenche dados iniciais vindo do Lead, se existirem
             if (initialData) {
                 if (initialData.cliente) setSelectedCliente(initialData.cliente);
                 if (initialData.imovel) setSelectedImovel(initialData.imovel);
             }
         } else {
-            // Limpa o formulário ao fechar (Reset manual)
             setSelectedCliente(null);
             setSelectedImovel(null);
             setObservacaoInicial('');
+            setTipo('VENDA');
+            setStatus('PROSPECCAO');
         }
     }, [open, initialData]);
 
@@ -89,7 +89,6 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
     };
 
     const handleSubmit = async () => {
-        // Validação básica: ID é obrigatório
         if (!selectedCliente?._id || !selectedImovel?._id) {
             alert("Por favor, selecione um cliente e um imóvel válidos.");
             return;
@@ -97,30 +96,43 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
 
         setSubmitting(true);
         try {
-            await api.post('/negociacoes', {
+            // Pegando o nome do usuário logado para o campo "autor"
+            const usuarioLogado = localStorage.getItem('userName') || 'Sistema';
+
+            // Criando o objeto de histórico exatamente como no JSON de exemplo
+            const historicoInicial = {
+                descricao: "Iniciado Negociação",
+                autor: usuarioLogado,
+                data: new Date().toISOString()
+            };
+
+            const payload: any = {
                 cliente: selectedCliente._id,
                 imovel: selectedImovel._id,
                 tipo,
                 status,
                 valor_acordado: 0,
                 observacoes_gerais: observacaoInicial,
-                historico: [{
-                    descricao: `Início da negociação: ${observacaoInicial || 'Sem observações adicionais.'}`,
+                historico: [historicoInicial]
+            };
+
+            // Se o usuário digitou uma nota, adicionamos como segundo item
+            if (observacaoInicial.trim()) {
+                payload.historico.push({
+                    descricao: `Nota inicial: ${observacaoInicial}`,
+                    autor: usuarioLogado,
                     data: new Date().toISOString()
-                }]
-            });
+                });
+            }
 
-            // Executa o callback de sucesso original
+            await api.post('/negociacoes', payload);
+
             onSuccess();
-
-            // Fecha o modal atual
             handleClose();
-
-            // REDIRECIONAMENTO: Direciona o usuário para a NegociacaoPage
             navigate('/negociacoes');
 
         } catch (error: any) {
-            console.error(error);
+            console.error("Erro ao salvar negociação:", error);
             alert(error.response?.data?.message || "Erro ao criar negociação");
         } finally {
             setSubmitting(false);
@@ -141,7 +153,6 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                     ) : (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
 
-                            {/* AUTOCOMPLETE CLIENTE */}
                             <Autocomplete
                                 options={clientes as ClienteOptionType[]}
                                 getOptionLabel={(option) => {
@@ -153,12 +164,8 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                                     const filtered = filter(options, params);
                                     const { inputValue } = params;
                                     const isExisting = options.some((option) => inputValue === option.nome);
-
                                     if (inputValue !== '' && !isExisting) {
-                                        filtered.push({
-                                            inputValue,
-                                            nome: `Adicionar "${inputValue}"`
-                                        });
+                                        filtered.push({ inputValue, nome: `Adicionar "${inputValue}"` });
                                     }
                                     return filtered;
                                 }}
@@ -171,9 +178,7 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                                         setSelectedCliente(newValue as Cliente);
                                     }
                                 }}
-                                renderInput={(params) => (
-                                    <TextField {...params} label="Cliente (Lead)" required fullWidth />
-                                )}
+                                renderInput={(params) => <TextField {...params} label="Cliente (Lead)" required fullWidth />}
                                 renderOption={(props, option: ClienteOptionType) => (
                                     <li {...props} key={option._id || option.inputValue}>
                                         {option.inputValue ? <AddIcon color="primary" sx={{ mr: 1 }} /> : null}
@@ -182,7 +187,6 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                                 )}
                             />
 
-                            {/* AUTOCOMPLETE IMÓVEL */}
                             <Autocomplete
                                 options={imoveis as ImovelOptionType[]}
                                 getOptionLabel={(option) => {
@@ -194,12 +198,8 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                                     const filtered = filter(options, params);
                                     const { inputValue } = params;
                                     const isExisting = options.some((option) => inputValue === option.titulo);
-
                                     if (inputValue !== '' && !isExisting) {
-                                        filtered.push({
-                                            inputValue,
-                                            titulo: `Adicionar "${inputValue}"`
-                                        });
+                                        filtered.push({ inputValue, titulo: `Adicionar "${inputValue}"` });
                                     }
                                     return filtered;
                                 }}
@@ -213,12 +213,7 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                                     }
                                 }}
                                 renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        label="Imóvel"
-                                        required
-                                        placeholder="Busque por título ou endereço..."
-                                    />
+                                    <TextField {...params} label="Imóvel" required placeholder="Busque por título ou endereço..." />
                                 )}
                                 renderOption={(props, option: ImovelOptionType) => (
                                     <li {...props} key={option._id || option.inputValue} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
@@ -241,9 +236,7 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
 
                             <Box sx={{ display: 'flex', gap: 2 }}>
                                 <TextField
-                                    select
-                                    fullWidth
-                                    label="Interesse"
+                                    select fullWidth label="Interesse"
                                     value={tipo}
                                     onChange={(e) => setTipo(e.target.value as any)}
                                 >
@@ -252,9 +245,7 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                                 </TextField>
 
                                 <TextField
-                                    select
-                                    fullWidth
-                                    label="Fase Inicial"
+                                    select fullWidth label="Fase Inicial"
                                     value={status}
                                     onChange={(e) => setStatus(e.target.value as any)}
                                 >
@@ -265,9 +256,7 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                             </Box>
 
                             <TextField
-                                fullWidth
-                                multiline
-                                rows={3}
+                                fullWidth multiline rows={3}
                                 label="Notas iniciais"
                                 value={observacaoInicial}
                                 onChange={(e) => setObservacaoInicial(e.target.value)}
@@ -288,7 +277,6 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                 </DialogActions>
             </Dialog>
 
-            {/* Modais de Cadastro Rápido */}
             <ClienteFormModal
                 open={openClienteForm}
                 onClose={() => setOpenClienteForm(false)}
