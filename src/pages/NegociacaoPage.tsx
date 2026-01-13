@@ -1,14 +1,49 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
-    Box, Typography, Button, Paper, Tooltip, IconButton, Chip
+    Box, Typography, Button, Paper, Tooltip, IconButton, Chip,
+    TextField, InputAdornment, CircularProgress, Menu, MenuItem, ListSubheader
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import DoneIcon from '@mui/icons-material/Done';
 import api from '../services/api';
 import { Negociacao, getStatusLabel, StatusNegociacao } from '../types/negociacao';
 import { NegociacaoDetailsModal } from '../components/NegociacaoDetailsModal';
 import { NegociacaoFormModal } from '../components/NegociacaoFormModal';
+
+const DEBOUNCE_DELAY = 300;
+
+// Reutilizando o componente de Destaque
+interface HighlightedTextProps {
+    text: string | null | undefined;
+    highlight: string;
+}
+
+const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) => {
+    const textToDisplay = text ?? '';
+    if (!textToDisplay.trim() || !highlight.trim()) {
+        return <>{textToDisplay}</>;
+    }
+    const regex = new RegExp(`(${highlight})`, 'gi');
+    const parts = textToDisplay.split(regex);
+
+    return (
+        <Typography component="span" variant="inherit">
+            {parts.map((part, i) =>
+                regex.test(part) ? (
+                    <span key={i} style={{ backgroundColor: '#ffeb3b', fontWeight: 'bold' }}>
+                        {part}
+                    </span>
+                ) : (
+                    <span key={i}>{part}</span>
+                )
+            )}
+        </Typography>
+    );
+};
 
 export const NegociacaoPage = () => {
     const [negociacoes, setNegociacoes] = useState<Negociacao[]>([]);
@@ -17,10 +52,21 @@ export const NegociacaoPage = () => {
     const [openDetails, setOpenDetails] = useState(false);
     const [openForm, setOpenForm] = useState(false);
 
-    const fetchNegociacoes = useCallback(async () => {
+    // Estados de Busca e Filtro
+    const [searchText, setSearchText] = useState('');
+    const [debouncedSearchText, setDebouncedSearchText] = useState('');
+    const [filterStatus, setFilterStatus] = useState<StatusNegociacao | 'TODOS'>('TODOS');
+    const [anchorElFilter, setAnchorElFilter] = useState<null | HTMLElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    const fetchNegociacoes = useCallback(async (search: string, status: string) => {
         try {
             setLoading(true);
-            const response = await api.get('/negociacoes');
+            const params: any = {};
+            if (search) params.search = search;
+            if (status !== 'TODOS') params.status = status;
+
+            const response = await api.get('/negociacoes', { params });
             setNegociacoes(response.data);
         } catch (err: any) {
             console.error('Falha ao carregar negociações.', err);
@@ -29,9 +75,31 @@ export const NegociacaoPage = () => {
         }
     }, []);
 
+    // Effect para Debounce
     useEffect(() => {
-        fetchNegociacoes();
-    }, [fetchNegociacoes]);
+        const handler = setTimeout(() => {
+            setDebouncedSearchText(searchText);
+        }, DEBOUNCE_DELAY);
+        return () => clearTimeout(handler);
+    }, [searchText]);
+
+    // Effect para disparar busca
+    useEffect(() => {
+        fetchNegociacoes(debouncedSearchText, filterStatus);
+    }, [fetchNegociacoes, debouncedSearchText, filterStatus]);
+
+    // Focar no search ao carregar
+    useEffect(() => {
+        if (searchInputRef.current) searchInputRef.current.focus();
+    }, []);
+
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorElFilter(event.currentTarget);
+    const handleMenuClose = () => setAnchorElFilter(null);
+
+    const handleSetStatus = (status: StatusNegociacao | 'TODOS') => {
+        setFilterStatus(status);
+        handleMenuClose();
+    };
 
     const handleOpenDetails = useCallback((negociacao: Negociacao) => {
         setSelectedNegociacao(negociacao);
@@ -61,13 +129,13 @@ export const NegociacaoPage = () => {
                         cursor: 'pointer',
                         color: 'primary.main',
                         fontWeight: '600',
-                        '&:hover': {
-                            textDecoration: 'underline',
-                            color: 'primary.dark'
-                        }
+                        '&:hover': { textDecoration: 'underline' }
                     }}
                 >
-                    {params.row.cliente?.nome || 'N/A'}
+                    <HighlightedText
+                        text={params.row.cliente?.nome}
+                        highlight={debouncedSearchText}
+                    />
                 </Box>
             )
         },
@@ -79,10 +147,16 @@ export const NegociacaoPage = () => {
             renderCell: (params) => (
                 <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', py: 1 }}>
                     <Typography variant="body2" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
-                        {params.row.imovel?.titulo || 'N/A'}
+                        <HighlightedText
+                            text={params.row.imovel?.titulo}
+                            highlight={debouncedSearchText}
+                        />
                     </Typography>
                     <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
-                        {params.row.imovel?.endereco ? `${params.row.imovel.endereco}` : 'Sem endereço'}
+                        <HighlightedText
+                            text={params.row.imovel?.endereco}
+                            highlight={debouncedSearchText}
+                        />
                         {params.row.imovel?.cidade ? ` • ${params.row.imovel.cidade}` : ''}
                     </Typography>
                 </Box>
@@ -128,11 +202,10 @@ export const NegociacaoPage = () => {
                 </Tooltip>
             )
         }
-    ], [handleOpenDetails]);
+    ], [handleOpenDetails, debouncedSearchText]);
 
     return (
         <Box sx={{ p: 3 }}>
-            {/* Header da Página */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Box>
                     <Typography variant="h4" fontWeight="bold" color="primary">
@@ -154,7 +227,56 @@ export const NegociacaoPage = () => {
                 </Button>
             </Box>
 
-            {/* Tabela de Dados */}
+            {/* Barra de Busca e Filtros */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+                <Box sx={{ flexGrow: 1 }}>
+                    <TextField
+                        fullWidth
+                        label="Pesquisar por Cliente, Título do Imóvel ou Endereço"
+                        variant="outlined"
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        inputRef={searchInputRef}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    {loading && searchText ? <CircularProgress size={20} /> : <SearchIcon />}
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                </Box>
+
+                <Button
+                    variant="outlined"
+                    onClick={handleMenuOpen}
+                    startIcon={<FilterListIcon />}
+                    sx={{ height: 56, flexShrink: 0 }}
+                >
+                    {filterStatus === 'TODOS' ? 'Todas as Fases' : `Fase: ${getStatusLabel(filterStatus as StatusNegociacao)}`}
+                </Button>
+
+                <Menu
+                    anchorEl={anchorElFilter}
+                    open={Boolean(anchorElFilter)}
+                    onClose={handleMenuClose}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                >
+                    <ListSubheader sx={{ fontWeight: 'bold' }}>Filtrar por Fase</ListSubheader>
+                    <MenuItem onClick={() => handleSetStatus('TODOS')} selected={filterStatus === 'TODOS'}>
+                        {filterStatus === 'TODOS' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
+                        <Box sx={{ ml: filterStatus !== 'TODOS' ? '24px' : 0 }}>Todas as Fases</Box>
+                    </MenuItem>
+                    {(['PROSPECCAO', 'VISITA', 'PROPOSTA', 'FECHADO', 'PERDIDO'] as StatusNegociacao[]).map((s) => (
+                        <MenuItem key={s} onClick={() => handleSetStatus(s)} selected={filterStatus === s}>
+                            {filterStatus === s && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
+                            <Box sx={{ ml: filterStatus !== s ? '24px' : 0 }}>{getStatusLabel(s)}</Box>
+                        </MenuItem>
+                    ))}
+                </Menu>
+            </Box>
+
             <Paper elevation={4} sx={{ height: 650, width: '100%', borderRadius: 3, overflow: 'hidden' }}>
                 <DataGrid
                     rows={negociacoes}
@@ -162,7 +284,7 @@ export const NegociacaoPage = () => {
                     getRowId={(row) => row._id || Math.random()}
                     loading={loading}
                     disableRowSelectionOnClick
-                    rowHeight={70} // Aumentado para acomodar as duas linhas de texto do imóvel
+                    rowHeight={70}
                     pageSizeOptions={[10, 25, 50]}
                     initialState={{
                         pagination: { paginationModel: { pageSize: 10 } },
@@ -177,7 +299,6 @@ export const NegociacaoPage = () => {
                 />
             </Paper>
 
-            {/* Modal de Detalhes e Histórico */}
             <NegociacaoDetailsModal
                 open={openDetails}
                 negociacao={selectedNegociacao}
@@ -185,16 +306,15 @@ export const NegociacaoPage = () => {
                     setOpenDetails(false);
                     setSelectedNegociacao(null);
                 }}
-                onUpdate={fetchNegociacoes}
+                onUpdate={() => fetchNegociacoes(debouncedSearchText, filterStatus)}
             />
 
-            {/* Modal de Cadastro de Nova Negociação */}
             <NegociacaoFormModal
                 open={openForm}
                 onClose={() => setOpenForm(false)}
                 onSuccess={() => {
                     setOpenForm(false);
-                    fetchNegociacoes();
+                    fetchNegociacoes(debouncedSearchText, filterStatus);
                 }}
             />
         </Box>
