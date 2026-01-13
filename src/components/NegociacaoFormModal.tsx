@@ -5,6 +5,7 @@ import {
     Box, Typography, Divider, createFilterOptions
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import { useNavigate } from 'react-router-dom'; // Importado para o redirecionamento
 import api from '../services/api';
 import { Cliente } from '../types/cliente';
 import { Imovel } from '../types/imovel';
@@ -26,11 +27,17 @@ interface NegociacaoFormModalProps {
     open: boolean;
     onClose: () => void;
     onSuccess: () => void;
+    initialData?: {
+        cliente?: Cliente | null;
+        imovel?: Imovel | null;
+    } | null;
 }
 
 const filter = createFilterOptions<any>();
 
-export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, onClose, onSuccess }) => {
+export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, onClose, onSuccess, initialData }) => {
+    const navigate = useNavigate(); // Hook de navegação instanciado
+
     const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
     const [selectedImovel, setSelectedImovel] = useState<Imovel | null>(null);
     const [tipo, setTipo] = useState<'VENDA' | 'ALUGUEL'>('VENDA');
@@ -62,18 +69,32 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
     };
 
     useEffect(() => {
-        if (open) fetchData();
-    }, [open]);
+        if (open) {
+            fetchData();
+            // Preenche dados iniciais vindo do Lead, se existirem
+            if (initialData) {
+                if (initialData.cliente) setSelectedCliente(initialData.cliente);
+                if (initialData.imovel) setSelectedImovel(initialData.imovel);
+            }
+        } else {
+            // Limpa o formulário ao fechar (Reset manual)
+            setSelectedCliente(null);
+            setSelectedImovel(null);
+            setObservacaoInicial('');
+        }
+    }, [open, initialData]);
 
     const handleClose = () => {
-        setSelectedCliente(null);
-        setSelectedImovel(null);
-        setObservacaoInicial('');
         onClose();
     };
 
     const handleSubmit = async () => {
-        if (!selectedCliente || !selectedImovel) return;
+        // Validação básica: ID é obrigatório
+        if (!selectedCliente?._id || !selectedImovel?._id) {
+            alert("Por favor, selecione um cliente e um imóvel válidos.");
+            return;
+        }
+
         setSubmitting(true);
         try {
             await api.post('/negociacoes', {
@@ -84,14 +105,23 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                 valor_acordado: 0,
                 observacoes_gerais: observacaoInicial,
                 historico: [{
-                    descricao: `Início do interesse: ${observacaoInicial || 'Sem observações.'}`,
+                    descricao: `Início da negociação: ${observacaoInicial || 'Sem observações adicionais.'}`,
                     data: new Date().toISOString()
                 }]
             });
+
+            // Executa o callback de sucesso original
             onSuccess();
+
+            // Fecha o modal atual
             handleClose();
+
+            // REDIRECIONAMENTO: Direciona o usuário para a NegociacaoPage
+            navigate('/negociacoes');
+
         } catch (error: any) {
-            alert("Erro ao criar negociação");
+            console.error(error);
+            alert(error.response?.data?.message || "Erro ao criar negociação");
         } finally {
             setSubmitting(false);
         }
@@ -100,7 +130,9 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
     return (
         <>
             <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-                <DialogTitle sx={{ fontWeight: 'bold' }}>🤝 Nova Negociação</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    🤝 Nova Negociação
+                </DialogTitle>
                 <DialogContent dividers>
                     {loadingData ? (
                         <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
@@ -115,7 +147,7 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                                 getOptionLabel={(option) => {
                                     if (typeof option === 'string') return option;
                                     if (option.inputValue) return option.inputValue;
-                                    return `${option.nome} (${option.cpf})`;
+                                    return option.nome ? `${option.nome} (${option.cpf || 'Sem CPF'})` : '';
                                 }}
                                 filterOptions={(options, params) => {
                                     const filtered = filter(options, params);
@@ -123,38 +155,40 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                                     const isExisting = options.some((option) => inputValue === option.nome);
 
                                     if (inputValue !== '' && !isExisting) {
-                                        filtered.push({ inputValue, nome: `Adicionar "${inputValue}"` });
-                                    } else if (options.length === 0 || (inputValue === '' && filtered.length === 0)) {
-                                        filtered.push({ inputValue: '', nome: 'Cadastrar novo cliente...' });
+                                        filtered.push({
+                                            inputValue,
+                                            nome: `Adicionar "${inputValue}"`
+                                        });
                                     }
                                     return filtered;
                                 }}
-                                noOptionsText={
-                                    <Button color="primary" fullWidth onMouseDown={() => setOpenClienteForm(true)} startIcon={<AddIcon />}>
-                                        Nenhum cliente encontrado. Cadastrar?
-                                    </Button>
-                                }
-                                value={selectedCliente as ClienteOptionType | null}
+                                value={selectedCliente}
+                                isOptionEqualToValue={(option, value) => option._id === value._id}
                                 onChange={(_, newValue: any) => {
-                                    if (newValue?.inputValue !== undefined) setOpenClienteForm(true);
-                                    else setSelectedCliente(newValue as Cliente);
+                                    if (newValue?.inputValue) {
+                                        setOpenClienteForm(true);
+                                    } else {
+                                        setSelectedCliente(newValue as Cliente);
+                                    }
                                 }}
-                                renderInput={(params) => <TextField {...params} label="Cliente (Lead)" required />}
+                                renderInput={(params) => (
+                                    <TextField {...params} label="Cliente (Lead)" required fullWidth />
+                                )}
                                 renderOption={(props, option: ClienteOptionType) => (
-                                    <li {...props}>
-                                        {option.inputValue !== undefined && <AddIcon color="primary" sx={{ mr: 1 }} />}
+                                    <li {...props} key={option._id || option.inputValue}>
+                                        {option.inputValue ? <AddIcon color="primary" sx={{ mr: 1 }} /> : null}
                                         {option.nome}
                                     </li>
                                 )}
                             />
 
-                            {/* AUTOCOMPLETE IMÓVEL - ATUALIZADO */}
+                            {/* AUTOCOMPLETE IMÓVEL */}
                             <Autocomplete
                                 options={imoveis as ImovelOptionType[]}
                                 getOptionLabel={(option) => {
                                     if (typeof option === 'string') return option;
                                     if (option.inputValue) return option.inputValue;
-                                    return `${option.titulo} - ${option.endereco}${option.cidade ? ` (${option.cidade})` : ''}`;
+                                    return option.titulo ? `${option.titulo} - ${option.endereco}` : '';
                                 }}
                                 filterOptions={(options, params) => {
                                     const filtered = filter(options, params);
@@ -162,39 +196,39 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                                     const isExisting = options.some((option) => inputValue === option.titulo);
 
                                     if (inputValue !== '' && !isExisting) {
-                                        filtered.push({ inputValue, titulo: `Adicionar "${inputValue}"` });
-                                    } else if (options.length === 0 || (inputValue === '' && filtered.length === 0)) {
-                                        filtered.push({ inputValue: '', titulo: 'Cadastrar novo imóvel...' });
+                                        filtered.push({
+                                            inputValue,
+                                            titulo: `Adicionar "${inputValue}"`
+                                        });
                                     }
                                     return filtered;
                                 }}
-                                noOptionsText={
-                                    <Button color="secondary" fullWidth onMouseDown={() => setOpenImovelForm(true)} startIcon={<AddIcon />}>
-                                        Nenhum imóvel encontrado. Cadastrar?
-                                    </Button>
-                                }
-                                value={selectedImovel as ImovelOptionType | null}
+                                value={selectedImovel}
+                                isOptionEqualToValue={(option, value) => option._id === value._id}
                                 onChange={(_, newValue: any) => {
-                                    if (newValue?.inputValue !== undefined) setOpenImovelForm(true);
-                                    else setSelectedImovel(newValue as Imovel);
+                                    if (newValue?.inputValue) {
+                                        setOpenImovelForm(true);
+                                    } else {
+                                        setSelectedImovel(newValue as Imovel);
+                                    }
                                 }}
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
                                         label="Imóvel"
                                         required
-                                        placeholder="Busque por título, endereço ou cidade..."
+                                        placeholder="Busque por título ou endereço..."
                                     />
                                 )}
                                 renderOption={(props, option: ImovelOptionType) => (
-                                    <li {...props} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                    <li {...props} key={option._id || option.inputValue} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                                            {option.inputValue !== undefined ? <AddIcon color="secondary" sx={{ mr: 1 }} /> : null}
-                                            <Typography variant="body1" sx={{ fontWeight: option.inputValue !== undefined ? 'bold' : 'medium' }}>
+                                            {option.inputValue ? <AddIcon color="secondary" sx={{ mr: 1 }} /> : null}
+                                            <Typography variant="body1" sx={{ fontWeight: option.inputValue ? 'bold' : 'medium' }}>
                                                 {option.titulo}
                                             </Typography>
                                         </Box>
-                                        {option.inputValue === undefined && (
+                                        {!option.inputValue && (
                                             <Typography variant="caption" color="text.secondary">
                                                 {option.endereco} • <strong>{option.cidade}</strong>
                                             </Typography>
@@ -206,12 +240,24 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                             <Divider />
 
                             <Box sx={{ display: 'flex', gap: 2 }}>
-                                <TextField select fullWidth label="Interesse" value={tipo} onChange={(e) => setTipo(e.target.value as any)}>
+                                <TextField
+                                    select
+                                    fullWidth
+                                    label="Interesse"
+                                    value={tipo}
+                                    onChange={(e) => setTipo(e.target.value as any)}
+                                >
                                     <MenuItem value="VENDA">Venda</MenuItem>
                                     <MenuItem value="ALUGUEL">Aluguel</MenuItem>
                                 </TextField>
 
-                                <TextField select fullWidth label="Fase Inicial" value={status} onChange={(e) => setStatus(e.target.value as any)}>
+                                <TextField
+                                    select
+                                    fullWidth
+                                    label="Fase Inicial"
+                                    value={status}
+                                    onChange={(e) => setStatus(e.target.value as any)}
+                                >
                                     <MenuItem value="PROSPECCAO">Prospecção</MenuItem>
                                     <MenuItem value="VISITA">Visita Agendada</MenuItem>
                                     <MenuItem value="PROPOSTA">Proposta</MenuItem>
@@ -225,18 +271,24 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                                 label="Notas iniciais"
                                 value={observacaoInicial}
                                 onChange={(e) => setObservacaoInicial(e.target.value)}
+                                placeholder="Descreva o interesse inicial do cliente..."
                             />
                         </Box>
                     )}
                 </DialogContent>
                 <DialogActions sx={{ px: 3, py: 2 }}>
                     <Button onClick={handleClose} color="inherit">Cancelar</Button>
-                    <Button onClick={handleSubmit} variant="contained" disabled={submitting || !selectedCliente?._id || !selectedImovel?._id}>
-                        {submitting ? <CircularProgress size={24} /> : "Criar Negociação"}
+                    <Button
+                        onClick={handleSubmit}
+                        variant="contained"
+                        disabled={submitting || !selectedCliente?._id || !selectedImovel?._id}
+                    >
+                        {submitting ? <CircularProgress size={24} color="inherit" /> : "Criar Negociação"}
                     </Button>
                 </DialogActions>
             </Dialog>
 
+            {/* Modais de Cadastro Rápido */}
             <ClienteFormModal
                 open={openClienteForm}
                 onClose={() => setOpenClienteForm(false)}

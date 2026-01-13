@@ -15,6 +15,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import SendIcon from '@mui/icons-material/Send';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import { API_URL } from '../services/api';
+import { NegociacaoFormModal } from '../components/NegociacaoFormModal';
 
 // --- Função de Som Suave ---
 const playBeep = () => {
@@ -43,6 +44,8 @@ export const LeadsPage: React.FC = () => {
     const [selectedLead, setSelectedLead] = useState<any>(null);
     const [newNote, setNewNote] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [openNegociacaoModal, setOpenNegociacaoModal] = useState(false);
+    const [negociacaoData, setNegociacaoData] = useState<any>(null);
 
     // BUSCA COM FILTROS
     const fetchLeads = useCallback(async (isPolling = false) => {
@@ -135,29 +138,26 @@ export const LeadsPage: React.FC = () => {
     const handleStartNegotiation = async () => {
         if (!selectedLead) return;
 
-        const confirmMsg = `Deseja iniciar a negociação para ${selectedLead.nome}?\n\nUma negociação será criada e o status deste lead será alterado para concluído. Para acompanhá-la ou editá-la, utilize o botão "Negociações" na aba lateral.`;
-
-        if (window.confirm(confirmMsg)) {
+        if (window.confirm(`Deseja converter o lead ${selectedLead.nome} em uma negociação?`)) {
             setIsSaving(true);
             try {
-                // 1. Registrar no histórico
-                await axios.post(`${API_URL}/leads/${selectedLead._id}/historico`,
-                    { descricao: "Iniciado Negociação" },
-                    { headers: { Authorization: `Bearer ${user?.token}` } }
-                );
+                // Preparamos os dados. Se o backend já vinculou um Cliente ID ao Lead, usamos ele.
+                setNegociacaoData({
+                    cliente: selectedLead.clienteId || null, // Assume que o lead pode ter a ref do cliente
+                    imovel: selectedLead.imovel || null
+                });
 
-                // 2. Atualizar status para concluído
+                // Opcional: Marcar lead como concluído/convertido
                 await axios.patch(`${API_URL}/leads/${selectedLead._id}/status`,
                     { status: 'CONCLUIDO' },
                     { headers: { Authorization: `Bearer ${user?.token}` } }
                 );
 
-                await fetchLeads();
-                window.dispatchEvent(new Event('updateLeadsCount'));
                 setOpenHistory(false);
+                setOpenNegociacaoModal(true);
+                fetchLeads();
             } catch (error) {
-                console.error("Erro ao iniciar negociação", error);
-                alert("Ocorreu um erro ao processar a negociação.");
+                console.error("Erro ao converter lead", error);
             } finally {
                 setIsSaving(false);
             }
@@ -389,6 +389,17 @@ export const LeadsPage: React.FC = () => {
                     <Button onClick={() => setOpenHistory(false)}>Fechar</Button>
                 </DialogActions>
             </Dialog>
+
+            <NegociacaoFormModal
+                open={openNegociacaoModal}
+                initialData={negociacaoData}
+                onClose={() => setOpenNegociacaoModal(false)}
+                onSuccess={() => {
+                    setOpenNegociacaoModal(false);
+                    fetchLeads();
+                }}
+            />
+
         </Box>
     );
 };
