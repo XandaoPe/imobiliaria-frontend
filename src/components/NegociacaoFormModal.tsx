@@ -12,7 +12,7 @@ import { StatusNegociacao } from '../types/negociacao';
 
 // Importação dos modais de cadastro rápido
 import { ClienteFormModal } from './ClienteFormModal';
-import { ImovelFormModal } from './ImovelFormModal'; // AGORA ATIVO
+import { ImovelFormModal } from './ImovelFormModal';
 
 interface ClienteOptionType extends Partial<Cliente> {
     inputValue?: string;
@@ -42,7 +42,6 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
     const [loadingData, setLoadingData] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
-    // Estados para abrir os modais de cadastro rápido
     const [openClienteForm, setOpenClienteForm] = useState(false);
     const [openImovelForm, setOpenImovelForm] = useState(false);
 
@@ -122,78 +121,87 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                                     const filtered = filter(options, params);
                                     const { inputValue } = params;
                                     const isExisting = options.some((option) => inputValue === option.nome);
+
                                     if (inputValue !== '' && !isExisting) {
                                         filtered.push({ inputValue, nome: `Adicionar "${inputValue}"` });
+                                    } else if (options.length === 0 || (inputValue === '' && filtered.length === 0)) {
+                                        filtered.push({ inputValue: '', nome: 'Cadastrar novo cliente...' });
                                     }
                                     return filtered;
                                 }}
+                                noOptionsText={
+                                    <Button color="primary" fullWidth onMouseDown={() => setOpenClienteForm(true)} startIcon={<AddIcon />}>
+                                        Nenhum cliente encontrado. Cadastrar?
+                                    </Button>
+                                }
                                 value={selectedCliente as ClienteOptionType | null}
                                 onChange={(_, newValue: any) => {
-                                    if (newValue?.inputValue) setOpenClienteForm(true);
+                                    if (newValue?.inputValue !== undefined) setOpenClienteForm(true);
                                     else setSelectedCliente(newValue as Cliente);
                                 }}
                                 renderInput={(params) => <TextField {...params} label="Cliente (Lead)" required />}
                                 renderOption={(props, option: ClienteOptionType) => (
                                     <li {...props}>
-                                        {option.inputValue && <AddIcon color="primary" sx={{ mr: 1 }} />}
+                                        {option.inputValue !== undefined && <AddIcon color="primary" sx={{ mr: 1 }} />}
                                         {option.nome}
                                     </li>
                                 )}
                             />
 
-                                {/* AUTOCOMPLETE IMÓVEL */}
-                                <Autocomplete
-                                    options={imoveis as ImovelOptionType[]}
-                                    // 1. Melhora o rótulo do campo após selecionado
-                                    getOptionLabel={(option) => {
-                                        if (typeof option === 'string') return option;
-                                        if (option.inputValue) return option.inputValue;
+                            {/* AUTOCOMPLETE IMÓVEL - ATUALIZADO */}
+                            <Autocomplete
+                                options={imoveis as ImovelOptionType[]}
+                                getOptionLabel={(option) => {
+                                    if (typeof option === 'string') return option;
+                                    if (option.inputValue) return option.inputValue;
+                                    return `${option.titulo} - ${option.endereco}${option.cidade ? ` (${option.cidade})` : ''}`;
+                                }}
+                                filterOptions={(options, params) => {
+                                    const filtered = filter(options, params);
+                                    const { inputValue } = params;
+                                    const isExisting = options.some((option) => inputValue === option.titulo);
 
-                                        // Exibe: "Título do Imóvel - Rua Exemplo, 123 (Cidade)"
-                                        return `${option.titulo} - ${option.endereco}${option.cidade ? ` (${option.cidade})` : ''}`;
-                                    }}
-                                    filterOptions={(options, params) => {
-                                        const filtered = filter(options, params);
-                                        const { inputValue } = params;
-                                        const isExisting = options.some((option) => inputValue === option.titulo);
-                                        if (inputValue !== '' && !isExisting) {
-                                            filtered.push({ inputValue, titulo: `Adicionar "${inputValue}"` });
-                                        }
-                                        return filtered;
-                                    }}
-                                    value={selectedImovel as ImovelOptionType | null}
-                                    onChange={(_, newValue: any) => {
-                                        if (newValue?.inputValue) setOpenImovelForm(true);
-                                        else setSelectedImovel(newValue as Imovel);
-                                    }}
-                                    renderInput={(params) => (
-                                        <TextField
-                                            {...params}
-                                            label="Imóvel"
-                                            required
-                                            placeholder="Busque por título, endereço ou cidade..."
-                                        />
-                                    )}
-                                    // 2. Personaliza a aparência de cada item na lista (Dropdown)
-                                    renderOption={(props, option: ImovelOptionType) => (
-                                        <li {...props} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                                                {option.inputValue ? (
-                                                    <AddIcon color="secondary" sx={{ mr: 1 }} />
-                                                ) : null}
-                                                <Typography variant="body1" sx={{ fontWeight: option.inputValue ? 'bold' : 'medium' }}>
-                                                    {option.titulo}
-                                                </Typography>
-                                            </Box>
-
-                                            {!option.inputValue && (
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {option.endereco} • <strong>{option.cidade}</strong>
-                                                </Typography>
-                                            )}
-                                        </li>
-                                    )}
-                                />
+                                    if (inputValue !== '' && !isExisting) {
+                                        filtered.push({ inputValue, titulo: `Adicionar "${inputValue}"` });
+                                    } else if (options.length === 0 || (inputValue === '' && filtered.length === 0)) {
+                                        filtered.push({ inputValue: '', titulo: 'Cadastrar novo imóvel...' });
+                                    }
+                                    return filtered;
+                                }}
+                                noOptionsText={
+                                    <Button color="secondary" fullWidth onMouseDown={() => setOpenImovelForm(true)} startIcon={<AddIcon />}>
+                                        Nenhum imóvel encontrado. Cadastrar?
+                                    </Button>
+                                }
+                                value={selectedImovel as ImovelOptionType | null}
+                                onChange={(_, newValue: any) => {
+                                    if (newValue?.inputValue !== undefined) setOpenImovelForm(true);
+                                    else setSelectedImovel(newValue as Imovel);
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Imóvel"
+                                        required
+                                        placeholder="Busque por título, endereço ou cidade..."
+                                    />
+                                )}
+                                renderOption={(props, option: ImovelOptionType) => (
+                                    <li {...props} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                            {option.inputValue !== undefined ? <AddIcon color="secondary" sx={{ mr: 1 }} /> : null}
+                                            <Typography variant="body1" sx={{ fontWeight: option.inputValue !== undefined ? 'bold' : 'medium' }}>
+                                                {option.titulo}
+                                            </Typography>
+                                        </Box>
+                                        {option.inputValue === undefined && (
+                                            <Typography variant="caption" color="text.secondary">
+                                                {option.endereco} • <strong>{option.cidade}</strong>
+                                            </Typography>
+                                        )}
+                                    </li>
+                                )}
+                            />
 
                             <Divider />
 
@@ -229,7 +237,6 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                 </DialogActions>
             </Dialog>
 
-            {/* MODAL DE CLIENTE */}
             <ClienteFormModal
                 open={openClienteForm}
                 onClose={() => setOpenClienteForm(false)}
@@ -240,14 +247,13 @@ export const NegociacaoFormModal: React.FC<NegociacaoFormModalProps> = ({ open, 
                 }}
             />
 
-            {/* MODAL DE IMÓVEL - AGORA CONFIGURADO */}
             <ImovelFormModal
                 open={openImovelForm}
                 onClose={() => setOpenImovelForm(false)}
                 onSuccess={(novoImovel) => {
                     setOpenImovelForm(false);
-                    fetchData(); // Atualiza a lista de imóveis
-                    if (novoImovel) setSelectedImovel(novoImovel); // Seleciona o imóvel recém-criado
+                    fetchData();
+                    if (novoImovel) setSelectedImovel(novoImovel);
                 }}
             />
         </>
