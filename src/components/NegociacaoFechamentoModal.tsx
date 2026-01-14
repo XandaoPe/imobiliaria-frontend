@@ -25,6 +25,7 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({ open, onClose, onCo
     const [entrada, setEntrada] = useState<number | null>(0);
     const [parcelas, setParcelas] = useState<number>(1);
     const [valorParcela, setValorParcela] = useState<number | null>(0);
+    const [diaVencimento, setDiaVencimento] = useState<number>(new Date().getDate());
 
     // Estados de ajuste (Front-end apenas)
     const [porcentagemAumento, setPorcentagemAumento] = useState<number>(0);
@@ -40,6 +41,7 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({ open, onClose, onCo
             setParcelas(1);
             setPorcentagemAumento(0);
             setValorAumentoFixo(0);
+            setDiaVencimento(new Date().getDate()); // Sugere o dia atual
 
             setTimeout(() => {
                 if (firstInputRef.current) {
@@ -75,6 +77,7 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({ open, onClose, onCo
             valorEntrada: Number(entrada || 0),
             qtdParcelas: Number(parcelas),
             valorParcela: Number(valorParcela || 0),
+            diaVencimento: Number(diaVencimento),
             ajustePorcentagem: porcentagemAumento,
             ajusteFixo: valorAumentoFixo
         };
@@ -90,7 +93,6 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({ open, onClose, onCo
                     Defina as condições e ajustes financeiros para as parcelas.
                 </Typography>
 
-                {/* Gap reduzido para 1 (8px) para ficar mais compacto */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     <Box ref={firstInputRef}>
                         <CurrencyFormatInput
@@ -113,15 +115,34 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({ open, onClose, onCo
                         onFocus={(e: any) => e.target.select()}
                     />
 
-                    <TextField
-                        label="Quantidade de Parcelas"
-                        type="number"
-                        fullWidth
-                        size="small"
-                        value={parcelas}
-                        onChange={(e) => setParcelas(Math.max(1, Number(e.target.value)))}
-                        onFocus={(e) => e.target.select()}
-                    />
+                    {/* Layout em linha para Parcelas e Dia do Vencimento */}
+                    <Box sx={{ display: 'flex', gap: 1.5 }}>
+                        <TextField
+                            label="Qtd Parcelas"
+                            type="number"
+                            sx={{ flex: 1 }}
+                            size="small"
+                            value={parcelas}
+                            onChange={(e) => setParcelas(Math.max(1, Number(e.target.value)))}
+                            onFocus={(e) => e.target.select()}
+                        />
+
+                        <TextField
+                            label="Dia Vencimento"
+                            type="number"
+                            sx={{ flex: 1 }}
+                            size="small"
+                            value={diaVencimento}
+                            onChange={(e) => {
+                                let val = Number(e.target.value);
+                                if (val > 31) val = 31;
+                                if (val < 1) val = 1;
+                                setDiaVencimento(val);
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            helperText="Ex: Todo dia 10"
+                        />
+                    </Box>
 
                     <Divider sx={{ my: 0.5 }}>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: '500' }}>
@@ -129,7 +150,6 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({ open, onClose, onCo
                         </Typography>
                     </Divider>
 
-                    {/* Alinhamento horizontal corrigido com flex-start para evitar saltos de altura */}
                     <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
                         <TextField
                             label="% Aumento"
@@ -171,7 +191,7 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({ open, onClose, onCo
                             onFocus={(e: any) => e.target.select()}
                         />
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                            O valor acima considera os aumentos informados.
+                            Considera aumentos. Vencimentos mensais no dia {diaVencimento}.
                         </Typography>
                     </Box>
                 </Box>

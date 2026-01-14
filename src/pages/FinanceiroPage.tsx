@@ -2,27 +2,29 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Chip, IconButton, Tooltip,
-    CircularProgress, Avatar, TextField, InputAdornment, Menu, MenuItem, ListSubheader
+    CircularProgress, Avatar, TextField, InputAdornment, Menu, MenuItem, ListSubheader,
+    TablePagination
 } from '@mui/material';
 import {
     Add, Download, CheckCircle, HomeWork, Person, ReceiptLong,
-    Search as SearchIcon, FilterList as FilterListIcon, Done as DoneIcon
+    Search as SearchIcon, FilterList as FilterListIcon, Done as DoneIcon,
+    Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import { FinanceiroSummary } from '../components/financeiro/FinanceiroSummary';
 import { FinanceiroFormModal } from '../components/financeiro/FinanceiroFormModal';
+import { FinanceiroDetalhesModal } from '../components/financeiro/FinanceiroDetalhesModal';
 import { financeiroService } from '../services/financeiroService';
 
 const DEBOUNCE_DELAY = 300;
 
-// Tipagem para os filtros de status financeiro
-type StatusFinanceiroFilter = 'TODOS' | 'PENDENTE' | 'PAGO' | 'RECEBIDO' | 'CANCELADO';
+// Alinhado com o Enum do Backend
+type StatusFinanceiroFilter = 'TODOS' | 'PENDENTE' | 'PAGO' | 'CANCELADO' | 'ATRASADO';
 
 interface HighlightedTextProps {
     text: string | null | undefined;
     highlight: string;
 }
 
-// Componente para Destaque de Texto
 const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) => {
     const textToDisplay = text ?? '';
     if (!textToDisplay.trim() || !highlight.trim()) {
@@ -53,37 +55,47 @@ export const FinanceiroPage: React.FC = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [baixando, setBaixando] = useState<string | null>(null);
 
+    // Estados para Detalhes
+    const [detalhesModalOpen, setDetalhesModalOpen] = useState(false);
+    const [transacaoSelecionada, setTransacaoSelecionada] = useState<any>(null);
+
     // Estados de Pesquisa e Filtro
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
     const [filterStatus, setFilterStatus] = useState<StatusFinanceiroFilter>('TODOS');
     const [anchorElFilter, setAnchorElFilter] = useState<null | HTMLElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const [totalItems, setTotalItems] = useState(0);
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
 
-    const getStatusColor = (status: string): "error" | "warning" | "success" | "default" => {
+    const getStatusColor = (status: string): "error" | "warning" | "success" | "default" | "info" => {
         switch (status?.toUpperCase()) {
             case 'CANCELADO': return 'error';
             case 'PENDENTE': return 'warning';
-            case 'PAGO':
-            case 'RECEBIDO': return 'success';
+            case 'ATRASADO': return 'error';
+            case 'PAGO': return 'success';
             default: return 'default';
         }
     };
 
-    // Função de carregar dados adaptada para filtros
-    const carregarDados = useCallback(async (search: string, status: StatusFinanceiroFilter) => {
+    const carregarDados = useCallback(async (search: string, status: StatusFinanceiroFilter, pageArg: number, limitArg: number) => {
         try {
             setLoading(true);
-            const params: any = {};
+            const params: any = {
+                page: pageArg + 1,
+                limit: limitArg
+            };
             if (search) params.search = search;
             if (status !== 'TODOS') params.status = status;
 
             const [resList, resSum] = await Promise.all([
                 financeiroService.listar(params),
-                financeiroService.getResumo() // O resumo geralmente permanece global, mas você pode passar params se o backend suportar
+                financeiroService.getResumo()
             ]);
 
-            setTransacoes(resList.data);
+            setTransacoes(resList.data.data);
+            setTotalItems(resList.data.total);
             setResumo(resSum.data);
         } catch (err) {
             console.error("Erro ao buscar dados financeiros", err);
@@ -92,7 +104,6 @@ export const FinanceiroPage: React.FC = () => {
         }
     }, []);
 
-    // Effect para Debounce
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearchText(searchText);
@@ -100,40 +111,57 @@ export const FinanceiroPage: React.FC = () => {
         return () => clearTimeout(handler);
     }, [searchText]);
 
-    // Effect para disparar busca quando filtros mudarem
     useEffect(() => {
-        carregarDados(debouncedSearchText, filterStatus);
-    }, [debouncedSearchText, filterStatus, carregarDados]);
+        carregarDados(debouncedSearchText, filterStatus, page, rowsPerPage);
+    }, [debouncedSearchText, filterStatus, page, rowsPerPage, carregarDados]);
 
-    // Foco automático no search
     useEffect(() => {
         if (searchInputRef.current) searchInputRef.current.focus();
     }, []);
 
-    // Handlers do Menu de Filtro
     const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorElFilter(event.currentTarget);
     const handleMenuClose = () => setAnchorElFilter(null);
 
     const handleSetStatus = (newStatus: StatusFinanceiroFilter) => {
         setFilterStatus(newStatus);
+        setPage(0);
         handleMenuClose();
     };
 
     const handleDownload = async (id: string) => {
         setBaixando(id);
-        await financeiroService.baixarRecibo(id);
-        setBaixando(null);
+        try {
+            await financeiroService.baixarRecibo(id);
+        } catch (error) {
+            console.error("Erro ao baixar recibo", error);
+        } finally {
+            setBaixando(null);
+        }
     };
 
     const handleDarBaixa = async (id: string) => {
         if (window.confirm("Confirmar recebimento/pagamento deste título?")) {
             try {
                 await financeiroService.registrarPagamento(id);
-                carregarDados(debouncedSearchText, filterStatus);
+                carregarDados(debouncedSearchText, filterStatus, page, rowsPerPage);
             } catch (err) {
                 alert("Erro ao processar pagamento");
             }
         }
+    };
+
+    const handleVerDetalhes = (transacao: any) => {
+        setTransacaoSelecionada(transacao);
+        setDetalhesModalOpen(true);
+    };
+
+    const handleChangePage = (event: unknown, newPage: number) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
     };
 
     return (
@@ -155,7 +183,6 @@ export const FinanceiroPage: React.FC = () => {
                 </Button>
             </Box>
 
-            {/* ÁREA DE BUSCA E FILTROS */}
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                 <Box sx={{ flexGrow: 1 }}>
                     <TextField
@@ -190,7 +217,7 @@ export const FinanceiroPage: React.FC = () => {
                     onClose={handleMenuClose}
                 >
                     <ListSubheader>Filtrar por Status</ListSubheader>
-                    {(['TODOS', 'PENDENTE', 'PAGO', 'RECEBIDO', 'CANCELADO'] as StatusFinanceiroFilter[]).map((status) => (
+                    {(['TODOS', 'PENDENTE', 'PAGO', 'CANCELADO', 'ATRASADO'] as StatusFinanceiroFilter[]).map((status) => (
                         <MenuItem key={status} onClick={() => handleSetStatus(status)} selected={filterStatus === status}>
                             {filterStatus === status && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />}
                             <Box sx={{ ml: filterStatus !== status ? '24px' : 0 }}>
@@ -230,23 +257,35 @@ export const FinanceiroPage: React.FC = () => {
                             transacoes.map((item: any) => (
                                 <TableRow key={item._id} hover>
                                     <TableCell>
-                                        <Typography variant="body2">
-                                            {new Date(item.dataVencimento).toLocaleDateString('pt-BR')}
-                                        </Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Typography variant="body2" fontWeight="500">
+                                                {new Date(item.dataVencimento).toLocaleDateString('pt-BR')}
+                                            </Typography>
+                                            <Tooltip title="Ver ficha completa">
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => handleVerDetalhes(item)}
+                                                    sx={{ color: 'primary.main' }}
+                                                >
+                                                    <VisibilityIcon fontSize="inherit" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
                                     </TableCell>
 
                                     <TableCell>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                             <Avatar sx={{
-                                                width: 40, height: 40,
-                                                bgcolor: item.tipo === 'RECEITA' ? 'success.light' : 'error.light'
+                                                width: 36, height: 36,
+                                                bgcolor: item.tipo === 'RECEITA' ? 'success.light' : 'error.light',
+                                                fontSize: '1rem'
                                             }}>
-                                                {item.tipo === 'RECEITA' ? <Person /> : <HomeWork />}
+                                                {item.tipo === 'RECEITA' ? <Person fontSize="small" /> : <HomeWork fontSize="small" />}
                                             </Avatar>
                                             <Box>
                                                 <Typography variant="subtitle2" fontWeight="700" sx={{ lineHeight: 1.2 }}>
                                                     <HighlightedText
-                                                        text={item.cliente?.nome || item.proprietario?.nome || 'Lançamento Avulso'}
+                                                        text={item.cliente?.nome || 'Lançamento Avulso'}
                                                         highlight={debouncedSearchText}
                                                     />
                                                 </Typography>
@@ -254,11 +293,12 @@ export const FinanceiroPage: React.FC = () => {
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                                                     {item.negociacaoCodigo ? (
                                                         <Chip
-                                                            icon={<ReceiptLong sx={{ fontSize: '1rem !important' }} />}
+                                                            icon={<ReceiptLong sx={{ fontSize: '0.9rem !important' }} />}
                                                             label={<HighlightedText text={item.negociacaoCodigo} highlight={debouncedSearchText} />}
                                                             size="small"
                                                             color="primary"
-                                                            sx={{ fontSize: '0.85rem', fontWeight: 'bold', height: 24, borderRadius: '6px' }}
+                                                            variant="outlined"
+                                                            sx={{ fontSize: '0.75rem', fontWeight: 'bold', height: 20 }}
                                                         />
                                                     ) : (
                                                         item.imovel && (
@@ -273,18 +313,18 @@ export const FinanceiroPage: React.FC = () => {
                                     </TableCell>
 
                                     <TableCell>
-                                        <Typography variant="body2">
+                                        <Typography variant="body2" sx={{ maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             <HighlightedText text={item.descricao} highlight={debouncedSearchText} />
                                         </Typography>
                                         <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', mt: 0.5 }}>
                                             <Chip
-                                                label={<HighlightedText text={item.categoria} highlight={debouncedSearchText} />}
+                                                label={item.categoria}
                                                 size="small"
-                                                sx={{ fontSize: '0.65rem', height: 18, bgcolor: '#eee' }}
+                                                sx={{ fontSize: '0.6rem', height: 16, bgcolor: '#f0f0f0' }}
                                             />
-                                            {item.numeroParcela && (
-                                                <Typography variant="caption" color="primary.main" fontWeight="bold">
-                                                    Parcela {item.numeroParcela}/{item.totalParcelas}
+                                            {item.parcelaNumero && (
+                                                <Typography variant="caption" color="primary.main" fontWeight="bold" sx={{ fontSize: '0.7rem' }}>
+                                                    Parcela {item.parcelaNumero}
                                                 </Typography>
                                             )}
                                         </Box>
@@ -299,7 +339,7 @@ export const FinanceiroPage: React.FC = () => {
                                             label={item.status}
                                             size="small"
                                             color={getStatusColor(item.status)}
-                                            sx={{ fontWeight: 'bold', minWidth: 90 }}
+                                            sx={{ fontWeight: 'bold', minWidth: 85, fontSize: '0.75rem' }}
                                         />
                                     </TableCell>
 
@@ -329,12 +369,32 @@ export const FinanceiroPage: React.FC = () => {
                         )}
                     </TableBody>
                 </Table>
+                <TablePagination
+                    rowsPerPageOptions={[5, 10, 25, 50]}
+                    component="div"
+                    count={totalItems}
+                    rowsPerPage={rowsPerPage}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    labelRowsPerPage="Itens por página:"
+                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+                />
             </TableContainer>
 
             <FinanceiroFormModal
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
-                onSuccess={() => carregarDados(debouncedSearchText, filterStatus)}
+                onSuccess={() => carregarDados(debouncedSearchText, filterStatus, page, rowsPerPage)}
+            />
+
+            <FinanceiroDetalhesModal
+                open={detalhesModalOpen}
+                onClose={() => {
+                    setDetalhesModalOpen(false);
+                    setTransacaoSelecionada(null);
+                }}
+                data={transacaoSelecionada}
             />
         </Box>
     );
