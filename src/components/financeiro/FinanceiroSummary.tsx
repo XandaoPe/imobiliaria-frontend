@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, AccountBalance } from '@mui/icons-material';
 interface SummaryProps {
     receitas: number;
     despesas: number;
+    pendentes: number;
 }
 
 export const FinanceiroSummary: React.FC<SummaryProps> = ({ receitas, despesas }) => {

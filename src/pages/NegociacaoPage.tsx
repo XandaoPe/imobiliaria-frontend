@@ -9,6 +9,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DoneIcon from '@mui/icons-material/Done';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import api from '../services/api';
 import { Negociacao, getStatusLabel, StatusNegociacao } from '../types/negociacao';
 import { NegociacaoDetailsModal } from '../components/NegociacaoDetailsModal';
@@ -16,7 +17,6 @@ import { NegociacaoFormModal } from '../components/NegociacaoFormModal';
 
 const DEBOUNCE_DELAY = 300;
 
-// Reutilizando o componente de Destaque
 interface HighlightedTextProps {
     text: string | null | undefined;
     highlight: string;
@@ -52,7 +52,6 @@ export const NegociacaoPage = () => {
     const [openDetails, setOpenDetails] = useState(false);
     const [openForm, setOpenForm] = useState(false);
 
-    // Estados de Busca e Filtro
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
     const [filterStatus, setFilterStatus] = useState<StatusNegociacao | 'TODOS'>('TODOS');
@@ -75,7 +74,6 @@ export const NegociacaoPage = () => {
         }
     }, []);
 
-    // Effect para Debounce
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearchText(searchText);
@@ -83,12 +81,10 @@ export const NegociacaoPage = () => {
         return () => clearTimeout(handler);
     }, [searchText]);
 
-    // Effect para disparar busca
     useEffect(() => {
         fetchNegociacoes(debouncedSearchText, filterStatus);
     }, [fetchNegociacoes, debouncedSearchText, filterStatus]);
 
-    // Focar no search ao carregar
     useEffect(() => {
         if (searchInputRef.current) searchInputRef.current.focus();
     }, []);
@@ -118,46 +114,83 @@ export const NegociacaoPage = () => {
 
     const columns: GridColDef<Negociacao>[] = useMemo(() => [
         {
+            field: 'codigo',
+            headerName: 'Código',
+            width: 220, // Aumentado significativamente (de 170 para 220)
+            renderCell: (params) => (
+                params.row.codigo && (
+                    <Chip
+                        icon={<ReceiptLongIcon sx={{ fontSize: '1.1rem !important' }} />}
+                        label={params.row.codigo}
+                        size="medium"
+                        color="primary"
+                        variant="filled"
+                        sx={{
+                            fontSize: '0.95rem',
+                            fontWeight: '800', // Extra bold para o código
+                            height: 34,
+                            borderRadius: '8px',
+                            px: 1.5,
+                            boxShadow: '0px 2px 4px rgba(0,0,0,0.1)'
+                        }}
+                    />
+                )
+            )
+        },
+        {
             field: 'cliente',
             headerName: 'Cliente / Lead',
-            flex: 1,
-            minWidth: 220,
+            flex: 0.7, // Ajustado para dar mais espaço ao código
+            minWidth: 170,
             renderCell: (params) => (
                 <Box
                     onClick={() => handleOpenDetails(params.row)}
                     sx={{
                         cursor: 'pointer',
-                        color: 'primary.main',
-                        fontWeight: '600',
-                        '&:hover': { textDecoration: 'underline' }
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        height: '100%'
                     }}
                 >
-                    <HighlightedText
-                        text={params.row.cliente?.nome}
-                        highlight={debouncedSearchText}
-                    />
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            color: 'primary.main',
+                            fontWeight: '700',
+                            lineHeight: 1.2,
+                            '&:hover': { textDecoration: 'underline' }
+                        }}
+                    >
+                        <HighlightedText
+                            text={params.row.cliente?.nome}
+                            highlight={debouncedSearchText}
+                        />
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                        {params.row.cliente?.email || 'Sem e-mail'}
+                    </Typography>
                 </Box>
             )
         },
         {
             field: 'imovel',
             headerName: 'Imóvel e Localização',
-            flex: 1.5,
-            minWidth: 300,
+            flex: 1, // Ajustado para equilibrar com o novo código
+            minWidth: 220,
             renderCell: (params) => (
                 <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', py: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', lineHeight: 1.1, fontSize: '0.8rem' }}>
                         <HighlightedText
                             text={params.row.imovel?.titulo}
                             highlight={debouncedSearchText}
                         />
                     </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.1, fontSize: '0.7rem' }}>
                         <HighlightedText
                             text={params.row.imovel?.endereco}
                             highlight={debouncedSearchText}
                         />
-                        {params.row.imovel?.cidade ? ` • ${params.row.imovel.cidade}` : ''}
                     </Typography>
                 </Box>
             )
@@ -165,39 +198,41 @@ export const NegociacaoPage = () => {
         {
             field: 'tipo',
             headerName: 'Interesse',
-            width: 110,
+            width: 90,
             renderCell: (params) => (
                 <Chip
                     label={params.row.tipo}
                     variant="outlined"
                     size="small"
                     color={params.row.tipo === 'VENDA' ? 'success' : 'info'}
+                    sx={{ fontSize: '0.65rem', height: 18 }}
                 />
             )
         },
         {
             field: 'status',
             headerName: 'Fase do Funil',
-            width: 160,
+            width: 130,
             renderCell: (params) => (
                 <Chip
                     label={getStatusLabel(params.row.status)}
                     color={getStatusColor(params.row.status)}
                     size="small"
+                    sx={{ fontWeight: 'bold', fontSize: '0.7rem', height: 22 }}
                 />
             )
         },
         {
             field: 'actions',
             headerName: 'Ações',
-            width: 90,
+            width: 60,
             sortable: false,
             align: 'right',
             headerAlign: 'right',
             renderCell: (params) => (
                 <Tooltip title="Ver Detalhes / Histórico">
-                    <IconButton color="primary" onClick={() => handleOpenDetails(params.row)}>
-                        <VisibilityIcon />
+                    <IconButton color="primary" onClick={() => handleOpenDetails(params.row)} size="small">
+                        <VisibilityIcon fontSize="small" />
                     </IconButton>
                 </Tooltip>
             )
@@ -227,12 +262,11 @@ export const NegociacaoPage = () => {
                 </Button>
             </Box>
 
-            {/* Barra de Busca e Filtros */}
             <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
                 <Box sx={{ flexGrow: 1 }}>
                     <TextField
                         fullWidth
-                        label="Pesquisar por Cliente, Título do Imóvel ou Endereço"
+                        label="Pesquisar por Código, Cliente ou Imóvel"
                         variant="outlined"
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}
@@ -260,8 +294,6 @@ export const NegociacaoPage = () => {
                     anchorEl={anchorElFilter}
                     open={Boolean(anchorElFilter)}
                     onClose={handleMenuClose}
-                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                 >
                     <ListSubheader sx={{ fontWeight: 'bold' }}>Filtrar por Fase</ListSubheader>
                     <MenuItem onClick={() => handleSetStatus('TODOS')} selected={filterStatus === 'TODOS'}>
@@ -284,7 +316,7 @@ export const NegociacaoPage = () => {
                     getRowId={(row) => row._id || Math.random()}
                     loading={loading}
                     disableRowSelectionOnClick
-                    rowHeight={70}
+                    rowHeight={85} // Aumentado para acomodar o código maior
                     pageSizeOptions={[10, 25, 50]}
                     initialState={{
                         pagination: { paginationModel: { pageSize: 10 } },
