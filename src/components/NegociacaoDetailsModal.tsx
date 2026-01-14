@@ -190,7 +190,15 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="h6" fontWeight="bold">Detalhes da Negociação</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                        <Typography variant="h6" fontWeight="bold">Detalhes da Negociação</Typography>
+                        {/* ADICIONADO: Código Sequencial ao lado do título */}
+                        {negociacao.codigo && (
+                            <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 400 }}>
+                                #{negociacao.codigo}
+                            </Typography>
+                        )}
+                    </Box>
                     <IconButton onClick={onClose}><CloseIcon /></IconButton>
                 </Box>
             </DialogTitle>

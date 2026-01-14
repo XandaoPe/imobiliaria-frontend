@@ -20,6 +20,7 @@ export interface HistoricoNegociacao {
 
 export interface Negociacao {
     _id: string;
+    codigo: string; // ADICIONADO: Campo para o sequencial (ex: NEG-2026-0001)
     cliente: {
         _id: string;
         nome: string;
@@ -33,13 +34,13 @@ export interface Negociacao {
         titulo: string;
         endereco: string;
         cidade: string;
-        preco?: number; // Adicionado para o Modal ler o valor sugerido
+        preco?: number;
         proprietario?: any;
     };
     tipo: 'VENDA' | 'ALUGUEL';
     status: StatusNegociacao;
     valor_acordado: number;
-    valor_negociado?: number; // Adicionado para o Dashboard parar de dar erro
+    valor_negociado?: number;
     historico: HistoricoNegociacao[];
     createdAt: string;
     updatedAt: string;

@@ -1,9 +1,9 @@
-import api from './api'; // Sua instância do Axios configurada
+import api from './api';
 
 export const financeiroService = {
     /**
      * GET /financeiro
-     * Lista os lançamentos usando os filtros do seu DTO (tipo, status, datas)
+     * Lista os lançamentos usando os filtros (tipo, status, datas, negociacaoCodigo)
      */
     listar: (filtros: any) => {
         return api.get('/financeiro', { params: filtros });
@@ -11,7 +11,7 @@ export const financeiroService = {
 
     /**
      * GET /financeiro/resumo
-     * Pega os totais (Receitas, Despesas, Pendentes) que seu NestJS calcula
+     * Pega os totais (Receitas, Despesas, Pendentes)
      */
     getResumo: () => {
         return api.get('/financeiro/resumo');
@@ -19,7 +19,7 @@ export const financeiroService = {
 
     /**
      * PATCH /financeiro/:id/pagar
-     * Aciona a função registrarPagamento que você criou no Back-end
+     * Aciona a função registrarPagamento no Back-end
      */
     registrarPagamento: (id: string) => {
         return api.patch(`/financeiro/${id}/pagar`);
@@ -27,22 +27,29 @@ export const financeiroService = {
 
     /**
      * GET /financeiro/:id/recibo
-     * Baixa o PDF gerado pelo seu FinanceiroPdfService
+     * Baixa o PDF gerado pelo FinanceiroPdfService
      */
     baixarRecibo: async (id: string) => {
         try {
             const response = await api.get(`/financeiro/${id}/recibo`, {
-                responseType: 'blob', // Obrigatório para arquivos
+                responseType: 'blob',
             });
 
             // Cria o link para download
-            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `recibo-${id}.pdf`);
+
+            // Sugestão: Nome do arquivo mais amigável
+            link.setAttribute('download', `recibo_${id.substring(0, 8)}.pdf`);
+
             document.body.appendChild(link);
             link.click();
+
+            // Limpeza
             link.remove();
+            window.URL.revokeObjectURL(url);
         } catch (error) {
             console.error("Erro ao baixar recibo:", error);
             alert("Não foi possível gerar o recibo agora.");
