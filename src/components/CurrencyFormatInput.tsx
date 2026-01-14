@@ -1,15 +1,12 @@
-// src/components/CurrencyFormatInput.tsx
 import React, { forwardRef } from 'react';
 import { NumericFormat, NumericFormatProps } from 'react-number-format';
-import { TextField } from '@mui/material';
+import { TextField, SxProps, Theme } from '@mui/material';
 
-// Define a interface para as propriedades do componente customizado.
 interface CustomProps {
     onChange: (event: { target: { name: string; value: number } }) => void;
     name: string;
 }
 
-// O componente de formatação que será usado dentro do Controller
 const NumericFormatCustom = forwardRef<NumericFormatProps, CustomProps>(
     function NumericFormatCustom(props, ref) {
         const { onChange, ...other } = props;
@@ -38,7 +35,6 @@ const NumericFormatCustom = forwardRef<NumericFormatProps, CustomProps>(
     },
 );
 
-// ⭐️ ATUALIZE A INTERFACE para incluir 'required' e 'disabled'
 interface CurrencyFormatInputProps {
     name: string;
     label: string;
@@ -46,8 +42,11 @@ interface CurrencyFormatInputProps {
     onChange: (value: number | null) => void;
     error?: boolean;
     helperText?: React.ReactNode;
-    required?: boolean; // ⭐️ ADICIONE
-    disabled?: boolean; // ⭐️ ADICIONE
+    required?: boolean;
+    disabled?: boolean;
+    onFocus?: (event: React.FocusEvent<HTMLInputElement>) => void;
+    size?: 'small' | 'medium'; // Adicionado
+    sx?: SxProps<Theme>; // Adicionado para controle fino de layout
 }
 
 export const CurrencyFormatInput: React.FC<CurrencyFormatInputProps> = ({
@@ -57,29 +56,32 @@ export const CurrencyFormatInput: React.FC<CurrencyFormatInputProps> = ({
     onChange,
     error,
     helperText,
-    required = false, // ⭐️ VALOR PADRÃO
-    disabled = false, // ⭐️ VALOR PADRÃO
+    required = false,
+    disabled = false,
+    onFocus,
+    size = 'small',
+    sx
 }) => {
-    // Converte o valor para string (vazio se for null)
     const displayValue = value === null ? '' : String(value);
 
     return (
         <TextField
             label={label}
             fullWidth
-            required={required} // ⭐️ PASSA A PROP
+            required={required}
             error={error}
             helperText={helperText}
-            margin="normal"
-            disabled={disabled} // ⭐️ PASSA A PROP
-            // Aqui passamos o Custom Input
+            size={size}
+            margin="none" // Alterado de "normal" para "none" para comprimir o espaço
+            disabled={disabled}
+            onFocus={onFocus}
+            sx={sx}
             InputProps={{
                 inputComponent: NumericFormatCustom as any,
                 inputProps: {
                     name: name,
                     value: displayValue,
                     onChange: (e: any) => {
-                        // Converte para número ou null
                         const numValue = e.target.value === '' ? null : Number(e.target.value);
                         onChange(numValue);
                     },

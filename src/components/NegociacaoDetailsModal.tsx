@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button,
     TextField, MenuItem, Box, Typography, Divider, Paper,
@@ -12,6 +12,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import AddCommentIcon from '@mui/icons-material/AddComment';
 import api from '../services/api';
 import { Negociacao, StatusNegociacao, getStatusLabel } from '../types/negociacao';
+import { NegociacaoFechamentoModal } from './NegociacaoFechamentoModal';
 
 interface Props {
     open: boolean;
@@ -29,65 +30,7 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [statusAgenda, setStatusAgenda] = useState<{ loading: boolean, msg: string, color: string } | null>(null);
     const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
-
-    const getHorariosDisponiveis = () => {
-        const todos = [];
-        for (let h = 6; h <= 22; h++) {
-            const hora = String(h).padStart(2, '0');
-            todos.push(`${hora}:00`);
-            if (h !== 22) todos.push(`${hora}:30`);
-        }
-
-        const agoraBr = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
-        const ano = agoraBr.getFullYear();
-        const mes = String(agoraBr.getMonth() + 1).padStart(2, '0');
-        const dia = String(agoraBr.getDate()).padStart(2, '0');
-        const hojeStr = `${ano}-${mes}-${dia}`;
-
-        const horaAtual = agoraBr.getHours();
-        const minAtual = agoraBr.getMinutes();
-
-        return todos.filter(h => {
-            if (horariosBloqueados.includes(h)) return false;
-            if (dataVisita === hojeStr) {
-                const [hSlot, mSlot] = h.split(':').map(Number);
-                if (hSlot < horaAtual) return false;
-                if (hSlot === horaAtual && mSlot <= minAtual) return false;
-            }
-            return true;
-        });
-    };
-
-    useEffect(() => {
-        const verificar = async () => {
-            if (!negociacao?.imovel?._id || !dataVisita || !horaVisita || novoStatus !== 'VISITA') {
-                setStatusAgenda(null);
-                return;
-            }
-
-            const dataCompleta = `${dataVisita}T${horaVisita}:00`;
-            setStatusAgenda({ loading: true, msg: 'Verificando agenda...', color: 'info.main' });
-
-            try {
-                const { data } = await api.get(`/agendamentos/check-disponibilidade`, {
-                    params: { data: dataCompleta }
-                });
-
-                if (data.disponivel) {
-                    setStatusAgenda({ loading: false, msg: '✅ Horário disponível', color: 'success.main' });
-                } else {
-                    setStatusAgenda({
-                        loading: false,
-                        msg: '⚠️ Atenção: Já existe uma visita ativa neste horário!',
-                        color: 'error.main'
-                    });
-                }
-            } catch (e) {
-                setStatusAgenda(null);
-            }
-        };
-        verificar();
-    }, [dataVisita, horaVisita, novoStatus, negociacao?.imovel?._id]);
+    const [modalFechamentoOpen, setModalFechamentoOpen] = useState(false);
 
     useEffect(() => {
         setNovaDescricao('');
@@ -106,16 +49,82 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                         params: { data: dataVisita }
                     });
                     setHorariosBloqueados(data);
-                } catch (e) { console.error(e); }
+                } catch (e) {
+                    console.error("Erro ao buscar horários ocupados", e);
+                }
             }
         };
         buscarOcupados();
     }, [dataVisita, negociacao?.imovel?._id]);
 
+    useEffect(() => {
+        const verificar = async () => {
+            if (!negociacao?.imovel?._id || !dataVisita || !horaVisita || novoStatus !== 'VISITA') {
+                setStatusAgenda(null);
+                return;
+            }
+            const dataCompleta = `${dataVisita}T${horaVisita}:00`;
+            setStatusAgenda({ loading: true, msg: 'Verificando agenda...', color: 'info.main' });
+            try {
+                const { data } = await api.get(`/agendamentos/check-disponibilidade`, {
+                    params: { data: dataCompleta }
+                });
+                if (data.disponivel) {
+                    setStatusAgenda({ loading: false, msg: '✅ Horário disponível', color: 'success.main' });
+                } else {
+                    setStatusAgenda({
+                        loading: false,
+                        msg: '⚠️ Atenção: Já existe uma visita ativa neste horário!',
+                        color: 'error.main'
+                    });
+                }
+            } catch (e) {
+                setStatusAgenda(null);
+            }
+        };
+        verificar();
+    }, [dataVisita, horaVisita, novoStatus, negociacao?.imovel?._id]);
+
     if (!negociacao) return null;
+
+    const getHorariosDisponiveis = () => {
+        const todos = [];
+        for (let h = 6; h <= 22; h++) {
+            const hora = String(h).padStart(2, '0');
+            todos.push(`${hora}:00`);
+            if (h !== 22) todos.push(`${hora}:30`);
+        }
+        const agoraBr = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+        const hojeStr = agoraBr.toISOString().split('T')[0];
+        const horaAtual = agoraBr.getHours();
+        const minAtual = agoraBr.getMinutes();
+
+        return todos.filter(h => {
+            if (horariosBloqueados.includes(h)) return false;
+            if (dataVisita === hojeStr) {
+                const [hSlot, mSlot] = h.split(':').map(Number);
+                if (hSlot < horaAtual) return false;
+                if (hSlot === horaAtual && mSlot <= minAtual) return false;
+            }
+            return true;
+        });
+    };
+
+    const handleStatusChange = (status: StatusNegociacao | '') => {
+        setNovoStatus(status);
+        if (status === 'FECHADO') {
+            setModalFechamentoOpen(true);
+        }
+    };
 
     const handleAddHistorico = async () => {
         if (!novaDescricao && !novoStatus) return;
+
+        if (novoStatus === 'FECHADO') {
+            setModalFechamentoOpen(true);
+            return;
+        }
+
         if (novoStatus === 'VISITA' && (!dataVisita || !horaVisita)) {
             setErrorMsg("Por favor, informe a data e hora para o agendamento da visita.");
             return;
@@ -123,19 +132,16 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
 
         setLoading(true);
         setErrorMsg(null);
-
         try {
             let dataAgendamentoCompleta = undefined;
             if (novoStatus === 'VISITA') {
                 dataAgendamentoCompleta = `${dataVisita}T${horaVisita}:00-03:00`;
             }
-
             await api.patch(`/negociacoes/${negociacao._id}`, {
                 status: novoStatus || undefined,
                 descricao: novaDescricao || undefined,
                 dataAgendamento: dataAgendamentoCompleta
             });
-
             onUpdate();
             onClose();
         } catch (error: any) {
@@ -146,18 +152,38 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
         }
     };
 
-    // ⭐️ LOGICA DE FORMATAÇÃO DE ENDEREÇO
+    const confirmarFechamentoFinal = async (dadosFinanceiros: any) => {
+        setLoading(true);
+        setErrorMsg(null);
+        try {
+            // Garante que o status 'FECHADO' seja enviado explicitamente
+            await api.patch(`/negociacoes/${negociacao._id}`, {
+                status: 'FECHADO',
+                descricao: novaDescricao || 'Negociação concluída com sucesso.',
+                dadosFinanceiros: dadosFinanceiros
+            });
+
+            // Sucesso: Fecha as modais e atualiza a lista pai
+            setModalFechamentoOpen(false);
+            onUpdate();
+            onClose();
+        } catch (error: any) {
+            console.error(error);
+            setErrorMsg("Erro ao fechar negociação. Verifique os dados financeiros.");
+            // Se der erro, não fechamos a modal de detalhes para o usuário ver o erro
+            setModalFechamentoOpen(false);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const formatEnderecoCliente = () => {
         const cliente = negociacao.cliente;
         if (!cliente) return 'Cliente não identificado';
-
-        // Verifica se os campos existem no objeto vindo do banco
         if (!cliente.endereco && !cliente.cidade) return 'Endereço não cadastrado';
-
         const partes = [];
         if (cliente.endereco) partes.push(cliente.endereco);
         if (cliente.cidade) partes.push(cliente.cidade);
-
         return partes.join(' — ');
     };
 
@@ -171,10 +197,8 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
             </DialogTitle>
 
             <DialogContent dividers sx={{ bgcolor: '#fbfbfb' }}>
-
+                {/* ... (Seu código de Paper/Dados do Cliente e Imóvel permanece igual) ... */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
-
-                    {/* CARD CLIENTE */}
                     <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                         <Typography variant="overline" color="primary" fontWeight="bold">Dados do Cliente</Typography>
                         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, mt: 1 }}>
@@ -188,14 +212,11 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                             </Box>
                             <Box sx={{ gridColumn: { sm: 'span 2' } }}>
                                 <Typography variant="caption" color="text.secondary">LOCALIZAÇÃO DO CLIENTE</Typography>
-                                <Typography variant="body2" sx={{ color: negociacao.cliente?.endereco ? 'text.primary' : 'text.disabled' }}>
-                                    {formatEnderecoCliente()}
-                                </Typography>
+                                <Typography variant="body2">{formatEnderecoCliente()}</Typography>
                             </Box>
                         </Box>
                     </Paper>
 
-                    {/* CARD IMÓVEL */}
                     <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <Box>
@@ -207,7 +228,6 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                                     📍 {negociacao.imovel?.endereco} — <strong>{negociacao.imovel?.cidade}</strong>
                                 </Typography>
                             </Box>
-
                             <Box sx={{ textAlign: 'right' }}>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>FASE ATUAL</Typography>
                                 <Chip
@@ -264,7 +284,7 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                                 rows={2}
                                 value={novaDescricao}
                                 onChange={(e) => setNovaDescricao(e.target.value)}
-                                placeholder="Descreva o contato..."
+                                placeholder="Descreva o contato ou motivo da mudança..."
                             />
 
                             <Box sx={{ minWidth: { md: 280 }, display: 'flex', flexDirection: 'column', gap: 1.5, width: { xs: '100%', md: 'auto' } }}>
@@ -274,7 +294,7 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                                     size="small"
                                     label="Mudar Status"
                                     value={novoStatus}
-                                    onChange={(e) => setNovoStatus(e.target.value as StatusNegociacao)}
+                                    onChange={(e) => handleStatusChange(e.target.value as StatusNegociacao)}
                                 >
                                     <MenuItem value="">Manter Atual</MenuItem>
                                     <MenuItem value="PROSPECCAO">Prospecção</MenuItem>
@@ -314,17 +334,11 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                             </Box>
                         </Box>
 
-                        {statusAgenda && (
-                            <Typography variant="caption" sx={{ color: statusAgenda.color, fontWeight: 'bold', mt: -1 }}>
-                                {statusAgenda.msg}
-                            </Typography>
-                        )}
-
                         <Button
                             variant="contained"
                             onClick={handleAddHistorico}
                             size="small"
-                            disabled={loading || (!novaDescricao && !novoStatus) || (statusAgenda?.msg.includes('Atenção'))}
+                            disabled={loading || (novoStatus === 'VISITA' && !horaVisita)}
                             sx={{ alignSelf: 'flex-end', px: 3, textTransform: 'none' }}
                         >
                             {loading ? 'Salvando...' : 'Salvar Interação'}
@@ -336,6 +350,17 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
             <DialogActions sx={{ p: 2, bgcolor: 'action.hover' }}>
                 <Button onClick={onClose} color="inherit" disabled={loading}>Fechar</Button>
             </DialogActions>
+
+            <NegociacaoFechamentoModal
+                open={modalFechamentoOpen}
+                valorSugerido={negociacao.imovel?.preco || 0}
+                onClose={() => {
+                    setModalFechamentoOpen(false);
+                    // Resetamos o status se o usuário cancelar a modal financeira
+                    setNovoStatus('');
+                }}
+                onConfirm={confirmarFechamentoFinal}
+            />
         </Dialog>
     );
 };
