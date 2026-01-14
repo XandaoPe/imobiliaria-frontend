@@ -10,7 +10,9 @@ import {
 } from '@mui/lab';
 import CloseIcon from '@mui/icons-material/Close';
 import AddCommentIcon from '@mui/icons-material/AddComment';
-import RestartAltIcon from '@mui/icons-material/RestartAlt'; // Ícone para o estorno
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import BlockIcon from '@mui/icons-material/Block';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import api from '../services/api';
 import { Negociacao, StatusNegociacao, getStatusLabel } from '../types/negociacao';
 import { NegociacaoFechamentoModal } from './NegociacaoFechamentoModal';
@@ -33,7 +35,10 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
     const [horaVisita, setHoraVisita] = useState('');
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [horariosBloqueados, setHorariosBloqueados] = useState<string[]>([]);
+
+    // Modais
     const [modalFechamentoOpen, setModalFechamentoOpen] = useState(false);
+    const [modalDecisaoEstornoOpen, setModalDecisaoEstornoOpen] = useState(false);
 
     useEffect(() => {
         if (open) {
@@ -64,6 +69,8 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
     if (!negociacao) return null;
 
     const isFechado = negociacao.status === 'FECHADO';
+    const isCancelado = negociacao.status === 'CANCELADO';
+    const isBloqueado = isFechado || isCancelado;
 
     const getHorariosDisponiveis = () => {
         const todos = [];
@@ -72,7 +79,6 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
             todos.push(`${hora}:00`);
             if (h !== 22) todos.push(`${hora}:30`);
         }
-
         const agoraBr = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
         const hojeStr = agoraBr.toISOString().split('T')[0];
         const horaAtual = agoraBr.getHours();
@@ -90,30 +96,36 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
     };
 
     const handleStatusChange = (status: StatusNegociacao | '') => {
-        // Impede abrir a modal financeira se já estiver fechado
-        if (status === 'FECHADO' && isFechado) {
-            setErrorMsg("Esta negociação já foi concluída. Use o botão de estorno para corrigir valores.");
-            setNovoStatus('');
+        if (isBloqueado) {
+            setErrorMsg("Esta negociação não permite mais alterações de status.");
             return;
         }
-
         setNovoStatus(status);
-        if (status === 'FECHADO') {
-            setModalFechamentoOpen(true);
-        }
+        if (status === 'FECHADO') setModalFechamentoOpen(true);
     };
 
-    const handleRefazer = async () => {
-        if (!window.confirm("Isso cancelará o financeiro atual e criará uma nova negociação para correção. Confirmar?")) return;
-
+    // Função central de estorno com a opção de criar nova prospecção
+    const executarEstorno = async (gerarNovaProspeccao: boolean) => {
         setLoadingEstorno(true);
+        setModalDecisaoEstornoOpen(false);
         try {
-            const { data } = await api.post(`/negociacoes/${negociacao._id}/refazer`);
+            // O segundo parâmetro do api.post é o BODY (corpo da requisição)
+            await api.post(`/negociacoes/${negociacao._id}/refazer`, {
+                gerarNovaProspeccao: gerarNovaProspeccao
+            });
+
             onUpdate();
             onClose();
-            // Navega para a nova negociação criada
-            navigate(`/negociacoes`); // Ou para o ID novo se preferir: navigate(`/negociacoes/${data._id}`)
-            alert("Negociação estornada! Uma nova cópia foi gerada para correção.");
+
+            if (gerarNovaProspeccao) {
+                // Se criou uma nova, vamos para a listagem para ver a nova prospecção
+                navigate(`/negociacoes`);
+                alert("Negociação estornada e nova prospecção criada!");
+            } else {
+                // Se apenas cancelou, atualiza a tela localmente
+                alert("Estorno realizado! O financeiro foi cancelado e o imóvel liberado.");
+            }
+
         } catch (error: any) {
             setErrorMsg(error.response?.data?.message || "Erro ao estornar.");
         } finally {
@@ -123,12 +135,10 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
 
     const handleAddHistorico = async () => {
         if (!novaDescricao && !novoStatus) return;
-
         if (novoStatus === 'FECHADO') {
             setModalFechamentoOpen(true);
             return;
         }
-
         if (novoStatus === 'VISITA' && (!dataVisita || !horaVisita)) {
             setErrorMsg("Por favor, informe a data e hora para o agendamento da visita.");
             return;
@@ -141,13 +151,11 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
             if (novoStatus === 'VISITA') {
                 dataAgendamentoCompleta = `${dataVisita}T${horaVisita}:00-03:00`;
             }
-
             await api.patch(`/negociacoes/${negociacao._id}`, {
                 status: novoStatus || undefined,
                 descricao: novaDescricao || undefined,
                 dataAgendamento: dataAgendamentoCompleta
             });
-
             onUpdate();
             onClose();
         } catch (error: any) {
@@ -167,7 +175,6 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                 descricao: novaDescricao || 'Negociação concluída com sucesso.',
                 dadosFinanceiros: dadosFinanceiros
             });
-
             setModalFechamentoOpen(false);
             onUpdate();
             onClose();
@@ -190,7 +197,6 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
 
             <DialogContent dividers sx={{ bgcolor: '#fbfbfb' }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
-                    {/* Dados do Cliente e Imóvel (Mantidos como no original) */}
                     <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                         <Typography variant="overline" color="primary" fontWeight="bold">Dados do Cliente</Typography>
                         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, mt: 1 }}>
@@ -199,7 +205,7 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                                 <Typography variant="body2" fontWeight="500">{negociacao.cliente?.nome || 'N/A'}</Typography>
                             </Box>
                             <Box>
-                                <Typography variant="caption" color="text.secondary">TELEFONE / WHATSAPP</Typography>
+                                <Typography variant="caption" color="text.secondary">TELEFONE</Typography>
                                 <Typography variant="body2" fontWeight="500">{negociacao.cliente?.telefone || 'Não informado'}</Typography>
                             </Box>
                         </Box>
@@ -214,7 +220,12 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                             </Box>
                             <Box sx={{ textAlign: 'right' }}>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>FASE ATUAL</Typography>
-                                <Chip label={getStatusLabel(negociacao.status)} color={isFechado ? "success" : "primary"} size="small" sx={{ fontWeight: 'bold', mt: 0.5 }} />
+                                <Chip
+                                    label={getStatusLabel(negociacao.status)}
+                                    color={isFechado ? "success" : isCancelado ? "error" : "primary"}
+                                    size="small"
+                                    sx={{ fontWeight: 'bold', mt: 0.5 }}
+                                />
                             </Box>
                         </Box>
                     </Paper>
@@ -222,7 +233,6 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
 
                 <Divider sx={{ mb: 3 }}><Chip label="HISTÓRICO DE INTERAÇÕES" size="small" variant="outlined" /></Divider>
 
-                {/* Timeline do Histórico */}
                 <Box sx={{ maxHeight: 250, overflowY: 'auto', mb: 3, px: 1 }}>
                     <Timeline position="right">
                         {negociacao.historico?.map((item, index) => (
@@ -231,7 +241,7 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                                     {item.data ? new Date(item.data).toLocaleDateString('pt-BR') : '---'}
                                 </TimelineOppositeContent>
                                 <TimelineSeparator>
-                                    <TimelineDot color={isFechado && index === 0 ? "success" : "primary"} variant="outlined" />
+                                    <TimelineDot color={isFechado ? "success" : isCancelado ? "error" : "primary"} variant="outlined" />
                                     {index !== (negociacao.historico.length - 1) && <TimelineConnector />}
                                 </TimelineSeparator>
                                 <TimelineContent>
@@ -249,24 +259,42 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                     <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMsg(null)}>{errorMsg}</Alert>
                 </Collapse>
 
-                {/* Área de Ação: Se estiver fechado, mostra botão de Estorno. Se não, mostra formulário. */}
-                {isFechado ? (
-                    <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', bgcolor: '#fff5f5', borderColor: '#ffcfcf' }}>
-                        <Typography variant="body2" color="error" fontWeight="500" gutterBottom>
-                            Esta negociação está concluída e os registros financeiros foram gerados.
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-                            Para alterar valores ou datas de vencimento, é necessário estornar o fechamento atual.
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            color="error"
-                            startIcon={loadingEstorno ? <CircularProgress size={20} color="inherit" /> : <RestartAltIcon />}
-                            onClick={handleRefazer}
-                            disabled={loadingEstorno}
-                        >
-                            {loadingEstorno ? 'Processando Estorno...' : 'Estornar e Corrigir Negociação'}
-                        </Button>
+                {isBloqueado ? (
+                    <Paper variant="outlined" sx={{
+                        p: 3,
+                        textAlign: 'center',
+                        bgcolor: isCancelado ? '#f5f5f5' : '#fff5f5',
+                        borderColor: isCancelado ? '#ddd' : '#ffcfcf'
+                    }}>
+                        {isFechado ? (
+                            <>
+                                <Typography variant="body2" color="error" fontWeight="500" gutterBottom>
+                                    Esta negociação está concluída.
+                                </Typography>
+                                <Button
+                                    variant="contained"
+                                    color="error"
+                                    startIcon={loadingEstorno ? <CircularProgress size={20} color="inherit" /> : <RestartAltIcon />}
+                                    onClick={() => setModalDecisaoEstornoOpen(true)}
+                                    disabled={loadingEstorno}
+                                    sx={{ mt: 1 }}
+                                >
+                                    Estornar e Corrigir
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 1 }}>
+                                    <BlockIcon color="disabled" />
+                                    <Typography variant="body2" color="text.secondary" fontWeight="500">
+                                        Esta negociação foi CANCELADA e não permite novas interações.
+                                    </Typography>
+                                </Box>
+                                <Typography variant="caption" color="text.disabled">
+                                    Para este cliente/imóvel, inicie uma nova negociação na tela de listagem.
+                                </Typography>
+                            </>
+                        )}
                     </Paper>
                 ) : (
                     <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#fffef0', borderColor: '#ffe58f' }}>
@@ -337,6 +365,44 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                 }}
                 onConfirm={confirmarFechamentoFinal}
             />
+
+            {/* MODAL DE DECISÃO DE ESTORNO */}
+            <Dialog
+                open={modalDecisaoEstornoOpen}
+                onClose={() => setModalDecisaoEstornoOpen(false)}
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <HelpOutlineIcon color="primary" /> Opções de Estorno
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1">
+                        Deseja criar uma nova prospecção para este cliente ao estornar?
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                        Isso cancelará o financeiro e liberará o imóvel atual.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ flexDirection: 'column', gap: 1, p: 2 }}>
+                    <Button
+                        fullWidth variant="contained" color="primary"
+                        onClick={() => executarEstorno(true)}
+                    >
+                        Criar Nova Prospecção
+                    </Button>
+                    <Button
+                        fullWidth variant="outlined" color="inherit"
+                        onClick={() => executarEstorno(false)}
+                    >
+                        Apenas Estornar (Sem nova cópia)
+                    </Button>
+                    <Button
+                        fullWidth variant="text" color="error"
+                        onClick={() => setModalDecisaoEstornoOpen(false)}
+                    >
+                        Cancelar e Voltar
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Dialog>
     );
 };
