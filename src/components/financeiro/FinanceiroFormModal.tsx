@@ -1,32 +1,20 @@
-// src/components/financeiro/FinanceiroFormModal.tsx
 import React, { useState, useEffect } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button,
-    Box, Stepper, Step, StepLabel, TextField, MenuItem, Typography
+    Box, Stepper, Step, StepLabel, TextField, MenuItem, Typography, CircularProgress
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import api from '../../services/api'; // Usado para buscar clientes/imóveis
+import api from '../../services/api';
 import { financeiroValidationSchema } from '../../types/financeiro';
 
 const steps = ['Dados da Conta', 'Vínculos'];
 
-interface FinanceiroFormData {
-    descricao: string;
-    valor: number;
-    dataVencimento: string;
-    tipo: 'RECEITA' | 'DESPESA';
-    categoria: string;
-    status: string;
-    imovel?: string; // Adicionado aqui
-    cliente?: string; // Adicionado aqui
-}
-
 export const FinanceiroFormModal = ({ open, onClose, onSuccess }: any) => {
     const [activeStep, setActiveStep] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [fetchingData, setFetchingData] = useState(false);
 
-    // Estados para carregar dados do banco
     const [imoveis, setImoveis] = useState([]);
     const [clientes, setClientes] = useState([]);
 
@@ -38,22 +26,28 @@ export const FinanceiroFormModal = ({ open, onClose, onSuccess }: any) => {
             valor: 0,
             descricao: '',
             categoria: 'OUTROS',
-            dataVencimento: new Date().toISOString().split('T')[0], // Data de hoje como padrão
-            imovel: '', // Inicialize aqui para o TS reconhecer no name do Controller
-            cliente: '' // Inicialize aqui para o TS reconhecer no name do Controller
+            dataVencimento: new Date().toISOString().split('T')[0],
+            imovel: '',
+            cliente: ''
         }
     });
 
-    // Carregar dados para os selects de vínculo quando o modal abrir
     useEffect(() => {
         if (open) {
             const carregarVinculos = async () => {
-                const [resImoveis, resClientes] = await Promise.all([
-                    api.get('/imoveis'),
-                    api.get('/clientes')
-                ]);
-                setImoveis(resImoveis.data);
-                setClientes(resClientes.data);
+                setFetchingData(true);
+                try {
+                    const [resImoveis, resClientes] = await Promise.all([
+                        api.get('/imoveis'),
+                        api.get('/clientes')
+                    ]);
+                    setImoveis(resImoveis.data);
+                    setClientes(resClientes.data);
+                } catch (err) {
+                    console.error("Erro ao carregar dados para vínculos", err);
+                } finally {
+                    setFetchingData(false);
+                }
             };
             carregarVinculos();
         }
@@ -62,11 +56,15 @@ export const FinanceiroFormModal = ({ open, onClose, onSuccess }: any) => {
     const onSubmit = async (data: any) => {
         setLoading(true);
         try {
-            // Chamando o service que criamos
-            await api.post('/financeiro', data);
+            // Limpa strings vazias para não enviar ID inválido ao MongoDB
+            const payload = { ...data };
+            if (!payload.imovel) delete payload.imovel;
+            if (!payload.cliente) delete payload.cliente;
+
+            await api.post('/financeiro', payload);
             reset();
             setActiveStep(0);
-            onSuccess(); // Recarrega a lista na tela principal
+            onSuccess();
             onClose();
         } catch (error) {
             console.error("Erro ao salvar transação", error);
@@ -87,7 +85,6 @@ export const FinanceiroFormModal = ({ open, onClose, onSuccess }: any) => {
 
             <DialogContent dividers>
                 {activeStep === 0 ? (
-                    /* PASSO 1: DADOS FINANCEIROS */
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                         <Controller
                             name="descricao"
@@ -141,44 +138,46 @@ export const FinanceiroFormModal = ({ open, onClose, onSuccess }: any) => {
                         </Box>
                     </Box>
                 ) : (
-                    /* PASSO 2: VÍNCULOS REAIS */
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                         <Typography variant="body2" color="text.secondary">
                             Vincule este lançamento para rastrear no histórico do imóvel ou cliente.
                         </Typography>
 
-                        <Controller
-                            name="imovel"
-                            control={control}
-                            render={({ field }) => (
-                                <TextField {...field} select label="Imóvel Relacionado" fullWidth>
-                                    <MenuItem value="">Nenhum</MenuItem>
-                                    {imoveis.map((i: any) => (
-                                        <MenuItem key={i._id} value={i._id}>{i.titulo || i.codigo}</MenuItem>
-                                    ))}
-                                </TextField>
-                            )}
-                        />
+                        {fetchingData ? <CircularProgress size={24} sx={{ m: 'auto' }} /> : (
+                            <>
+                                <Controller
+                                    name="imovel"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <TextField {...field} select label="Imóvel Relacionado" fullWidth>
+                                            <MenuItem value="">Nenhum</MenuItem>
+                                            {imoveis.map((i: any) => (
+                                                <MenuItem key={i._id} value={i._id}>{i.titulo || i.codigo}</MenuItem>
+                                            ))}
+                                        </TextField>
+                                    )}
+                                />
 
-                        <Controller
-                            name="cliente"
-                            control={control}
-                            render={({ field }) => (
-                                <TextField {...field} select label="Cliente Responsável" fullWidth>
-                                    <MenuItem value="">Nenhum</MenuItem>
-                                    {clientes.map((c: any) => (
-                                        <MenuItem key={c._id} value={c._id}>{c.nome}</MenuItem>
-                                    ))}
-                                </TextField>
-                            )}
-                        />
+                                <Controller
+                                    name="cliente"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <TextField {...field} select label="Cliente Responsável" fullWidth>
+                                            <MenuItem value="">Nenhum</MenuItem>
+                                            {clientes.map((c: any) => (
+                                                <MenuItem key={c._id} value={c._id}>{c.nome}</MenuItem>
+                                            ))}
+                                        </TextField>
+                                    )}
+                                />
+                            </>
+                        )}
                     </Box>
                 )}
             </DialogContent>
 
             <DialogActions sx={{ p: 3, bgcolor: '#f8f9fa' }}>
                 <Button onClick={onClose} color="inherit">Cancelar</Button>
-
                 {activeStep === 0 ? (
                     <Button variant="contained" onClick={() => setActiveStep(1)}>Próximo</Button>
                 ) : (
