@@ -3,7 +3,7 @@ import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Chip, IconButton, Tooltip,
     CircularProgress, Avatar, TextField, InputAdornment, Menu, MenuItem, ListSubheader,
-    TablePagination, Alert
+    TablePagination, Alert, Stack
 } from '@mui/material';
 import {
     Add, Download, CheckCircle, HomeWork, Person,
@@ -64,6 +64,21 @@ const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) =>
 };
 
 export const FinanceiroPage: React.FC = () => {
+    // --- ESTADOS DE DATAS (CORRIGIDOS) ---
+    const getPrimeiroDiaMes = (): string => {
+        const d = new Date();
+        return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+    };
+
+    const getUltimoDiaMes = (): string => {
+        const d = new Date();
+        // Ajustado para 6 meses à frente conforme sua lógica original
+        return new Date(d.getFullYear(), d.getMonth() + 6, 0).toISOString().split('T')[0];
+    };
+
+    const [dataInicio, setDataInicio] = useState<string>(getPrimeiroDiaMes());
+    const [dataFim, setDataFim] = useState<string>(getUltimoDiaMes());
+
     // Estados de Dados
     const [transacoes, setTransacoes] = useState<Transacao[]>([]);
     const [resumo, setResumo] = useState({ totalPendente: 0, totalRecebido: 0, totalPago: 0 });
@@ -79,7 +94,7 @@ export const FinanceiroPage: React.FC = () => {
     // Estados de Pesquisa e Paginação
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
-    const [filterStatus, setFilterStatus] = useState<StatusFinanceiroFilter>('PENDENTE');
+    const [filterStatus, setFilterStatus] = useState<StatusFinanceiroFilter>('TODOS');
 
     const [anchorElFilter, setAnchorElFilter] = useState<null | HTMLElement>(null);
     const [totalItems, setTotalItems] = useState(0);
@@ -99,6 +114,10 @@ export const FinanceiroPage: React.FC = () => {
         }
     };
 
+    useEffect(() => {
+        setPage(0);
+    }, [debouncedSearchText]);
+
     const carregarDados = useCallback(async () => {
         try {
             setLoading(true);
@@ -106,28 +125,32 @@ export const FinanceiroPage: React.FC = () => {
 
             const params: any = {
                 page: page + 1,
-                limit: rowsPerPage
+                limit: rowsPerPage,
+                dataInicio,
+                dataFim
             };
+
+            // O debouncedSearchText é enviado aqui
             if (debouncedSearchText) params.search = debouncedSearchText;
             if (filterStatus !== 'TODOS') params.status = filterStatus;
 
+            const resumoParams = { dataInicio, dataFim };
+
             const [resList, resSum] = await Promise.all([
                 financeiroService.listar(params),
-                financeiroService.getResumo()
+                financeiroService.getResumo(resumoParams)
             ]);
 
-            // Processar Lista
             const listaData = resList?.data?.data || [];
             const total = resList?.data?.total || 0;
             setTransacoes(listaData);
             setTotalItems(total);
 
-            // Processar Resumo (Cards) - Mapeamento flexível de nomes de campos
             const s = resSum?.data || {};
             setResumo({
-                totalRecebido: s.receitas ?? s.totalRecebido ?? s.recebido ?? 0,
-                totalPago: s.despesas ?? s.totalPago ?? s.pago ?? 0,
-                totalPendente: s.pendentes ?? s.totalPendente ?? s.pendente ?? 0
+                totalRecebido: s.receitas ?? 0,
+                totalPago: s.despesas ?? 0,
+                totalPendente: s.pendentes ?? 0
             });
 
         } catch (err) {
@@ -136,7 +159,7 @@ export const FinanceiroPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, rowsPerPage, debouncedSearchText, filterStatus]);
+    }, [page, rowsPerPage, debouncedSearchText, filterStatus, dataInicio, dataFim]);
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -207,11 +230,12 @@ export const FinanceiroPage: React.FC = () => {
                         </Button>
                     </Box>
 
-                    <Paper sx={{ p: 2, borderRadius: 2, display: 'flex', gap: 2, flexWrap: { xs: 'wrap', md: 'nowrap' } }}>
+                    {/* BARRA DE FILTROS */}
+                    <Paper sx={{ p: 2, borderRadius: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
                         <TextField
-                            fullWidth
+                            sx={{ flexGrow: 1, minWidth: '200px' }}
                             size="small"
-                            placeholder="Descrição, Cliente, Categoria ou Código..."
+                            placeholder="Descrição, Cliente ou Código..."
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
                             InputProps={{
@@ -230,11 +254,33 @@ export const FinanceiroPage: React.FC = () => {
                             }}
                         />
 
+                        {/* SELETORES DE DATA */}
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <TextField
+                                label="Início"
+                                type="date"
+                                size="small"
+                                value={dataInicio}
+                                onChange={(e) => { setDataInicio(e.target.value); setPage(0); }}
+                                InputLabelProps={{ shrink: true }}
+                                sx={{ width: 150 }}
+                            />
+                            <TextField
+                                label="Fim"
+                                type="date"
+                                size="small"
+                                value={dataFim}
+                                onChange={(e) => { setDataFim(e.target.value); setPage(0); }}
+                                InputLabelProps={{ shrink: true }}
+                                sx={{ width: 150 }}
+                            />
+                        </Stack>
+
                         <Button
                             variant="outlined"
                             onClick={handleMenuOpen}
                             startIcon={<FilterListIcon />}
-                            sx={{ whiteSpace: 'nowrap', minWidth: 180, textTransform: 'none' }}
+                            sx={{ whiteSpace: 'nowrap', textTransform: 'none', height: 40 }}
                         >
                             {filterStatus === 'TODOS' ? 'Todos os Status' : filterStatus}
                         </Button>
@@ -276,7 +322,7 @@ export const FinanceiroPage: React.FC = () => {
                                 ) : transacoes.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
-                                            <Typography color="text.secondary">Nenhum registro encontrado.</Typography>
+                                            <Typography color="text.secondary">Nenhum registro encontrado para este período.</Typography>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -376,7 +422,7 @@ export const FinanceiroPage: React.FC = () => {
                     top: 24,
                     height: 'fit-content'
                 }}>
-                    <Typography variant="h6" fontWeight="bold">Resumo Financeiro</Typography>
+                    <Typography variant="h6" fontWeight="bold">Resumo do Período</Typography>
 
                     <FinanceiroSummary
                         receitas={resumo.totalRecebido}
@@ -387,12 +433,16 @@ export const FinanceiroPage: React.FC = () => {
 
                     <Paper sx={{ p: 2, borderRadius: 2, bgcolor: 'primary.main', color: 'white' }}>
                         <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
-                            Saldo em Caixa
+                            Saldo Gerado no Período
                         </Typography>
                         <Typography variant="h5" fontWeight="bold">
                             {formatCurrency(resumo.totalRecebido - resumo.totalPago)}
                         </Typography>
                     </Paper>
+
+                    <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', textAlign: 'center' }}>
+                        Exibindo dados de {new Date(dataInicio).toLocaleDateString()} até {new Date(dataFim).toLocaleDateString()}
+                    </Typography>
                 </Box>
             </Box>
 

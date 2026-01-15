@@ -11,10 +11,10 @@ export const financeiroService = {
 
     /**
      * GET /financeiro/resumo
-     * Pega os totais (Receitas, Despesas, Pendentes)
+     * Pega os totais (Receitas, Despesas, Pendentes) filtrados por data
      */
-    getResumo: () => {
-        return api.get('/financeiro/resumo');
+    getResumo: (params?: { dataInicio?: string; dataFim?: string }) => {
+        return api.get('/financeiro/resumo', { params });
     },
 
     /**
