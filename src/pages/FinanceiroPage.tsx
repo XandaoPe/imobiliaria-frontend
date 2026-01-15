@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Chip, IconButton, Tooltip,
@@ -6,16 +6,10 @@ import {
     TablePagination, Alert
 } from '@mui/material';
 import {
-    Add, Download, CheckCircle, HomeWork, Person, ReceiptLong,
+    Add, Download, CheckCircle, HomeWork, Person,
     Search as SearchIcon, FilterList as FilterListIcon, Done as DoneIcon,
     Visibility as VisibilityIcon, Clear as ClearIcon
 } from '@mui/icons-material';
-
-// Importação de componentes para o Gráfico
-import {
-    XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip,
-    Legend, ResponsiveContainer, Bar, Line, ComposedChart
-} from 'recharts';
 
 // Importação de componentes e serviços
 import { FinanceiroSummary } from '../components/financeiro/FinanceiroSummary';
@@ -73,7 +67,6 @@ export const FinanceiroPage: React.FC = () => {
     // Estados de Dados
     const [transacoes, setTransacoes] = useState<Transacao[]>([]);
     const [resumo, setResumo] = useState({ totalPendente: 0, totalRecebido: 0, totalPago: 0 });
-    const [dadosGrafico, setDadosGrafico] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [baixando, setBaixando] = useState<string | null>(null);
@@ -86,16 +79,12 @@ export const FinanceiroPage: React.FC = () => {
     // Estados de Pesquisa e Paginação
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
-
-    // Filtro inicial como PENDENTE conforme solicitado
     const [filterStatus, setFilterStatus] = useState<StatusFinanceiroFilter>('PENDENTE');
 
     const [anchorElFilter, setAnchorElFilter] = useState<null | HTMLElement>(null);
     const [totalItems, setTotalItems] = useState(0);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
-
-    const searchInputRef = useRef<HTMLInputElement>(null);
 
     const formatCurrency = (val: number) =>
         new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -127,23 +116,19 @@ export const FinanceiroPage: React.FC = () => {
                 financeiroService.getResumo()
             ]);
 
-            setTransacoes(resList.data.data || []);
-            setTotalItems(resList.data.total || 0);
+            // Processar Lista
+            const listaData = resList?.data?.data || [];
+            const total = resList?.data?.total || 0;
+            setTransacoes(listaData);
+            setTotalItems(total);
 
+            // Processar Resumo (Cards) - Mapeamento flexível de nomes de campos
+            const s = resSum?.data || {};
             setResumo({
-                totalPendente: resSum.data.pendentes || 0,
-                totalRecebido: resSum.data.receitas || 0,
-                totalPago: resSum.data.despesas || 0
+                totalRecebido: s.receitas ?? s.totalRecebido ?? s.recebido ?? 0,
+                totalPago: s.despesas ?? s.totalPago ?? s.pago ?? 0,
+                totalPendente: s.pendentes ?? s.totalPendente ?? s.pendente ?? 0
             });
-
-            setDadosGrafico(resSum.data.chartData || [
-                { mes: 'Jan', recebido: 4000, pago: 2400, pendente: 2400 },
-                { mes: 'Fev', recebido: 3000, pago: 1398, pendente: 2210 },
-                { mes: 'Mar', recebido: 2000, pago: 9800, pendente: 2290 },
-                { mes: 'Abr', recebido: 2780, pago: 3908, pendente: 2000 },
-                { mes: 'Mai', recebido: 1890, pago: 4800, pendente: 2181 },
-                { mes: 'Jun', recebido: 2390, pago: 3800, pendente: 2500 },
-            ]);
 
         } catch (err) {
             console.error("Erro ao buscar dados financeiros", err);
@@ -156,7 +141,6 @@ export const FinanceiroPage: React.FC = () => {
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearchText(searchText);
-            setPage(0);
         }, DEBOUNCE_DELAY);
         return () => clearTimeout(handler);
     }, [searchText]);
@@ -202,239 +186,215 @@ export const FinanceiroPage: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: { xs: 2, md: 3 }, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <Box sx={{ p: { xs: 2, md: 3 } }}>
+            <Box sx={{
+                display: 'flex',
+                flexDirection: { xs: 'column', lg: 'row' },
+                gap: 3
+            }}>
 
-            <FinanceiroSummary
-                receitas={resumo.totalRecebido}
-                despesas={resumo.totalPago}
-                pendentes={resumo.totalPendente}
-            />
+                {/* COLUNA PRINCIPAL: LISTAGEM */}
+                <Box sx={{ flex: 8.5, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                        <Typography variant="h4" fontWeight="bold" color="text.primary">Financeiro</Typography>
+                        <Button
+                            variant="contained"
+                            startIcon={<Add />}
+                            onClick={() => setModalOpen(true)}
+                            sx={{ borderRadius: 2, px: 3, textTransform: 'none', fontWeight: 'bold', boxShadow: 3 }}
+                        >
+                            Novo Lançamento
+                        </Button>
+                    </Box>
 
-            <Paper sx={{ p: 3, borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                    Evolução Financeira Mensal
-                </Typography>
-                <Box sx={{ width: '100%', height: 300, mt: 2 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={dadosGrafico}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                            <XAxis dataKey="mes" axisLine={false} tickLine={false} />
-                            <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `R$ ${value}`} />
-                            <ChartTooltip
-                                // CORREÇÃO TS2322: Tipagem flexível e tratamento de valor
-                                formatter={(value: any) => formatCurrency(Number(value || 0))}
-                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                            />
-                            <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: 20 }} />
-                            <Bar dataKey="recebido" name="Recebido" fill="#4caf50" radius={[4, 4, 0, 0]} barSize={30} />
-                            <Bar dataKey="pago" name="Pago" fill="#f44336" radius={[4, 4, 0, 0]} barSize={30} />
-                            <Line type="monotone" dataKey="pendente" name="Pendente" stroke="#ff9800" strokeWidth={3} dot={{ r: 4 }} />
-                        </ComposedChart>
-                    </ResponsiveContainer>
-                </Box>
-            </Paper>
+                    <Paper sx={{ p: 2, borderRadius: 2, display: 'flex', gap: 2, flexWrap: { xs: 'wrap', md: 'nowrap' } }}>
+                        <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Descrição, Cliente, Categoria ou Código..."
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        {loading ? <CircularProgress size={20} /> : <SearchIcon color="action" />}
+                                    </InputAdornment>
+                                ),
+                                endAdornment: searchText && (
+                                    <InputAdornment position="end">
+                                        <IconButton size="small" onClick={() => setSearchText('')}>
+                                            <ClearIcon fontSize="small" />
+                                        </IconButton>
+                                    </InputAdornment>
+                                )
+                            }}
+                        />
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                <Typography variant="h5" fontWeight="bold">Fluxo de Caixa</Typography>
-                <Button
-                    variant="contained"
-                    startIcon={<Add />}
-                    onClick={() => setModalOpen(true)}
-                    sx={{ borderRadius: 2, px: 3, textTransform: 'none', fontWeight: 'bold' }}
-                >
-                    Novo Lançamento
-                </Button>
-            </Box>
+                        <Button
+                            variant="outlined"
+                            onClick={handleMenuOpen}
+                            startIcon={<FilterListIcon />}
+                            sx={{ whiteSpace: 'nowrap', minWidth: 180, textTransform: 'none' }}
+                        >
+                            {filterStatus === 'TODOS' ? 'Todos os Status' : filterStatus}
+                        </Button>
 
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: { xs: 'wrap', md: 'nowrap' } }}>
-                <TextField
-                    fullWidth
-                    placeholder="Descrição, Cliente, Categoria ou Código..."
-                    variant="outlined"
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    inputRef={searchInputRef}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                {loading ? <CircularProgress size={20} /> : <SearchIcon color="action" />}
-                            </InputAdornment>
-                        ),
-                        endAdornment: searchText && (
-                            <InputAdornment position="end">
-                                <IconButton size="small" onClick={() => setSearchText('')}>
-                                    <ClearIcon fontSize="small" />
-                                </IconButton>
-                            </InputAdornment>
-                        )
-                    }}
-                />
+                        <Menu anchorEl={anchorElFilter} open={Boolean(anchorElFilter)} onClose={handleMenuClose}>
+                            <ListSubheader>Filtrar por Status</ListSubheader>
+                            {(['TODOS', 'PENDENTE', 'PAGO', 'CANCELADO', 'ATRASADO'] as StatusFinanceiroFilter[]).map((status) => (
+                                <MenuItem key={status} onClick={() => handleSetStatus(status)} selected={filterStatus === status}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                        {filterStatus === status ? <DoneIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} /> : <Box sx={{ width: 28 }} />}
+                                        {status.charAt(0) + status.slice(1).toLowerCase()}
+                                    </Box>
+                                </MenuItem>
+                            ))}
+                        </Menu>
+                    </Paper>
 
-                <Button
-                    variant="outlined"
-                    onClick={handleMenuOpen}
-                    startIcon={<FilterListIcon />}
-                    sx={{ height: 56, whiteSpace: 'nowrap', minWidth: 200, borderRadius: 1, textTransform: 'none' }}
-                >
-                    Status: {filterStatus === 'TODOS' ? 'Todos' : filterStatus}
-                </Button>
+                    {error && <Alert severity="error" sx={{ borderRadius: 2 }}>{error}</Alert>}
 
-                <Menu anchorEl={anchorElFilter} open={Boolean(anchorElFilter)} onClose={handleMenuClose}>
-                    <ListSubheader>Filtrar por Status</ListSubheader>
-                    {(['TODOS', 'PENDENTE', 'PAGO', 'CANCELADO', 'ATRASADO'] as StatusFinanceiroFilter[]).map((status) => (
-                        <MenuItem key={status} onClick={() => handleSetStatus(status)} selected={filterStatus === status}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                                {filterStatus === status ? <DoneIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} /> : <Box sx={{ width: 28 }} />}
-                                {status.charAt(0) + status.slice(1).toLowerCase()}
-                            </Box>
-                        </MenuItem>
-                    ))}
-                </Menu>
-            </Box>
-
-            {error && <Alert severity="error" sx={{ borderRadius: 2 }}>{error}</Alert>}
-
-            <TableContainer component={Paper} sx={{ boxShadow: '0 4px 20px rgba(0,0,0,0.08)', borderRadius: 3, overflow: 'hidden' }}>
-                <Table>
-                    <TableHead sx={{ bgcolor: '#fbfbfb' }}>
-                        <TableRow>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Vencimento</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Vínculo / Cliente</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Descrição</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Valor</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 'bold' }}>Ações</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {loading && transacoes.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 10 }}>
-                                    <CircularProgress size={40} thickness={4} />
-                                    <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>Carregando lançamentos...</Typography>
-                                </TableCell>
-                            </TableRow>
-                        ) : transacoes.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 10 }}>
-                                    <Typography color="text.secondary">Nenhum lançamento encontrado para os filtros aplicados.</Typography>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            transacoes.map((item) => (
-                                <TableRow key={item._id} hover>
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Typography variant="body2" fontWeight="600">
-                                                {new Date(item.dataVencimento).toLocaleDateString('pt-BR')}
-                                            </Typography>
-                                            <Tooltip title="Ver detalhes">
-                                                <IconButton size="small" onClick={() => handleVerDetalhes(item)} color="primary">
-                                                    <VisibilityIcon fontSize="inherit" />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                            <Avatar sx={{
-                                                width: 34, height: 34,
-                                                bgcolor: item.tipo === 'RECEITA' ? '#e8f5e9' : '#ffebee',
-                                                color: item.tipo === 'RECEITA' ? 'success.main' : 'error.main'
-                                            }}>
-                                                {item.tipo === 'RECEITA' ? <Person fontSize="small" /> : <HomeWork fontSize="small" />}
-                                            </Avatar>
-                                            <Box>
-                                                <Typography variant="subtitle2" fontWeight="bold">
-                                                    <HighlightedText text={item.cliente?.nome || 'Lançamento Avulso'} highlight={debouncedSearchText} />
-                                                </Typography>
-                                                {item.negociacaoCodigo ? (
-                                                    <Chip
-                                                        icon={<ReceiptLong sx={{ fontSize: '0.8rem !important' }} />}
-                                                        label={<HighlightedText text={item.negociacaoCodigo} highlight={debouncedSearchText} />}
-                                                        size="small"
-                                                        variant="outlined"
-                                                        sx={{ height: 20, fontSize: '0.7rem', mt: 0.5 }}
-                                                    />
-                                                ) : item.imovel && (
-                                                    <Typography variant="caption" color="text.secondary" display="block">
-                                                        Ref: <HighlightedText text={item.imovel.codigo} highlight={debouncedSearchText} />
-                                                    </Typography>
-                                                )}
-                                            </Box>
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
-                                            <HighlightedText text={item.descricao} highlight={debouncedSearchText} />
-                                        </Typography>
-                                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.5 }}>
-                                            <Chip label={item.categoria} size="small" sx={{ fontSize: '0.65rem', height: 18 }} />
-                                            {item.parcelaNumero && (
-                                                <Typography variant="caption" color="primary.main" fontWeight="bold">
-                                                    Parcela {item.parcelaNumero}
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography variant="body2" sx={{
-                                            color: item.tipo === 'DESPESA' ? 'error.main' : 'success.main',
-                                            fontWeight: 'bold'
-                                        }}>
-                                            {item.tipo === 'DESPESA' ? '- ' : '+ '}
-                                            {formatCurrency(item.valor)}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        <Chip
-                                            label={item.status}
-                                            size="small"
-                                            color={getStatusColor(item.status)}
-                                            sx={{ fontWeight: 'bold', minWidth: 90, fontSize: '0.7rem' }}
-                                        />
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-                                            {item.status === 'PENDENTE' && (
-                                                <Tooltip title="Confirmar Pagamento">
-                                                    <IconButton color="success" onClick={() => handleDarBaixa(item._id)} size="small">
-                                                        <CheckCircle fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-                                            <Tooltip title="Baixar Recibo PDF">
-                                                <IconButton
-                                                    color="primary"
-                                                    onClick={() => handleDownload(item._id)}
-                                                    disabled={baixando === item._id}
-                                                    size="small"
-                                                >
-                                                    {baixando === item._id ? <CircularProgress size={18} /> : <Download fontSize="small" />}
-                                                </IconButton>
-                                            </Tooltip>
-                                        </Box>
-                                    </TableCell>
+                    <TableContainer component={Paper} sx={{ boxShadow: '0 4px 20px rgba(0,0,0,0.05)', borderRadius: 3 }}>
+                        <Table size="medium">
+                            <TableHead sx={{ bgcolor: '#f8f9fa' }}>
+                                <TableRow>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Vencimento</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Vínculo / Cliente</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Descrição</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Valor</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>Ações</TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-                <TablePagination
-                    rowsPerPageOptions={[5, 10, 25, 50]}
-                    component="div"
-                    count={totalItems}
-                    rowsPerPage={rowsPerPage}
-                    page={page}
-                    onPageChange={(_, newPage) => setPage(newPage)}
-                    onRowsPerPageChange={(e) => {
-                        setRowsPerPage(parseInt(e.target.value, 10));
-                        setPage(0);
-                    }}
-                    labelRowsPerPage="Itens por página:"
-                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-                />
-            </TableContainer>
+                            </TableHead>
+                            <TableBody>
+                                {loading && transacoes.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                                            <CircularProgress size={40} />
+                                        </TableCell>
+                                    </TableRow>
+                                ) : transacoes.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                                            <Typography color="text.secondary">Nenhum registro encontrado.</Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    transacoes.map((item) => (
+                                        <TableRow key={item._id} hover>
+                                            <TableCell>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <Typography variant="body2" fontWeight="600">
+                                                        {new Date(item.dataVencimento).toLocaleDateString('pt-BR')}
+                                                    </Typography>
+                                                    <IconButton size="small" onClick={() => handleVerDetalhes(item)} color="primary">
+                                                        <VisibilityIcon fontSize="inherit" />
+                                                    </IconButton>
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                    <Avatar sx={{
+                                                        width: 32, height: 32, fontSize: '1rem',
+                                                        bgcolor: item.tipo === 'RECEITA' ? 'success.light' : 'error.light',
+                                                        color: item.tipo === 'RECEITA' ? 'success.dark' : 'error.dark'
+                                                    }}>
+                                                        {item.tipo === 'RECEITA' ? <Person fontSize="small" /> : <HomeWork fontSize="small" />}
+                                                    </Avatar>
+                                                    <Box>
+                                                        <Typography variant="subtitle2" sx={{ lineHeight: 1.2 }}>
+                                                            <HighlightedText text={item.cliente?.nome || 'Lançamento Avulso'} highlight={debouncedSearchText} />
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {item.negociacaoCodigo ? `Cod: ${item.negociacaoCodigo}` : item.imovel?.codigo || '-'}
+                                                        </Typography>
+                                                    </Box>
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant="body2" noWrap sx={{ maxWidth: 180 }}>
+                                                    <HighlightedText text={item.descricao} highlight={debouncedSearchText} />
+                                                </Typography>
+                                                <Chip label={item.categoria} size="small" sx={{ height: 18, fontSize: '0.65rem', mt: 0.5 }} />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant="body2" fontWeight="bold" color={item.tipo === 'RECEITA' ? 'success.main' : 'error.main'}>
+                                                    {item.tipo === 'RECEITA' ? '+ ' : '- '}
+                                                    {formatCurrency(item.valor)}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <Chip
+                                                    label={item.status}
+                                                    size="small"
+                                                    color={getStatusColor(item.status)}
+                                                    sx={{ fontWeight: 'bold', fontSize: '0.7rem', minWidth: 80 }}
+                                                />
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                                                    {item.status === 'PENDENTE' && (
+                                                        <Tooltip title="Baixar Título">
+                                                            <IconButton color="success" onClick={() => handleDarBaixa(item._id)} size="small">
+                                                                <CheckCircle fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
+                                                    <IconButton
+                                                        onClick={() => handleDownload(item._id)}
+                                                        disabled={baixando === item._id}
+                                                        size="small"
+                                                    >
+                                                        {baixando === item._id ? <CircularProgress size={18} /> : <Download fontSize="small" />}
+                                                    </IconButton>
+                                                </Box>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                        <TablePagination
+                            component="div"
+                            count={totalItems}
+                            page={page}
+                            rowsPerPage={rowsPerPage}
+                            onPageChange={(_, newPage) => setPage(newPage)}
+                            onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                            labelRowsPerPage="Linhas:"
+                        />
+                    </TableContainer>
+                </Box>
+
+                {/* COLUNA LATERAL: CARDS DE RESUMO */}
+                <Box sx={{
+                    flex: 3.5,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 3,
+                    position: { lg: 'sticky' },
+                    top: 24,
+                    height: 'fit-content'
+                }}>
+                    <Typography variant="h6" fontWeight="bold">Resumo Financeiro</Typography>
+
+                    <FinanceiroSummary
+                        receitas={resumo.totalRecebido}
+                        despesas={resumo.totalPago}
+                        pendentes={resumo.totalPendente}
+                        layout="vertical"
+                    />
+
+                    <Paper sx={{ p: 2, borderRadius: 2, bgcolor: 'primary.main', color: 'white' }}>
+                        <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
+                            Saldo em Caixa
+                        </Typography>
+                        <Typography variant="h5" fontWeight="bold">
+                            {formatCurrency(resumo.totalRecebido - resumo.totalPago)}
+                        </Typography>
+                    </Paper>
+                </Box>
+            </Box>
 
             <FinanceiroFormModal
                 open={modalOpen}
@@ -444,10 +404,7 @@ export const FinanceiroPage: React.FC = () => {
 
             <FinanceiroDetalhesModal
                 open={detalhesModalOpen}
-                onClose={() => {
-                    setDetalhesModalOpen(false);
-                    setTransacaoSelecionada(null);
-                }}
+                onClose={() => { setDetalhesModalOpen(false); setTransacaoSelecionada(null); }}
                 data={transacaoSelecionada}
             />
         </Box>
