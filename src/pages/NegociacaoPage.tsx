@@ -14,6 +14,7 @@ import api from '../services/api';
 import { Negociacao, getStatusLabel, StatusNegociacao } from '../types/negociacao';
 import { NegociacaoDetailsModal } from '../components/NegociacaoDetailsModal';
 import { NegociacaoFormModal } from '../components/NegociacaoFormModal';
+import { NegociacaoHistoryTooltip } from '../components/NegociacaoHistoryTooltip';
 
 const DEBOUNCE_DELAY = 300;
 
@@ -116,24 +117,28 @@ export const NegociacaoPage = () => {
         {
             field: 'codigo',
             headerName: 'Código',
-            width: 220, // Aumentado significativamente (de 170 para 220)
+            width: 220,
             renderCell: (params) => (
                 params.row.codigo && (
-                    <Chip
-                        icon={<ReceiptLongIcon sx={{ fontSize: '1.1rem !important' }} />}
-                        label={params.row.codigo}
-                        size="medium"
-                        color="primary"
-                        variant="filled"
-                        sx={{
-                            fontSize: '0.95rem',
-                            fontWeight: '800', // Extra bold para o código
-                            height: 34,
-                            borderRadius: '8px',
-                            px: 1.5,
-                            boxShadow: '0px 2px 4px rgba(0,0,0,0.1)'
-                        }}
-                    />
+                    /* Envolvendo com o novo componente */
+                    <NegociacaoHistoryTooltip historico={params.row.historico}>
+                        <Chip
+                            icon={<ReceiptLongIcon sx={{ fontSize: '1.1rem !important' }} />}
+                            label={params.row.codigo}
+                            size="medium"
+                            color="primary"
+                            variant="filled"
+                            sx={{
+                                fontSize: '0.95rem',
+                                fontWeight: '800',
+                                height: 34,
+                                borderRadius: '8px',
+                                px: 1.5,
+                                boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
+                                cursor: 'help' // Adicionado para indicar que há algo ao passar o mouse
+                            }}
+                        />
+                    </NegociacaoHistoryTooltip>
                 )
             )
         },

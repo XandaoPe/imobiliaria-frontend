@@ -104,12 +104,10 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
         if (status === 'FECHADO') setModalFechamentoOpen(true);
     };
 
-    // Função central de estorno com a opção de criar nova prospecção
     const executarEstorno = async (gerarNovaProspeccao: boolean) => {
         setLoadingEstorno(true);
         setModalDecisaoEstornoOpen(false);
         try {
-            // O segundo parâmetro do api.post é o BODY (corpo da requisição)
             await api.post(`/negociacoes/${negociacao._id}/refazer`, {
                 gerarNovaProspeccao: gerarNovaProspeccao
             });
@@ -118,11 +116,9 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
             onClose();
 
             if (gerarNovaProspeccao) {
-                // Se criou uma nova, vamos para a listagem para ver a nova prospecção
                 navigate(`/negociacoes`);
                 alert("Negociação estornada e nova prospecção criada!");
             } else {
-                // Se apenas cancelou, atualiza a tela localmente
                 alert("Estorno realizado! O financeiro foi cancelado e o imóvel liberado.");
             }
 
@@ -151,9 +147,16 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
             if (novoStatus === 'VISITA') {
                 dataAgendamentoCompleta = `${dataVisita}T${horaVisita}:00-03:00`;
             }
+
+            // LÓGICA ALTERADA: Concatenar Status e Descrição
+            const statusLabel = novoStatus ? getStatusLabel(novoStatus) : getStatusLabel(negociacao.status);
+            const descricaoFinal = novaDescricao
+                ? `[${statusLabel}] ${novaDescricao}`
+                : statusLabel;
+
             await api.patch(`/negociacoes/${negociacao._id}`, {
                 status: novoStatus || undefined,
-                descricao: novaDescricao || undefined,
+                descricao: descricaoFinal,
                 dataAgendamento: dataAgendamentoCompleta
             });
             onUpdate();
@@ -170,9 +173,15 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
         setLoading(true);
         setErrorMsg(null);
         try {
+            // LÓGICA ALTERADA: Garantir que o status FECHADO apareça na descrição
+            const statusLabel = getStatusLabel('FECHADO');
+            const descricaoFinal = novaDescricao
+                ? `[${statusLabel}] ${novaDescricao}`
+                : `${statusLabel}: Negociação concluída com sucesso.`;
+
             await api.patch(`/negociacoes/${negociacao._id}`, {
                 status: 'FECHADO',
-                descricao: novaDescricao || 'Negociação concluída com sucesso.',
+                descricao: descricaoFinal,
                 dadosFinanceiros: dadosFinanceiros
             });
             setModalFechamentoOpen(false);
@@ -192,7 +201,6 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
                         <Typography variant="h6" fontWeight="bold">Detalhes da Negociação</Typography>
-                        {/* ADICIONADO: Código Sequencial ao lado do título */}
                         {negociacao.codigo && (
                             <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 400 }}>
                                 #{negociacao.codigo}
@@ -349,7 +357,9 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                                 </Box>
                             </Box>
                             <Button
-                                variant="contained" onClick={handleAddHistorico} size="small"
+                                variant="contained"
+                                onClick={handleAddHistorico}
+                                size="small"
                                 disabled={loading || (novoStatus === 'VISITA' && !horaVisita)}
                                 sx={{ alignSelf: 'flex-end', px: 3 }}
                             >
@@ -374,7 +384,6 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                 onConfirm={confirmarFechamentoFinal}
             />
 
-            {/* MODAL DE DECISÃO DE ESTORNO */}
             <Dialog
                 open={modalDecisaoEstornoOpen}
                 onClose={() => setModalDecisaoEstornoOpen(false)}
