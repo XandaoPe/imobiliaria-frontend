@@ -23,6 +23,7 @@ import { Imovel, ImovelFormData } from '../types/imovel';
 import { ImovelFormModal } from '../components/ImovelFormModal';
 import api, { API_URL } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { ImovelImageTooltip } from '../components/ImovelImageTooltip';
 
 
 // Componente para Destaque de Texto (HighlightedText)
@@ -232,23 +233,29 @@ export const ImoveisPage = () => {
             headerName: 'Título',
             width: 250,
             renderCell: (params: GridRenderCellParams<Imovel>) => (
-                <Typography
-                    component="span"
-                    variant="body2"
-                    onClick={() => handleOpenEdit(params.row)}
-                    sx={{
-                        cursor: 'pointer',
-                        color: 'primary.main',
-                        '&:hover': {
-                            textDecoration: 'underline'
-                        }
-                    }}
+                <ImovelImageTooltip
+                    images={params.row.fotos} // Certifique-se que o campo no seu tipo Imovel chama-se 'imagens'
+                    titulo={params.row.titulo}
                 >
-                    <HighlightedText
-                        text={params.row.titulo}
-                        highlight={debouncedSearchText}
-                    />
-                </Typography>
+                    <Typography
+                        component="span"
+                        variant="body2"
+                        onClick={() => handleOpenEdit(params.row)}
+                        sx={{
+                            cursor: 'pointer',
+                            color: 'primary.main',
+                            fontWeight: '500', // Um pouco de destaque para o título
+                            '&:hover': {
+                                textDecoration: 'underline'
+                            }
+                        }}
+                    >
+                        <HighlightedText
+                            text={params.row.titulo}
+                            highlight={debouncedSearchText}
+                        />
+                    </Typography>
+                </ImovelImageTooltip>
             ),
         },
         {
