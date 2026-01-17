@@ -79,16 +79,31 @@ export const FinanceiroDetalhesModal: React.FC<FinanceiroDetalhesModalProps> = (
                         </InfoSection>
 
                         <InfoSection title="Dados do Imóvel" icon={<HomeWork fontSize="small" />}>
-                            {data.imovel ? (
+                            {/* Verificamos se imovel é um objeto e tem propriedades */}
+                            {data.imovel && typeof data.imovel === 'object' ? (
                                 <Box>
-                                    <LabelValue label="Ref. Imóvel" value={data.imovel.codigo} bold />
-                                    <LabelValue label="Endereço" value={data.imovel.endereco} />
-                                    <LabelValue label="Cidade" value={data.imovel.cidade} />
+                                    <LabelValue
+                                        label="Ref. Imóvel"
+                                        value={data.imovel.titulo || 'Sem título'}
+                                        bold
+                                    />
+                                    <LabelValue
+                                        label="Endereço"
+                                        value={data.imovel.endereco || 'Endereço não informado'}
+                                    />
+                                    <LabelValue
+                                        label="Cidade"
+                                        value={data.imovel.cidade || '---'}
+                                    />
                                 </Box>
                             ) : (
-                                <Typography variant="caption" color="text.disabled">Imóvel não vinculado ou removido.</Typography>
+                                /* Caso o backend envie apenas o ID ou nada */
+                                <Typography variant="caption" color="error">
+                                    {data.imovel ? `ID do Imóvel: ${data.imovel}` : 'Imóvel não vinculado.'}
+                                </Typography>
                             )}
                         </InfoSection>
+
                     </Box>
 
                     {/* COLUNA 2: VALORES E PESSOAS */}
@@ -126,7 +141,12 @@ export const FinanceiroDetalhesModal: React.FC<FinanceiroDetalhesModalProps> = (
                         </InfoSection>
 
                         <InfoSection title="Cliente / Envolvido" icon={<Person fontSize="small" />}>
-                            <LabelValue label="Nome" value={data.cliente?.nome || 'Lançamento Avulso'} bold />
+                            <LabelValue label="Nome" 
+                            value={data.cliente?.nome || 'Lançamento Avulso'} bold 
+                            />
+                            <LabelValue label="Telefone" 
+                            value={data.cliente?.telefone || 'Não informado'} bold 
+                            />
                             <LabelValue
                                 label="Tipo de Lançamento"
                                 value={data.tipo}

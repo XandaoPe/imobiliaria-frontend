@@ -9,8 +9,8 @@ export interface Transacao {
     tipo: 'RECEITA' | 'DESPESA';
     status: 'PENDENTE' | 'PAGO' | 'ATRASADO' | 'CANCELADO';
     categoria: 'ALUGUEL' | 'REPASSE' | 'COMISSAO' | 'OPERACIONAL' | 'OUTROS';
-    cliente?: string; // ID do Cliente
-    imovel?: string;  // ID do Imóvel
+    cliente?: { _id: string; nome: string }; // Objeto populado
+    imovel?: { _id: string; codigo: string; endereco?: string; cidade?: string }; // Objeto populado
 }
 
 export const financeiroValidationSchema = yup.object().shape({
