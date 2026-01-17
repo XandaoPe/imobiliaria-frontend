@@ -10,7 +10,13 @@ export interface Transacao {
     status: 'PENDENTE' | 'PAGO' | 'ATRASADO' | 'CANCELADO';
     categoria: 'ALUGUEL' | 'REPASSE' | 'COMISSAO' | 'OPERACIONAL' | 'OUTROS';
     cliente?: { _id: string; nome: string }; // Objeto populado
-    imovel?: { _id: string; codigo: string; endereco?: string; cidade?: string }; // Objeto populado
+    imovel?: {
+        _id: string;
+        codigo: string;
+        titulo?: string;
+        endereco?: string;
+        cidade?: string;
+    };
 }
 
 export const financeiroValidationSchema = yup.object().shape({

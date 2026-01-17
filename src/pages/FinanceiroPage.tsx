@@ -16,6 +16,7 @@ import { FinanceiroSummary } from '../components/financeiro/FinanceiroSummary';
 import { FinanceiroFormModal } from '../components/financeiro/FinanceiroFormModal';
 import { FinanceiroDetalhesModal } from '../components/financeiro/FinanceiroDetalhesModal';
 import { financeiroService } from '../services/financeiroService';
+import { FinanceiroPreviewTooltip } from '../components/FinanceiroPreviewTooltip';
 
 const DEBOUNCE_DELAY = 400;
 
@@ -32,7 +33,7 @@ interface Transacao {
     parcelaNumero?: number;
     negociacaoCodigo?: string;
     cliente?: { nome: string };
-    imovel?: { codigo: string };
+    imovel?: { codigo: string, titulo?: string };
 }
 
 interface HighlightedTextProps {
@@ -100,6 +101,19 @@ export const FinanceiroPage: React.FC = () => {
     const [totalItems, setTotalItems] = useState(0);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
+    // Estados para o Tooltip de Preview
+    const [anchorElPreview, setAnchorElPreview] = useState<HTMLElement | null>(null);
+    const [previewData, setPreviewData] = useState<Transacao | null>(null);
+
+    const handlePopoverOpen = (event: React.MouseEvent<HTMLElement>, item: Transacao) => {
+        setAnchorElPreview(event.currentTarget);
+        setPreviewData(item);
+    };
+
+    const handlePopoverClose = () => {
+        setAnchorElPreview(null);
+        setPreviewData(null);
+    };
 
     const formatCurrency = (val: number) =>
         new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -328,16 +342,24 @@ export const FinanceiroPage: React.FC = () => {
                                 ) : (
                                     transacoes.map((item) => (
                                         <TableRow key={item._id} hover>
+
                                             <TableCell>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                     <Typography variant="body2" fontWeight="600">
                                                         {new Date(item.dataVencimento).toLocaleDateString('pt-BR')}
                                                     </Typography>
-                                                    <IconButton size="small" onClick={() => handleVerDetalhes(item)} color="primary">
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleVerDetalhes(item)}
+                                                        onMouseEnter={(e) => handlePopoverOpen(e, item)} // ATIVA O PREVIEW
+                                                        onMouseLeave={handlePopoverClose}              // FECHA O PREVIEW
+                                                        color="primary"
+                                                    >
                                                         <VisibilityIcon fontSize="inherit" />
                                                     </IconButton>
                                                 </Box>
                                             </TableCell>
+                                            
                                             <TableCell>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                                     <Avatar sx={{
@@ -351,18 +373,49 @@ export const FinanceiroPage: React.FC = () => {
                                                         <Typography variant="subtitle2" sx={{ lineHeight: 1.2 }}>
                                                             <HighlightedText text={item.cliente?.nome || 'Lançamento Avulso'} highlight={debouncedSearchText} />
                                                         </Typography>
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            {item.negociacaoCodigo ? `Cod: ${item.negociacaoCodigo}` : item.imovel?.codigo || '-'}
+                                                        {/* LINHA ABAIXO DO CÓDIGO CORRIGIDA */}
+                                                        <Typography variant="caption" color="text.secondary" display="block">
+                                                            {item.negociacaoCodigo
+                                                                ? `Contrato: ${item.negociacaoCodigo}`
+                                                                : (item.imovel?.codigo || item.imovel?.titulo || 'Sem vínculo')}
                                                         </Typography>
                                                     </Box>
                                                 </Box>
                                             </TableCell>
+
                                             <TableCell>
-                                                <Typography variant="body2" noWrap sx={{ maxWidth: 180 }}>
-                                                    <HighlightedText text={item.descricao} highlight={debouncedSearchText} />
-                                                </Typography>
-                                                <Chip label={item.categoria} size="small" sx={{ height: 18, fontSize: '0.65rem', mt: 0.5 }} />
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.2 }}>
+
+                                                    {/* 1ª Linha: Código (Prioriza Contrato, depois Imóvel) */}
+                                                    <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', lineHeight: 1 }}>
+                                                        {item.negociacaoCodigo
+                                                            ? `CONTRATO: ${item.negociacaoCodigo}`
+                                                            : (item.imovel?.codigo || item.imovel?.titulo || 'AVULSO')}
+                                                    </Typography>
+
+                                                    {/* 2ª Linha: Nº da Parcela / Repasse */}
+                                                    <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 600, lineHeight: 1 }}>
+                                                        {item.parcelaNumero
+                                                            ? `${item.parcelaNumero}ª Parcela / Repasse`
+                                                            : 'Lançamento Único'}
+                                                    </Typography>
+
+                                                    {/* 3ª Linha: Venda/Repasse (Descrição do sistema) */}
+                                                    <Typography variant="body2" sx={{ lineHeight: 1.2, mt: 0.3 }}>
+                                                        <HighlightedText text={item.descricao} highlight={debouncedSearchText} />
+                                                    </Typography>
+
+                                                    {/* Categoria (Chip menor abaixo de tudo) */}
+                                                    <Box sx={{ mt: 0.5 }}>
+                                                        <Chip
+                                                            label={item.categoria}
+                                                            size="small"
+                                                            sx={{ height: 16, fontSize: '0.6rem', textTransform: 'uppercase' }}
+                                                        />
+                                                    </Box>
+                                                </Box>
                                             </TableCell>
+
                                             <TableCell>
                                                 <Typography variant="body2" fontWeight="bold" color={item.tipo === 'RECEITA' ? 'success.main' : 'error.main'}>
                                                     {item.tipo === 'RECEITA' ? '+ ' : '- '}
@@ -456,6 +509,13 @@ export const FinanceiroPage: React.FC = () => {
                 open={detalhesModalOpen}
                 onClose={() => { setDetalhesModalOpen(false); setTransacaoSelecionada(null); }}
                 data={transacaoSelecionada}
+            />
+
+            {/* No final do return, junto aos outros modais */}
+            <FinanceiroPreviewTooltip
+                anchorEl={anchorElPreview}
+                handleClose={handlePopoverClose}
+                data={previewData}
             />
         </Box>
     );
