@@ -13,6 +13,7 @@ import AddCommentIcon from '@mui/icons-material/AddComment';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import BlockIcon from '@mui/icons-material/Block';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import PersonIcon from '@mui/icons-material/Person';
 import api from '../services/api';
 import { Negociacao, StatusNegociacao, getStatusLabel } from '../types/negociacao';
 import { NegociacaoFechamentoModal } from './NegociacaoFechamentoModal';
@@ -148,7 +149,6 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                 dataAgendamentoCompleta = `${dataVisita}T${horaVisita}:00-03:00`;
             }
 
-            // LÓGICA ALTERADA: Concatenar Status e Descrição
             const statusLabel = novoStatus ? getStatusLabel(novoStatus) : getStatusLabel(negociacao.status);
             const descricaoFinal = novaDescricao
                 ? `[${statusLabel}] ${novaDescricao}`
@@ -173,7 +173,6 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
         setLoading(true);
         setErrorMsg(null);
         try {
-            // LÓGICA ALTERADA: Garantir que o status FECHADO apareça na descrição
             const statusLabel = getStatusLabel('FECHADO');
             const descricaoFinal = novaDescricao
                 ? `[${statusLabel}] ${novaDescricao}`
@@ -229,12 +228,23 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
 
                     <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <Box>
+                            <Box sx={{ flex: 1 }}>
                                 <Typography variant="overline" color="secondary" fontWeight="bold">Dados do Imóvel</Typography>
                                 <Typography variant="h6" sx={{ fontSize: '1rem', lineHeight: 1.2, mt: 0.5 }}>{negociacao.imovel?.titulo}</Typography>
                                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>📍 {negociacao.imovel?.endereco}</Typography>
+
+                                {/* EXIBIÇÃO DO PROPRIETÁRIO COM ÍCONE PARA DESTAQUE */}
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1.5 }}>
+                                    <PersonIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1 }}>PROPRIETÁRIO</Typography>
+                                        <Typography variant="body2" fontWeight="600">
+                                            {negociacao.imovel?.proprietario?.nome || 'Não identificado'}
+                                        </Typography>
+                                    </Box>
+                                </Box>
                             </Box>
-                            <Box sx={{ textAlign: 'right' }}>
+                            <Box sx={{ textAlign: 'right', ml: 2 }}>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>FASE ATUAL</Typography>
                                 <Chip
                                     label={getStatusLabel(negociacao.status)}
@@ -377,6 +387,7 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
             <NegociacaoFechamentoModal
                 open={modalFechamentoOpen}
                 valorSugerido={negociacao.imovel?.preco || 0}
+                tipoNegocio={negociacao.tipoNegocio || 'VENDA'}
                 onClose={() => {
                     setModalFechamentoOpen(false);
                     setNovoStatus('');

@@ -22,6 +22,7 @@ import { NotificationBadge } from './components/NotificationBadge';
 import { NegociacaoPage } from './pages/NegociacaoPage';
 import { FinanceiroPage } from './pages/FinanceiroPage';
 import { ValidarReciboPage } from './pages/ValidarReciboPage';
+import { ParametrosPage } from './pages/Configuracoes/ParametrosPage';
 
 /**
  * Componente de Rota Protegida
@@ -102,6 +103,7 @@ const App = () => {
               <Route path="/financeiro" element={<FinanceiroPage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
               <Route path="/leads" element={<LeadsPage />} />
+              <Route path="/configuracoes/parametros" element={<ParametrosPage />} />
             </Route>
 
             {/* --- FALLBACK --- */}

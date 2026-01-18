@@ -17,8 +17,9 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
 import HandshakeIcon from '@mui/icons-material/Handshake';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'; // ⭐️ NOVO
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney'; // ⭐️ NOVO ÍCONE
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'; 
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney'; 
+import SettingsIcon from '@mui/icons-material/Settings';
 
 import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
@@ -163,6 +164,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         { text: 'Empresas', icon: <LocationCityIcon />, path: '/empresas', requiredRoles: ADMIN_GERAL_ROLE },
         { text: 'Financeiro', icon: <AttachMoneyIcon />, path: '/financeiro', requiredRoles: USER_ADMIN_ROLES },
         { text: 'Usuários', icon: <AdminPanelSettingsIcon />, path: '/usuarios', requiredRoles: USER_ADMIN_ROLES },
+        { text: 'Configurações', icon: <SettingsIcon />, path: '/configuracoes/parametros', requiredRoles: USER_ADMIN_ROLES }
     ];
 
     const drawer = (

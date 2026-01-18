@@ -84,8 +84,6 @@ export const FinanceiroFormModal = ({ open, onClose, onSuccess }: any) => {
             const payload = {
                 ...data,
                 valor: Number(data.valor),
-                // Se estiver vazio, enviamos undefined para o Mongoose ignorar ou tratar como ausente
-                // Evita erros de "Cast to ObjectId failed"
                 imovel: data.imovel || undefined,
                 cliente: data.cliente || undefined
             };

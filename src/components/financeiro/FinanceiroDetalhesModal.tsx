@@ -17,6 +17,8 @@ interface FinanceiroDetalhesModalProps {
 export const FinanceiroDetalhesModal: React.FC<FinanceiroDetalhesModalProps> = ({ open, onClose, data }) => {
     if (!data) return null;
 
+    console.log('Dados do Lançamento Financeiro:', data);
+
     // Componente interno para Seções
     const InfoSection = ({ title, icon, children }: any) => (
         <Box sx={{ mb: 3, width: '100%' }}>
@@ -94,6 +96,10 @@ export const FinanceiroDetalhesModal: React.FC<FinanceiroDetalhesModalProps> = (
                                     <LabelValue
                                         label="Cidade"
                                         value={data.imovel.cidade || '---'}
+                                    />
+                                    <LabelValue
+                                        label="Proprietário"
+                                        value={data.imovel.proprietario?.nome || '---'}
                                     />
                                 </Box>
                             ) : (

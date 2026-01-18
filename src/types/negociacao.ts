@@ -35,13 +35,17 @@ export interface Negociacao {
         endereco: string;
         cidade: string;
         preco?: number;
-        proprietario?: any;
+        proprietario?: {
+            _id: string;
+            nome: string;
+        };
     };
     tipo: 'VENDA' | 'ALUGUEL';
     status: StatusNegociacao;
     valor_acordado: number;
     valor_negociado?: number;
     historico: HistoricoNegociacao[];
+    tipoNegocio: 'VENDA' | 'ALUGUEL';
     createdAt: string;
     updatedAt: string;
 }

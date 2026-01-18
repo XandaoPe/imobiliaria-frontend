@@ -61,6 +61,9 @@ export const FinanceiroPreviewTooltip: React.FC<PreviewProps> = ({ anchorEl, han
                 <Stack spacing={0.5} mb={2}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Person fontSize="small" color="primary" />
+                        <Typography variant="subtitle2">
+                            Cliente:
+                        </Typography>
                         <Typography variant="subtitle2" fontWeight="bold">
                             {data.cliente?.nome || 'Lançamento Avulso'}
                         </Typography>
@@ -91,6 +94,21 @@ export const FinanceiroPreviewTooltip: React.FC<PreviewProps> = ({ anchorEl, han
                                 {data.imovel.cidade && `, ${data.imovel.cidade}`}
                             </Typography>
                         </Box>
+                    )}
+                    {data.imovel?.proprietario?.nome && (
+                        <>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 3 }}>
+                            <Person fontSize="small"/>
+                            <Typography variant="subtitle2">
+                                Proprietário:
+                            </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 3 }}>
+                            <Typography variant="subtitle2" fontWeight="bold">
+                                {data.imovel?.proprietario?.nome}
+                            </Typography>
+                        </Box>
+                        </>
                     )}
                 </Stack>
 
