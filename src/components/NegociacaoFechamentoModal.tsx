@@ -51,19 +51,22 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
     );
 
     // 1. Busca de Taxa e Reset de Campos ao abrir ou mudar o Tipo
+    // CORREÇÃO: Dividido para garantir que a troca de 'tipo' sempre busque a taxa correta
     useEffect(() => {
         const buscarTaxa = async () => {
             if (open) {
                 setLoadingTaxa(true);
                 try {
                     const configs = await configuracaoService.getConfigs();
+                    // Garante que a chave mude dinamicamente conforme o Select
                     const chaveBusca = tipo === 'ALUGUEL' ? 'TAXA_ADM_ALUGUEL' : 'TAXA_VENDA';
                     const config = configs.find(c => c.chave === chaveBusca);
 
                     if (config) {
-                        const valorDb = config.valor;
-                        // Preenche os campos individualmente apenas no carregamento inicial
+                        const valorDb = Number(config.valor);
                         setPorcentagemTaxa(valorDb);
+                    } else {
+                        setPorcentagemTaxa(0);
                     }
                 } catch (err) {
                     console.error("Erro ao buscar taxas", err);
@@ -75,6 +78,11 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
 
         buscarTaxa();
 
+        // Reset inicial apenas quando o modal abre (não reseta tudo ao mudar tipo para não perder o valor digitado)
+    }, [open, tipo]); // Monitora 'tipo' para atualizar a taxa instantaneamente
+
+    // Reset de campos específicos ao abrir o modal pela primeira vez
+    useEffect(() => {
         if (open) {
             setValorTotal(valorSugerido || 0);
             setEntrada(0);
@@ -82,7 +90,6 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
             setValorAumentoFixo(0);
             setDiaVencimento(new Date().getDate());
 
-            // Auto-focus no primeiro campo
             setTimeout(() => {
                 if (firstInputRef.current) {
                     const input = firstInputRef.current.querySelector('input');
@@ -93,7 +100,7 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
                 }
             }, 150);
         }
-    }, [open, valorSugerido, tipo]);
+    }, [open, valorSugerido]);
 
     // 2. Cálculo automático das parcelas (Usa porcentagemAumento, ignora porcentagemTaxa)
     useEffect(() => {
@@ -103,6 +110,7 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
         const qtd = parcelas > 0 ? parcelas : 1;
 
         const valorBase = liquido / qtd;
+        // O cliente paga apenas o valor base + o aumento combinado
         const comPorcentagem = valorBase * (1 + (porcentagemAumento / 100));
         const valorFinal = comPorcentagem + valorAumentoFixo;
 
@@ -112,16 +120,29 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
     const handleConfirmar = () => {
         if (!valorTotal || valorTotal <= 0) return;
 
+        const vTotal = Number(valorTotal);
+        const vEntrada = Number(entrada || 0);
+        const liquidoParaBase = vTotal - vEntrada;
+
+        // Cálculo da Taxa da Empresa (Retenção interna para repasse)
+        const valorTaxaEmpresa = liquidoParaBase * (Number(porcentagemTaxa) / 100);
+
+        // Valor que sobra para repassar (Ex: Dono do imóvel/Parceiro)
+        const valorLiquidoRepasse = liquidoParaBase - valorTaxaEmpresa;
+
         const dadosParaEnviar = {
-            valorTotal: Number(valorTotal),
-            valorEntrada: Number(entrada || 0),
+            valorTotal: vTotal,
+            valorEntrada: vEntrada,
             qtdParcelas: Number(parcelas),
             valorParcela: Number(valorParcela || 0),
             diaVencimento: Number(diaVencimento),
-            ajustePorcentagem: porcentagemAumento,
-            ajusteFixo: valorAumentoFixo,
+            ajustePorcentagem: Number(porcentagemAumento),
+            ajusteFixo: Number(valorAumentoFixo),
             tipoNegocio: tipo,
-            taxaReferencia: porcentagemTaxa // Enviado separadamente se necessário
+            // Campos de Repasse/Internos - Gravando corretamente no banco
+            porcentagemTaxaEmpresa: Number(porcentagemTaxa),
+            valorRetencaoEmpresa: valorTaxaEmpresa,
+            valorBaseParaRepasse: valorLiquidoRepasse
         };
 
         onConfirm(dadosParaEnviar);

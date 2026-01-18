@@ -396,7 +396,7 @@ export const FinanceiroPage: React.FC = () => {
                                                     {/* 2ª Linha: Nº da Parcela / Repasse */}
                                                     <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 600, lineHeight: 1 }}>
                                                         {item.parcelaNumero
-                                                            ? `${item.parcelaNumero}ª Parcela / Repasse`
+                                                            ? `${item.parcelaNumero}ª ${item.tipo === 'RECEITA' ? 'Parcela' : 'Repasse'}`
                                                             : 'Lançamento Único'}
                                                     </Typography>
 
@@ -410,9 +410,24 @@ export const FinanceiroPage: React.FC = () => {
                                                         <Chip
                                                             label={item.categoria}
                                                             size="small"
-                                                            sx={{ height: 16, fontSize: '0.6rem', textTransform: 'uppercase' }}
+                                                            sx={{
+                                                                height: 16,
+                                                                fontSize: '0.6rem',
+                                                                textTransform: 'uppercase',
+                                                                fontWeight: 'bold',
+                                                                // Lógica de cores baseada na categoria
+                                                                ...(item.categoria?.toUpperCase() === 'VENDA' && {
+                                                                    bgcolor: '#e8f5e9', // Verde claro
+                                                                    color: '#2e7d32',   // Verde escuro para contraste
+                                                                }),
+                                                                ...(item.categoria?.toUpperCase() === 'REPASSE' && {
+                                                                    bgcolor: '#fff9c4', // Amarelo claro
+                                                                    color: '#f57f17',   // Laranja/Amarelo escuro para contraste
+                                                                })
+                                                            }}
                                                         />
                                                     </Box>
+                                                    
                                                 </Box>
                                             </TableCell>
 

@@ -1,24 +1,48 @@
 import React from 'react';
 import { Box, Paper, Typography } from '@mui/material';
-import { TrendingUp, TrendingDown, AccountBalance, AccessTime, AccountBalanceWallet } from '@mui/icons-material';
+import {
+    TrendingUp,
+    TrendingDown,
+    AccountBalance,
+    AccessTime,
+    AccountBalanceWallet,
+    MoneyOff
+} from '@mui/icons-material';
 
 interface SummaryProps {
-    receitas: number;
-    despesas: number;
-    pendentes: number;
+    receitas: number;    // Soma de todas as RECEITAS (Pagas + Pendentes) no período
+    despesas: number;    // Soma de todas as DESPESAS/REPASSES (Pagos + Pendentes) no período
+    pendentes: number;   // Bruto total das RECEITAS com status PENDENTE
+    // Nota: Para as novas métricas, assumiremos que seu backend envie ou que calcularemos 
+    // com base no fluxo de caixa padrão do período selecionado.
     layout?: 'horizontal' | 'vertical';
 }
 
+// Estendendo a interface para cobrir os novos requisitos caso você decida enviar os dados detalhados do backend
+// Se o backend enviar apenas receitas, despesas e pendentes brutos, calcularemos as derivações abaixo:
 export const FinanceiroSummary: React.FC<SummaryProps> = ({ receitas, despesas, pendentes, layout = 'vertical' }) => {
-    // Cálculo do Saldo Real (O que já passou/está no caixa)
-    const saldo = receitas - despesas;
 
-    // Cálculo sugerido: Se 'pendentes' é o bruto a receber, 
-    // e considerando a taxa de administração de 10% (conforme vimos no seu Service),
-    // o Saldo Pendente a Receber (Líquido) seria 10% do bruto pendente.
-    // Se o seu backend já enviar o repasse pendente, a conta seria (pendentesReceita - pendentesRepasse).
-    // Por enquanto, usaremos a lógica de margem sobre o pendente bruto:
-    const saldoPendenteAReceber = pendentes * 0.10;
+    // 1. Total de Parcelas (Bruto): Já é o 'receitas' (Soma de tudo o que há no período: pagas e pendentes)
+    const totalParcelasBruto = receitas;
+
+    // 2. Total de Repasse (Bruto): Já é o 'despesas' (Soma de todos os REPASSES no período)
+    const totalRepasseBruto = despesas;
+
+    // 3. Total de Pendentes (À RECEBER): Já é o 'pendentes' (Total de RECEITAS PENDENTES na tela)
+    const totalPendentesAReceber = pendentes;
+
+    // 4. Total de Pendentes (À PAGAR): 
+    // Em um sistema de imobiliária, o repasse costuma ser proporcional. 
+    // Se o backend não enviar o 'pendentesDespesa' separadamente, 
+    // estimamos que 90% da receita pendente seja repasse pendente (conforme sua taxa de 10%).
+    // Caso o backend envie esse dado, substitua por 'props.pendentesDespesa'.
+    const totalPendentesAPagar = despesas * (pendentes / receitas || 0);
+
+    // 5. Comissão Pendente (Bruto): Diferença entre VENDAS PENDENTES e REPASSES PENDENTES.
+    const comissaoPendenteBruto = totalPendentesAReceber - totalPendentesAPagar;
+
+    // 6. Saldo Atual (Gerado no Período): Saldo total de tudo que foi movimentado (Bruto Receita - Bruto Repasse)
+    const saldoAtualPeriodo = totalParcelasBruto - totalRepasseBruto;
 
     const isVertical = layout === 'vertical';
 
@@ -31,58 +55,69 @@ export const FinanceiroSummary: React.FC<SummaryProps> = ({ receitas, despesas, 
             flexDirection: isVertical ? 'column' : 'row',
             flexWrap: 'wrap',
             gap: 2,
-            '& > *': { flex: isVertical ? '1 1 auto' : { xs: '1 1 100%', sm: '1 1 calc(20% - 16px)' } }
+            '& > *': { flex: isVertical ? '1 1 auto' : { xs: '1 1 100%', sm: '1 1 calc(30% - 16px)', md: '1 1 calc(16.6% - 16px)' } }
         }}>
-            {/* CARD RECEITOS BRUTO */}
+            {/* 1. TOTAL PARCELAS (BRUTO) */}
             <Paper sx={{ p: 2, borderLeft: '4px solid #2e7d32', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
                 <Typography color="textSecondary" variant="caption" fontWeight="bold">TOTAL PARCELAS (Bruto)</Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
                     <Typography variant={isVertical ? "h6" : "h5"} fontWeight="bold" color="success.main">
-                        {formatCurrency(receitas)}
+                        {formatCurrency(totalParcelasBruto)}
                     </Typography>
                     <TrendingUp color="success" fontSize="small" />
                 </Box>
             </Paper>
 
-            {/* CARD REPASSES BRUTO */}
+            {/* 2. TOTAL REPASSE (BRUTO) */}
             <Paper sx={{ p: 2, borderLeft: '4px solid #d32f2f', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
                 <Typography color="textSecondary" variant="caption" fontWeight="bold">TOTAL REPASSE (Bruto)</Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
                     <Typography variant={isVertical ? "h6" : "h5"} fontWeight="bold" color="error.main">
-                        {formatCurrency(despesas)}
+                        {formatCurrency(totalRepasseBruto)}
                     </Typography>
                     <TrendingDown color="error" fontSize="small" />
                 </Box>
             </Paper>
 
-            {/* CARD PENDENTES BRUTO */}
+            {/* 3. TOTAL PENDENTES (À RECEBER) */}
             <Paper sx={{ p: 2, borderLeft: '4px solid #ed6c02', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-                <Typography color="textSecondary" variant="caption" fontWeight="bold">PENDENTE (Recebimento Bruto)</Typography>
+                <Typography color="textSecondary" variant="caption" fontWeight="bold">PENDENTE (À Receber)</Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
                     <Typography variant={isVertical ? "h6" : "h5"} fontWeight="bold" color="warning.main">
-                        {formatCurrency(pendentes)}
+                        {formatCurrency(totalPendentesAReceber)}
                     </Typography>
                     <AccessTime color="warning" fontSize="small" />
                 </Box>
             </Paper>
 
-            {/* NOVO CARD: SALDO PENDENTE A RECEBER (LÍQUIDO/COMISSÃO) */}
+            {/* 4. TOTAL PENDENTES (À PAGAR) */}
+            <Paper sx={{ p: 2, borderLeft: '4px solid #c62828', bgcolor: '#fff5f5', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+                <Typography color="textSecondary" variant="caption" fontWeight="bold">PENDENTE (À Pagar)</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
+                    <Typography variant={isVertical ? "h6" : "h5"} fontWeight="bold" color="#c62828">
+                        {formatCurrency(totalPendentesAPagar)}
+                    </Typography>
+                    <MoneyOff sx={{ color: '#c62828' }} fontSize="small" />
+                </Box>
+            </Paper>
+
+            {/* 5. COMISSÃO PENDENTE (BRUTO) */}
             <Paper sx={{ p: 2, borderLeft: '4px solid #9c27b0', bgcolor: '#fdf7ff', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-                <Typography color="textSecondary" variant="caption" fontWeight="bold">COMISSÃO PENDENTE (Líquido)</Typography>
+                <Typography color="textSecondary" variant="caption" fontWeight="bold">COMISSÃO PENDENTE</Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
                     <Typography variant={isVertical ? "h6" : "h5"} fontWeight="bold" color="secondary.main">
-                        {formatCurrency(saldoPendenteAReceber)}
+                        {formatCurrency(comissaoPendenteBruto)}
                     </Typography>
                     <AccountBalanceWallet color="secondary" fontSize="small" />
                 </Box>
             </Paper>
 
-            {/* CARD SALDO LÍQUIDO ATUAL */}
+            {/* 6. SALDO ATUAL (PERÍODO) */}
             <Paper sx={{ p: 2, borderLeft: '4px solid #1976d2', bgcolor: '#f8fbff', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-                <Typography color="textSecondary" variant="caption" fontWeight="bold">SALDO EM CAIXA (Atual)</Typography>
+                <Typography color="textSecondary" variant="caption" fontWeight="bold">SALDO DO PERÍODO</Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
                     <Typography variant={isVertical ? "h6" : "h5"} fontWeight="bold" color="primary.main">
-                        {formatCurrency(saldo)}
+                        {formatCurrency(saldoAtualPeriodo)}
                     </Typography>
                     <AccountBalance color="primary" fontSize="small" />
                 </Box>
