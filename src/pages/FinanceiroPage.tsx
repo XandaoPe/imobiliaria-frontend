@@ -359,7 +359,7 @@ export const FinanceiroPage: React.FC = () => {
                                                     </IconButton>
                                                 </Box>
                                             </TableCell>
-                                            
+
                                             <TableCell>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                                     <Avatar sx={{
@@ -427,7 +427,7 @@ export const FinanceiroPage: React.FC = () => {
                                                             }}
                                                         />
                                                     </Box>
-                                                    
+
                                                 </Box>
                                             </TableCell>
 

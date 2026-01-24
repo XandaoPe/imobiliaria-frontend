@@ -100,7 +100,7 @@ export const DashboardPage: React.FC = () => {
                     <Typography variant="body2" color="text.secondary">Indicadores de desempenho da empresa</Typography>
                 </Box>
                 <Typography variant="subtitle2" sx={{ bgcolor: 'action.selected', px: 2, py: 0.5, borderRadius: 2 }}>
-                    {user?.nome}
+                    Usuário: {user?.nome}
                 </Typography>
             </Box>
 

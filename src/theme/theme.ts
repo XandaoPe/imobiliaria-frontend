@@ -11,8 +11,10 @@ export const appTheme = createTheme({
             main: '#dc004e', // Cor de destaque (ex: Delete, Alerta)
         },
         background: {
-            default: '#f4f6f8', // Fundo cinza claro para o Dashboard
-            paper: '#FFFFFF', // Cor de Cards e superfícies
+            // default: '#c6e0d0', // Fundo cinza claro para o Dashboard
+            default: '#d8e7e5', // Fundo cinza claro para o Dashboard
+            // paper: '#FFFFFF', // Cor de Cards e superfícies brancos
+            paper: '#eef7f2', // Cor de Cards e superfícies brancos
         },
     },
     typography: {
