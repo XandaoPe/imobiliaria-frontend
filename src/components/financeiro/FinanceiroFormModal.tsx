@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button,
-    Box, Stepper, Step, StepLabel, TextField, MenuItem, Typography, CircularProgress
+    Box, Stepper, Step, StepLabel, TextField, MenuItem, Typography, CircularProgress,
+    useTheme
 } from '@mui/material';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -28,6 +29,7 @@ const STATUS_OPCOES = [
 ];
 
 export const FinanceiroFormModal = ({ open, onClose, onSuccess }: any) => {
+    const theme = useTheme();
     const [activeStep, setActiveStep] = useState(0);
     const [loading, setLoading] = useState(false);
     const [fetchingData, setFetchingData] = useState(false);
@@ -102,7 +104,11 @@ export const FinanceiroFormModal = ({ open, onClose, onSuccess }: any) => {
 
     return (
         <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-            <DialogTitle sx={{ fontWeight: 'bold', bgcolor: '#f8f9fa' }}>
+            <DialogTitle sx={{
+                fontWeight: 'bold',
+                bgcolor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
+                color: theme.palette.mode === 'dark' ? 'primary.contrastText' : 'primary.contrastText'
+            }}>
                 Novo Lançamento Financeiro
             </DialogTitle>
 
@@ -201,9 +207,9 @@ export const FinanceiroFormModal = ({ open, onClose, onSuccess }: any) => {
                 ) : (
                     /* PASSO 2: VÍNCULOS */
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
-                        <Typography variant="body2" color="text.secondary">
-                            Vincule este lançamento a um imóvel e cliente para melhor controle.
-                        </Typography>
+                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                Vincule este lançamento a um imóvel e cliente para melhor controle.
+                            </Typography>
 
                         {fetchingData ? (
                             <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -258,8 +264,15 @@ export const FinanceiroFormModal = ({ open, onClose, onSuccess }: any) => {
                 )}
             </DialogContent>
 
-            <DialogActions sx={{ p: 3, bgcolor: '#f8f9fa' }}>
-                <Button onClick={handleClose} color="inherit">Cancelar</Button>
+            <DialogActions sx={{
+                p: 3,
+                bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
+                borderTop: `1px solid ${theme.palette.divider}`
+            }}>
+
+                <Button onClick={handleClose} sx={{ color: 'text.secondary' }}>
+                    Cancelar
+                </Button>
 
                 {activeStep === 0 ? (
                     <Button
@@ -271,7 +284,9 @@ export const FinanceiroFormModal = ({ open, onClose, onSuccess }: any) => {
                     </Button>
                 ) : (
                     <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button onClick={() => setActiveStep(0)}>Voltar</Button>
+                            <Button onClick={() => setActiveStep(0)} sx={{ color: 'text.secondary' }}>
+                                Voltar
+                            </Button>
                         <Button
                             variant="contained"
                             color="primary"

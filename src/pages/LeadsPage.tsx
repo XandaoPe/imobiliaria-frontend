@@ -4,7 +4,7 @@ import {
     TableHead, TableRow, Chip, IconButton, Tooltip, TextField,
     InputAdornment, CircularProgress, Button, Menu, MenuItem,
     Divider, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText,
-    Stack
+    Stack, useTheme
 } from '@mui/material';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -34,6 +34,7 @@ const playBeep = () => {
 };
 
 export const LeadsPage: React.FC = () => {
+    const theme = useTheme(); // Adicionado hook useTheme
     const { user } = useAuth();
     const [leads, setLeads] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -216,8 +217,8 @@ export const LeadsPage: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: 2 }}>
-            <Typography variant="h4" gutterBottom>Gestão de Leads</Typography>
+        <Box sx={{ p: 2, bgcolor: 'background.default', minHeight: '100vh' }}>
+            <Typography variant="h4" gutterBottom sx={{ color: 'text.primary', mb: 3 }}>Gestão de Leads</Typography>
 
             <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                 <TextField
@@ -225,6 +226,11 @@ export const LeadsPage: React.FC = () => {
                     placeholder="Buscar por nome ou telefone..."
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
+                    sx={{
+                        '& .MuiOutlinedInput-root': {
+                            bgcolor: 'background.paper',
+                        }
+                    }}
                     InputProps={{
                         startAdornment: (
                             <InputAdornment position="start">
@@ -238,42 +244,107 @@ export const LeadsPage: React.FC = () => {
                     variant="outlined"
                     startIcon={<FilterListIcon />}
                     onClick={(e) => setAnchorEl(e.currentTarget)}
-                    sx={{ minWidth: 200, height: 56 }}
+                    sx={{
+                        minWidth: 200,
+                        height: 56,
+                        borderColor: 'divider',
+                        color: 'text.primary'
+                    }}
                 >
                     {filterStatus === 'PENDENTES' ? 'Pendentes (Novos/Andamento)' :
                         filterStatus === 'TODOS' ? 'Todos os Status' : filterStatus}
                 </Button>
 
-                <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
-                    <MenuItem onClick={() => { setFilterStatus('PENDENTES'); setAnchorEl(null); }}>
+                <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={() => setAnchorEl(null)}
+                    PaperProps={{
+                        sx: {
+                            bgcolor: 'background.paper',
+                            border: `1px solid ${theme.palette.divider}`
+                        }
+                    }}
+                >
+                    <MenuItem
+                        onClick={() => { setFilterStatus('PENDENTES'); setAnchorEl(null); }}
+                        sx={{ color: 'text.primary' }}
+                    >
                         <b>Pendentes (Padrão)</b>
                     </MenuItem>
-                    <MenuItem onClick={() => { setFilterStatus('TODOS'); setAnchorEl(null); }}>Todos</MenuItem>
-                    <Divider />
-                    <MenuItem onClick={() => { setFilterStatus('NOVO'); setAnchorEl(null); }}>Apenas Novos</MenuItem>
-                    <MenuItem onClick={() => { setFilterStatus('EM_ANDAMENTO'); setAnchorEl(null); }}>Apenas Em Andamento</MenuItem>
-                    <MenuItem onClick={() => { setFilterStatus('CONCLUIDO'); setAnchorEl(null); }}>Apenas Concluídos</MenuItem>
+                    <MenuItem
+                        onClick={() => { setFilterStatus('TODOS'); setAnchorEl(null); }}
+                        sx={{ color: 'text.primary' }}
+                    >
+                        Todos
+                    </MenuItem>
+                    <Divider sx={{ borderColor: 'divider' }} />
+                    <MenuItem
+                        onClick={() => { setFilterStatus('NOVO'); setAnchorEl(null); }}
+                        sx={{ color: 'text.primary' }}
+                    >
+                        Apenas Novos
+                    </MenuItem>
+                    <MenuItem
+                        onClick={() => { setFilterStatus('EM_ANDAMENTO'); setAnchorEl(null); }}
+                        sx={{ color: 'text.primary' }}
+                    >
+                        Apenas Em Andamento
+                    </MenuItem>
+                    <MenuItem
+                        onClick={() => { setFilterStatus('CONCLUIDO'); setAnchorEl(null); }}
+                        sx={{ color: 'text.primary' }}
+                    >
+                        Apenas Concluídos
+                    </MenuItem>
                 </Menu>
             </Box>
 
-            <TableContainer component={Paper}>
+            <TableContainer
+                component={Paper}
+                sx={{
+                    bgcolor: 'background.paper',
+                    border: `1px solid ${theme.palette.divider}`
+                }}
+            >
                 <Table>
-                    <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+                    <TableHead sx={{ bgcolor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light' }}>
                         <TableRow>
-                            <TableCell>Data</TableCell>
-                            <TableCell>Cliente</TableCell>
-                            <TableCell>Imóvel</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell align="center">Ações</TableCell>
+                            <TableCell sx={{ color: theme.palette.mode === 'dark' ? 'primary.contrastText' : 'primary.contrastText', fontWeight: 'bold' }}>
+                                Data
+                            </TableCell>
+                            <TableCell sx={{ color: theme.palette.mode === 'dark' ? 'primary.contrastText' : 'primary.contrastText', fontWeight: 'bold' }}>
+                                Cliente
+                            </TableCell>
+                            <TableCell sx={{ color: theme.palette.mode === 'dark' ? 'primary.contrastText' : 'primary.contrastText', fontWeight: 'bold' }}>
+                                Imóvel
+                            </TableCell>
+                            <TableCell sx={{ color: theme.palette.mode === 'dark' ? 'primary.contrastText' : 'primary.contrastText', fontWeight: 'bold' }}>
+                                Status
+                            </TableCell>
+                            <TableCell align="center" sx={{ color: theme.palette.mode === 'dark' ? 'primary.contrastText' : 'primary.contrastText', fontWeight: 'bold' }}>
+                                Ações
+                            </TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {loading ? (
-                            <TableRow><TableCell colSpan={5} align="center"><CircularProgress sx={{ m: 2 }} /></TableCell></TableRow>
+                            <TableRow>
+                                <TableCell colSpan={5} align="center">
+                                    <CircularProgress sx={{ m: 2 }} />
+                                </TableCell>
+                            </TableRow>
                         ) : leads.map((lead) => (
-                            <TableRow key={lead._id}>
+                            <TableRow
+                                key={lead._id}
+                                sx={{
+                                    '&:hover': {
+                                        bgcolor: theme.palette.mode === 'dark' ? 'action.hover' : 'grey.50'
+                                    }
+                                }}
+                            >
                                 <TableCell>
-                                    <Typography variant="body2">
+                                    <Typography variant="body2" sx={{ color: 'text.primary' }}>
                                         {new Intl.DateTimeFormat('pt-BR', {
                                             day: '2-digit', month: '2-digit', year: 'numeric',
                                             hour: '2-digit', minute: '2-digit'
@@ -281,8 +352,12 @@ export const LeadsPage: React.FC = () => {
                                     </Typography>
                                 </TableCell>
                                 <TableCell>
-                                    <Typography variant="subtitle2">{lead.nome}</Typography>
-                                    <Typography variant="caption" color="text.secondary">{lead.contato}</Typography>
+                                    <Typography variant="subtitle2" sx={{ color: 'text.primary' }}>
+                                        {lead.nome}
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                        {lead.contato}
+                                    </Typography>
                                 </TableCell>
                                 <TableCell>
                                     {lead.imovel ? (
@@ -290,21 +365,43 @@ export const LeadsPage: React.FC = () => {
                                             <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
                                                 {lead.imovel.titulo}
                                             </Typography>
-                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
                                                 {lead.imovel.endereco}
                                                 {lead.imovel.cidade ? ` • ${lead.imovel.cidade}` : ''}
                                             </Typography>
                                             <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5 }}>
                                                 {lead.imovel.para_venda && (
-                                                    <Chip label="Venda" size="small" variant="outlined" sx={{ fontSize: '10px', height: '18px' }} />
+                                                    <Chip
+                                                        label="Venda"
+                                                        size="small"
+                                                        variant="outlined"
+                                                        sx={{
+                                                            fontSize: '10px',
+                                                            height: '18px',
+                                                            borderColor: 'primary.main',
+                                                            color: 'primary.main'
+                                                        }}
+                                                    />
                                                 )}
                                                 {lead.imovel.para_aluguel && (
-                                                    <Chip label="Locação" size="small" variant="outlined" sx={{ fontSize: '10px', height: '18px' }} />
+                                                    <Chip
+                                                        label="Locação"
+                                                        size="small"
+                                                        variant="outlined"
+                                                        sx={{
+                                                            fontSize: '10px',
+                                                            height: '18px',
+                                                            borderColor: 'secondary.main',
+                                                            color: 'secondary.main'
+                                                        }}
+                                                    />
                                                 )}
                                             </Box>
                                         </Box>
                                     ) : (
-                                        <Typography variant="body2" color="text.disabled">Imóvel não identificado</Typography>
+                                        <Typography variant="body2" sx={{ color: 'text.disabled' }}>
+                                            Imóvel não identificado
+                                        </Typography>
                                     )}
                                 </TableCell>
                                 <TableCell>
@@ -322,14 +419,17 @@ export const LeadsPage: React.FC = () => {
                                 <TableCell align="center">
                                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
                                         <Tooltip title="Histórico de Conversas/Inicio de Negociação">
-                                            <IconButton color="secondary" onClick={() => handleOpenHistory(lead)}>
+                                            <IconButton
+                                                sx={{ color: 'text.secondary' }}
+                                                onClick={() => handleOpenHistory(lead)}
+                                            >
                                                 <HistoryIcon />
                                             </IconButton>
                                         </Tooltip>
 
                                         <Tooltip title="WhatsApp">
                                             <IconButton
-                                                color="success"
+                                                sx={{ color: 'success.main' }}
                                                 onClick={() => window.open(`https://wa.me/${lead.contato.replace(/\D/g, '')}`)}
                                             >
                                                 <WhatsAppIcon />
@@ -339,7 +439,7 @@ export const LeadsPage: React.FC = () => {
                                         {lead.status === 'NOVO' && (
                                             <Tooltip title="Iniciar Atendimento">
                                                 <IconButton
-                                                    color="info"
+                                                    sx={{ color: 'info.main' }}
                                                     onClick={() => handleUpdateStatus(lead._id, 'EM_ANDAMENTO')}
                                                 >
                                                     <CheckCircleOutlineIcon sx={{ opacity: 0.5 }} />
@@ -350,7 +450,7 @@ export const LeadsPage: React.FC = () => {
                                         {lead.status !== 'CONCLUIDO' && (
                                             <Tooltip title="Concluir Atendimento ou Iniciar Negociação">
                                                 <IconButton
-                                                    color="primary"
+                                                    sx={{ color: 'primary.main' }}
                                                     onClick={() => handleOpenFinishDecision(lead)}
                                                 >
                                                     <CheckCircleOutlineIcon />
@@ -361,7 +461,7 @@ export const LeadsPage: React.FC = () => {
                                         {lead.status === 'CONCLUIDO' && (
                                             <Tooltip title="Reabrir / Voltar para Em Andamento">
                                                 <IconButton
-                                                    color="warning"
+                                                    sx={{ color: 'warning.main' }}
                                                     onClick={() => {
                                                         if (window.confirm(`Deseja reabrir o atendimento de ${lead.nome}?`)) {
                                                             handleUpdateStatus(lead._id, 'EM_ANDAMENTO');
@@ -381,9 +481,27 @@ export const LeadsPage: React.FC = () => {
             </TableContainer>
 
             {/* DIALOG DE HISTÓRICO */}
-            <Dialog open={openHistory} onClose={() => setOpenHistory(false)} fullWidth maxWidth="sm">
-                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="h6" component="span">Histórico: {selectedLead?.nome}</Typography>
+            <Dialog
+                open={openHistory}
+                onClose={() => setOpenHistory(false)}
+                fullWidth
+                maxWidth="sm"
+                PaperProps={{
+                    sx: {
+                        bgcolor: 'background.paper'
+                    }
+                }}
+            >
+                <DialogTitle sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: `1px solid ${theme.palette.divider}`,
+                    pb: 2
+                }}>
+                    <Typography variant="h6" component="span" sx={{ color: 'text.primary' }}>
+                        Histórico: {selectedLead?.nome}
+                    </Typography>
 
                     {selectedLead?.status !== 'CONCLUIDO' && (
                         <Button
@@ -398,18 +516,36 @@ export const LeadsPage: React.FC = () => {
                         </Button>
                     )}
                 </DialogTitle>
-                <DialogContent dividers>
+                <DialogContent dividers sx={{ bgcolor: 'background.default' }}>
                     <List>
                         {selectedLead?.historico?.map((h: any, index: number) => (
-                            <ListItem key={index} alignItems="flex-start" sx={{ bgcolor: '#f9f9f9', mb: 1, borderRadius: 1 }}>
+                            <ListItem
+                                key={index}
+                                alignItems="flex-start"
+                                sx={{
+                                    bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
+                                    mb: 1,
+                                    borderRadius: 1
+                                }}
+                            >
                                 <ListItemText
-                                    primary={h.descricao}
-                                    secondary={`${new Date(h.data).toLocaleString('pt-BR')} - por ${h.autor}`}
+                                    primary={
+                                        <Typography sx={{ color: 'text.primary' }}>
+                                            {h.descricao}
+                                        </Typography>
+                                    }
+                                    secondary={
+                                        <Typography sx={{ color: 'text.secondary' }}>
+                                            {`${new Date(h.data).toLocaleString('pt-BR')} - por ${h.autor}`}
+                                        </Typography>
+                                    }
                                 />
                             </ListItem>
                         ))}
                         {(!selectedLead?.historico || selectedLead.historico.length === 0) && (
-                            <Typography variant="body2" color="text.secondary">Nenhuma conversa registrada ainda.</Typography>
+                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                                Nenhuma conversa registrada ainda.
+                            </Typography>
                         )}
                     </List>
                     <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
@@ -422,6 +558,11 @@ export const LeadsPage: React.FC = () => {
                             onChange={(e) => setNewNote(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleAddNote()}
                             disabled={isSaving}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    bgcolor: 'background.paper'
+                                }
+                            }}
                         />
                         <Button
                             variant="contained"
@@ -433,26 +574,37 @@ export const LeadsPage: React.FC = () => {
                         </Button>
                     </Box>
                 </DialogContent>
-                <DialogActions>
+                <DialogActions sx={{ bgcolor: 'background.paper', borderTop: `1px solid ${theme.palette.divider}` }}>
                     <Button onClick={() => setOpenHistory(false)}>Fechar</Button>
                 </DialogActions>
             </Dialog>
 
             {/* --- DIALOG: DECISÃO DE CONCLUSÃO --- */}
-            <Dialog open={openFinishDialog} onClose={() => setOpenFinishDialog(false)}>
-                <DialogTitle>Concluir Atendimento</DialogTitle>
+            <Dialog
+                open={openFinishDialog}
+                onClose={() => setOpenFinishDialog(false)}
+                PaperProps={{
+                    sx: {
+                        bgcolor: 'background.paper'
+                    }
+                }}
+            >
+                <DialogTitle sx={{ color: 'text.primary' }}>
+                    Concluir Atendimento
+                </DialogTitle>
                 <DialogContent>
-                    <Typography>
+                    <Typography sx={{ color: 'text.primary' }}>
                         Como deseja finalizar o atendimento de <b>{selectedLead?.nome}</b>?
                     </Typography>
                 </DialogContent>
-                <DialogActions sx={{ p: 3, justifyContent: 'center' }}>
+                <DialogActions sx={{ p: 3, justifyContent: 'center', bgcolor: 'background.default' }}>
                     <Stack spacing={2} direction="row">
                         <Button
                             variant="outlined"
                             color="inherit"
                             startIcon={<CloseIcon />}
                             onClick={() => setOpenFinishDialog(false)}
+                            sx={{ color: 'text.primary', borderColor: 'divider' }}
                         >
                             Cancelar
                         </Button>

@@ -4,6 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, Alert, CircularProgress, Box, Stepper, Step, StepLabel,
+    useTheme,
 } from '@mui/material';
 import { Imovel, ImovelFormData, imovelValidationSchema, normalizeTipoImovel } from '../types/imovel';
 import { DadosPrincipaisStep } from './steps/DadosPrincipaisStep';
@@ -27,7 +28,7 @@ type ImovelState = Imovel | null;
 
 const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovelToEdit, onSuccess }) => {
     const isEdit = !!imovelToEdit;
-    const { user } = useAuth();
+    const theme = useTheme();
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -199,30 +200,85 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
 
     return (
         <>
-            <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-                <DialogTitle>{currentImovel?._id ? `Editar Imóvel: ${currentImovel.titulo}` : 'Novo Imóvel'}</DialogTitle>
+            <Dialog
+                open={open}
+                onClose={onClose}
+                maxWidth="md"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        bgcolor: 'background.paper'
+                    }
+                }}
+            >
+                <DialogTitle sx={{
+                    color: 'text.primary',
+                    borderBottom: `1px solid ${theme.palette.divider}`,
+                    pb: 2
+                }}>
+                    {currentImovel?._id ? `Editar Imóvel: ${currentImovel.titulo}` : 'Novo Imóvel'}
+                </DialogTitle>
 
-                <Stepper activeStep={activeStep} sx={{ p: 3, pb: 1 }}>
+                <Stepper
+                    activeStep={activeStep}
+                    sx={{
+                        p: 3,
+                        pb: 1,
+                        bgcolor: 'background.paper'
+                    }}
+                >
                     {steps.map((label) => (
-                        <Step key={label}><StepLabel>{label}</StepLabel></Step>
+                        <Step key={label}>
+                            <StepLabel sx={{ color: 'text.primary' }}>{label}</StepLabel>
+                        </Step>
                     ))}
                 </Stepper>
 
                 <Box component="form" noValidate>
-                    <DialogContent dividers>
+                    <DialogContent
+                        dividers
+                        sx={{
+                            bgcolor: 'background.default',
+                            borderTop: `1px solid ${theme.palette.divider}`,
+                            borderBottom: `1px solid ${theme.palette.divider}`
+                        }}
+                    >
                         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
                         {getStepContent(activeStep)}
                     </DialogContent>
 
-                    <DialogActions sx={{ p: 3, pt: 1 }}>
-                        <Button onClick={onClose} disabled={loading}>Cancelar</Button>
+                    <DialogActions sx={{
+                        p: 3,
+                        pt: 1,
+                        bgcolor: 'background.paper',
+                        borderTop: `1px solid ${theme.palette.divider}`
+                    }}>
+                        <Button
+                            onClick={onClose}
+                            disabled={loading}
+                            sx={{ color: 'text.secondary' }}
+                        >
+                            Cancelar
+                        </Button>
 
                         {activeStep > 0 && activeStep < steps.length - 1 && (
-                            <Button onClick={handleBack} disabled={loading}>Voltar</Button>
+                            <Button
+                                onClick={handleBack}
+                                disabled={loading}
+                                sx={{ color: 'text.secondary' }}
+                            >
+                                Voltar
+                            </Button>
                         )}
 
                         {activeStep === 0 && (
-                            <Button variant="contained" onClick={handleNext} disabled={loading}>Próximo</Button>
+                            <Button
+                                variant="contained"
+                                onClick={handleNext}
+                                disabled={loading}
+                            >
+                                Próximo
+                            </Button>
                         )}
 
                         {activeStep === steps.length - 2 && (

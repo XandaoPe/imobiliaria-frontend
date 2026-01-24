@@ -80,9 +80,16 @@ export const HomePage: React.FC = () => {
     }, [imoveis, filter]);
 
     return (
-        <Box sx={{ minHeight: '100vh', bgcolor: '#f8f9fa' }}>
+        <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
             {/* CABEÇALHO E BUSCA */}
-            <Box sx={{ bgcolor: 'background.paper', pt: 4, pb: 3, mb: 4, borderBottom: '1px solid #eee' }}>
+            <Box sx={{
+                bgcolor: 'background.paper',
+                pt: 4,
+                pb: 3,
+                mb: 4,
+                borderBottom: '1px solid',
+                borderColor: 'divider' 
+            }}>
                 <Container maxWidth="lg">
                     <Box sx={{
                         display: 'flex',
@@ -95,8 +102,10 @@ export const HomePage: React.FC = () => {
                             <IconButton
                                 onClick={() => navigate('/')}
                                 sx={{
-                                    bgcolor: '#f1f3f4',
-                                    '&:hover': { bgcolor: '#e8eaed' }
+                                    bgcolor: 'action.hover',
+                                    '&:hover': {
+                                        bgcolor: 'action.selected'
+                                    }
                                 }}
                             >
                                 <ArrowBackIcon />
@@ -115,8 +124,10 @@ export const HomePage: React.FC = () => {
                                 width: { xs: '100%', md: '450px' },
                                 '& .MuiOutlinedInput-root': {
                                     borderRadius: '50px',
-                                    bgcolor: '#f1f3f4',
-                                    '&.Mui-focused': { bgcolor: 'white' }
+                                    bgcolor: 'action.hover',
+                                    '&.Mui-focused': {
+                                        bgcolor: 'background.paper'
+                                    }
                                 }
                             }}
                             InputProps={{
@@ -126,7 +137,9 @@ export const HomePage: React.FC = () => {
                                     </InputAdornment>
                                 ),
                                 endAdornment: searchTerm && (
-                                    <IconButton onClick={() => setSearchTerm('')}><ClearIcon /></IconButton>
+                                    <IconButton onClick={() => setSearchTerm('')}>
+                                        <ClearIcon />
+                                    </IconButton>
                                 )
                             }}
                         />

@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button,
-    Typography, Divider, Box, Chip
+    Typography, Divider, Box, Chip, useTheme
 } from '@mui/material';
 import {
     Person, HomeWork, ReceiptLong,
@@ -15,6 +15,8 @@ interface FinanceiroDetalhesModalProps {
 }
 
 export const FinanceiroDetalhesModal: React.FC<FinanceiroDetalhesModalProps> = ({ open, onClose, data }) => {
+    const theme = useTheme();
+
     if (!data) return null;
 
     console.log('Dados do Lançamento Financeiro:', data);
@@ -24,40 +26,86 @@ export const FinanceiroDetalhesModal: React.FC<FinanceiroDetalhesModalProps> = (
         <Box sx={{ mb: 3, width: '100%' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, color: 'primary.main' }}>
                 {icon}
-                <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                <Typography variant="subtitle1" fontWeight="bold" sx={{ color: 'text.primary' }}>
+                    {title}
+                </Typography>
             </Box>
             <Box sx={{ pl: 4 }}>{children}</Box>
-            <Divider sx={{ mt: 2 }} />
+            <Divider sx={{ mt: 2, borderColor: 'divider' }} />
         </Box>
     );
 
     // Componente interno para Rótulo e Valor
     const LabelValue = ({ label, value, color, bold = false }: any) => (
         <Box sx={{ mb: 1.5 }}>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700, letterSpacing: 0.5 }}>
+            <Typography
+                variant="caption"
+                sx={{
+                    color: 'text.secondary',
+                    display: 'block',
+                    textTransform: 'uppercase',
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    letterSpacing: 0.5
+                }}
+            >
                 {label}
             </Typography>
-            <Typography variant="body2" fontWeight={bold ? 700 : 500} color={color || 'text.primary'}>
+            <Typography
+                variant="body2"
+                fontWeight={bold ? 700 : 500}
+                sx={{ color: color || 'text.primary' }}
+            >
                 {value || '---'}
             </Typography>
         </Box>
     );
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle sx={{ bgcolor: '#f8f9fa', display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 2 }}>
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="md"
+            fullWidth
+            PaperProps={{
+                sx: {
+                    bgcolor: 'background.paper'
+                }
+            }}
+        >
+            <DialogTitle sx={{
+                bgcolor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                py: 2,
+                borderBottom: `1px solid ${theme.palette.divider}`
+            }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Info color="primary" />
-                    <Typography variant="h6" fontWeight="bold">Ficha de Lançamento Financeiro</Typography>
+                    <Info sx={{ color: theme.palette.mode === 'dark' ? 'primary.contrastText' : 'primary.contrastText' }} />
+                    <Typography
+                        variant="h6"
+                        fontWeight="bold"
+                        sx={{ color: theme.palette.mode === 'dark' ? 'primary.contrastText' : 'primary.contrastText' }}
+                    >
+                        Ficha de Lançamento Financeiro
+                    </Typography>
                 </Box>
                 <Chip
                     label={data.status}
                     color={data.status === 'PAGO' ? 'success' : data.status === 'CANCELADO' ? 'error' : 'warning'}
-                    sx={{ fontWeight: 'bold', px: 1 }}
+                    sx={{
+                        fontWeight: 'bold',
+                        px: 1,
+                        color: theme.palette.mode === 'dark' ? 'white' : 'inherit'
+                    }}
                 />
             </DialogTitle>
 
-            <DialogContent dividers sx={{ p: 3 }}>
+            <DialogContent dividers sx={{
+                p: 3,
+                bgcolor: 'background.default'
+            }}>
                 {/* CONTAINER PRINCIPAL (Substituindo Grid Container) */}
                 <Box sx={{
                     display: 'flex',
@@ -69,7 +117,12 @@ export const FinanceiroDetalhesModal: React.FC<FinanceiroDetalhesModalProps> = (
                     {/* COLUNA 1: ORIGEM E IDENTIFICAÇÃO */}
                     <Box sx={{ flex: 1 }}>
                         <InfoSection title="Origem do Lançamento" icon={<ReceiptLong fontSize="small" />}>
-                            <LabelValue label="Código da Negociação" value={data.negociacaoCodigo} bold color="primary.main" />
+                            <LabelValue
+                                label="Código da Negociação"
+                                value={data.negociacaoCodigo}
+                                bold
+                                color="primary.main"
+                            />
                             <LabelValue label="Categoria / Finalidade" value={data.categoria} />
                             <LabelValue label="Descrição do Título" value={data.descricao} />
                             {data.parcelaNumero && (
@@ -104,12 +157,11 @@ export const FinanceiroDetalhesModal: React.FC<FinanceiroDetalhesModalProps> = (
                                 </Box>
                             ) : (
                                 /* Caso o backend envie apenas o ID ou nada */
-                                <Typography variant="caption" color="error">
+                                <Typography variant="caption" sx={{ color: 'error.main' }}>
                                     {data.imovel ? `ID do Imóvel: ${data.imovel}` : 'Imóvel não vinculado.'}
                                 </Typography>
                             )}
                         </InfoSection>
-
                     </Box>
 
                     {/* COLUNA 2: VALORES E PESSOAS */}
@@ -147,11 +199,15 @@ export const FinanceiroDetalhesModal: React.FC<FinanceiroDetalhesModalProps> = (
                         </InfoSection>
 
                         <InfoSection title="Cliente / Envolvido" icon={<Person fontSize="small" />}>
-                            <LabelValue label="Nome" 
-                            value={data.cliente?.nome || 'Lançamento Avulso'} bold 
+                            <LabelValue
+                                label="Nome"
+                                value={data.cliente?.nome || 'Lançamento Avulso'}
+                                bold
                             />
-                            <LabelValue label="Telefone" 
-                            value={data.cliente?.telefone || 'Não informado'} bold 
+                            <LabelValue
+                                label="Telefone"
+                                value={data.cliente?.telefone || 'Não informado'}
+                                bold
                             />
                             <LabelValue
                                 label="Tipo de Lançamento"
@@ -166,24 +222,54 @@ export const FinanceiroDetalhesModal: React.FC<FinanceiroDetalhesModalProps> = (
                 <Box sx={{
                     mt: 2,
                     p: 2,
-                    bgcolor: '#fff9c4',
+                    bgcolor: theme.palette.mode === 'dark' ? 'warning.dark' : 'warning.light',
                     borderRadius: 1,
-                    borderLeft: '5px solid #fbc02d',
+                    borderLeft: `5px solid ${theme.palette.warning.main}`,
                     width: '100%'
                 }}>
-                    <Typography variant="caption" fontWeight="bold" color="warning.dark">OBSERVAÇÕES INTERNAS:</Typography>
-                    <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: 'pre-line' }}>
+                    <Typography
+                        variant="caption"
+                        fontWeight="bold"
+                        sx={{ color: theme.palette.mode === 'dark' ? 'warning.contrastText' : 'warning.dark' }}
+                    >
+                        OBSERVAÇÕES INTERNAS:
+                    </Typography>
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            mt: 0.5,
+                            whiteSpace: 'pre-line',
+                            color: theme.palette.mode === 'dark' ? 'text.primary' : 'inherit'
+                        }}
+                    >
                         {data.observacoes || 'Nenhuma observação registrada para este lançamento.'}
                     </Typography>
                 </Box>
             </DialogContent>
 
-            <DialogActions sx={{ p: 2, bgcolor: '#f8f9fa', gap: 1 }}>
-                <Button onClick={onClose} variant="outlined" color="inherit">
+            <DialogActions sx={{
+                p: 2,
+                bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
+                gap: 1,
+                borderTop: `1px solid ${theme.palette.divider}`
+            }}>
+                <Button
+                    onClick={onClose}
+                    variant="outlined"
+                    color="inherit"
+                    sx={{
+                        color: 'text.secondary',
+                        borderColor: 'divider'
+                    }}
+                >
                     Fechar Ficha
                 </Button>
                 {data.status === 'PENDENTE' && (
-                    <Button variant="contained" color="success" startIcon={<AttachMoney />}>
+                    <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<AttachMoney />}
+                    >
                         Registrar Pagamento
                     </Button>
                 )}

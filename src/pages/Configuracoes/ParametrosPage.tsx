@@ -2,12 +2,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
     Box, Typography, Button, CircularProgress, Alert, Paper,
-    TextField, InputAdornment, Divider, Tooltip
+    TextField, InputAdornment, Divider, Tooltip,
+    useTheme
 } from '@mui/material';
 import { Save, Settings, Percent, InfoOutlined } from '@mui/icons-material';
 import { configuracaoService } from '../../services/configuracaoService';
 
 export const ParametrosPage = () => {
+    const theme = useTheme();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -88,7 +90,15 @@ export const ParametrosPage = () => {
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
 
                 {/* Card: Taxa de Administração */}
-                <Paper elevation={2} sx={{ p: 3, flex: '1 1 400px', borderRadius: 2 }}>
+                <Paper
+                    elevation={2}
+                    sx={{
+                        p: 3,
+                        flex: '1 1 400px',
+                        borderRadius: 2,
+                        bgcolor: 'background.paper'
+                    }}
+                >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'primary.main' }}>
                         <Percent fontSize="small" />
                         <Typography variant="subtitle1" fontWeight="bold">Taxa de Administração (Aluguel)</Typography>
@@ -108,6 +118,11 @@ export const ParametrosPage = () => {
                             InputProps={{
                                 endAdornment: <InputAdornment position="end">%</InputAdornment>,
                             }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    bgcolor: 'background.paper'
+                                }
+                            }}
                         />
                         <Button
                             variant="contained"
@@ -122,7 +137,15 @@ export const ParametrosPage = () => {
                 </Paper>
 
                 {/* Card: Comissão de Venda */}
-                <Paper elevation={2} sx={{ p: 3, flex: '1 1 400px', borderRadius: 2 }}>
+                <Paper
+                    elevation={2}
+                    sx={{
+                        p: 3,
+                        flex: '1 1 400px',
+                        borderRadius: 2,
+                        bgcolor: 'background.paper'
+                    }}
+                >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'primary.main' }}>
                         <Percent fontSize="small" />
                         <Typography variant="subtitle1" fontWeight="bold">Comissão Padrão de Venda</Typography>
@@ -135,12 +158,17 @@ export const ParametrosPage = () => {
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                         <TextField
                             fullWidth
-                            label="Valor da Comissão"
+                            label="Valor da Taxa"
                             type="number"
-                            value={taxas.TAXA_VENDA}
-                            onChange={(e) => setTaxas({ ...taxas, TAXA_VENDA: Number(e.target.value) })}
+                            value={taxas.TAXA_ADM_ALUGUEL}
+                            onChange={(e) => setTaxas({ ...taxas, TAXA_ADM_ALUGUEL: Number(e.target.value) })}
                             InputProps={{
                                 endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                            }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    bgcolor: 'background.paper'
+                                }
                             }}
                         />
                         <Button
@@ -159,13 +187,23 @@ export const ParametrosPage = () => {
 
             {/* Nota Informativa (Estilo Observação da sua Ficha) */}
             <Box sx={{
-                mt: 4, p: 2, bgcolor: '#e3f2fd', borderRadius: 1,
-                borderLeft: '5px solid #2196f3', display: 'flex', alignItems: 'flex-start', gap: 2
+                mt: 4, p: 2,
+                bgcolor: theme.palette.mode === 'dark' ? 'info.dark' : 'info.light',
+                borderRadius: 1,
+                borderLeft: `5px solid ${theme.palette.info.main}`,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 2
             }}>
-                <InfoOutlined color="info" />
+                <InfoOutlined sx={{ color: 'info.main' }} />
                 <Box>
-                    <Typography variant="caption" fontWeight="bold" color="info.main">INFORMAÇÃO:</Typography>
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    <Typography variant="caption" fontWeight="bold" sx={{ color: 'info.main' }}>
+                        INFORMAÇÃO:
+                    </Typography>
+                    <Typography variant="body2" sx={{
+                        mt: 0.5,
+                        color: theme.palette.mode === 'dark' ? 'text.primary' : 'inherit'
+                    }}>
                         As alterações feitas aqui serão aplicadas apenas em <b>novos lançamentos</b>.
                         Contratos e parcelas já gerados não serão afetados retroativamente para manter a integridade do histórico financeiro.
                     </Typography>

@@ -3,7 +3,8 @@ import { Controller, Control, FieldErrors, useWatch } from 'react-hook-form';
 import {
     TextField, MenuItem, Box, FormControl, InputLabel,
     Select, Switch, FormControlLabel, Typography,
-    Checkbox, Autocomplete, CircularProgress, createFilterOptions
+    Checkbox, Autocomplete, CircularProgress, createFilterOptions,
+    useTheme
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import { ImovelFormData } from '../../types/imovel';
@@ -25,6 +26,7 @@ interface DadosPrincipaisStepProps {
 const filter = createFilterOptions<Cliente>();
 
 export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ control, errors, onAddCliente }) => {
+    const theme = useTheme();
     const paraVenda = useWatch({ control, name: 'para_venda' });
     const paraAluguel = useWatch({ control, name: 'para_aluguel' });
 
@@ -91,19 +93,25 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                             isOptionEqualToValue={(option, value) => option._id === value?._id}
                             renderOption={(props, option) => (
                                 <li {...props} style={{
-                                    borderTop: option.isNew ? '1px solid #eee' : 'none',
-                                    color: option.isNew ? '#1976d2' : 'inherit',
-                                    fontWeight: option.isNew ? 'bold' : 'normal'
+                                    borderTop: option.isNew ? `1px solid ${theme.palette.divider}` : 'none',
+                                    color: option.isNew ? theme.palette.primary.main : theme.palette.text.primary,
+                                    fontWeight: option.isNew ? 'bold' : 'normal',
+                                    backgroundColor: theme.palette.background.paper
                                 }}>
-                                    {option.isNew && <AddCircleOutlineIcon sx={{ mr: 1, fontSize: 20 }} />}
+                                    {option.isNew && <AddCircleOutlineIcon sx={{ mr: 1, fontSize: 20, color: theme.palette.primary.main }} />}
                                     {option.nome}
                                 </li>
                             )}
                             renderInput={(params) => (
-                                <TextField
+                                <TextField                                
                                     {...params}
                                     label="Proprietário (Cliente)"
                                     required
+                                    sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                            bgcolor: 'background.paper'
+                                        }
+                                    }}
                                     error={!!errors.proprietario}
                                     helperText={errors.proprietario?.message}
                                     InputProps={{
@@ -127,7 +135,11 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                     name="titulo"
                     control={control}
                     render={({ field }) => (
-                        <TextField {...field} label="Título do Imóvel" fullWidth required error={!!errors.titulo} helperText={errors.titulo?.message} margin="normal" />
+                        <TextField {...field} label="Título do Imóvel" fullWidth required sx={{
+                            '& .MuiOutlinedInput-root': {
+                                bgcolor: 'background.paper'
+                            }
+                        }} error={!!errors.titulo} helperText={errors.titulo?.message} margin="normal" />
                     )}
                 />
             </Box>
@@ -138,7 +150,7 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                     control={control}
                     render={({ field }) => (
                         <FormControl fullWidth margin="normal" required error={!!errors.tipo}>
-                            <InputLabel id="tipo-label">Tipo do Imóvel</InputLabel>
+                            <InputLabel id="tipo-label" sx={{ color: 'text.secondary' }}>Tipo do Imóvel</InputLabel>
                             <Select {...field} labelId="tipo-label" label="Tipo do Imóvel">
                                 <MenuItem value="CASA">Casa</MenuItem>
                                 <MenuItem value="APARTAMENTO">Apartamento</MenuItem>
@@ -156,20 +168,39 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                     name="cidade"
                     control={control}
                     render={({ field }) => (
-                        <TextField {...field} label="Cidade" fullWidth margin="normal" value={field.value || ''} />
+                        <TextField {...field} label="Cidade" fullWidth sx={{
+                            '& .MuiOutlinedInput-root': {
+                                bgcolor: 'background.paper'
+                            }
+                        }} margin="normal" value={field.value || ''} />
                     )}
                 />
             </Box>
 
             <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' } }}>
-                <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 2, mb: 1, mt: 1, backgroundColor: '#f9f9f9' }}>
-                    <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>Finalidade do Imóvel</Typography>
+                <Box sx={{
+                    border: `1px solid ${theme.palette.divider}`,
+                    borderRadius: 1,
+                    p: 2,
+                    mb: 1,
+                    mt: 1,
+                    backgroundColor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50'
+                }}>
+                    <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold', color: 'text.primary' }}>
+                        Finalidade do Imóvel
+                    </Typography>
                     <Box sx={{ display: 'flex', gap: 3 }}>
                         <Controller
                             name="para_venda"
                             control={control}
                             render={({ field }) => (
-                                <FormControlLabel control={<Checkbox checked={!!field.value} onChange={field.onChange} color="primary" />} label="Para Venda" />
+                                <FormControlLabel control={<Checkbox checked={!!field.value} onChange={field.onChange} color="primary" />}
+                                    label={
+                                        <Typography sx={{ color: 'text.primary' }}>
+                                            Para Venda
+                                        </Typography>
+                                    }
+                                 />
                             )}
                         />
                         <Controller
@@ -212,7 +243,11 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                     name="endereco"
                     control={control}
                     render={({ field }) => (
-                        <TextField {...field} label="Endereço Completo" fullWidth required error={!!errors.endereco} helperText={errors.endereco?.message} margin="normal" multiline rows={2} />
+                        <TextField {...field} label="Endereço Completo" fullWidth required sx={{
+                            '& .MuiOutlinedInput-root': {
+                                bgcolor: 'background.paper'
+                            }
+                        }} error={!!errors.endereco} helperText={errors.endereco?.message} margin="normal" multiline rows={2} />
                     )}
                 />
             </Box>
