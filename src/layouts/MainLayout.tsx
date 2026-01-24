@@ -17,8 +17,8 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
 import HandshakeIcon from '@mui/icons-material/Handshake';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'; 
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney'; 
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -168,8 +168,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     ];
 
     const drawer = (
-        <div>
-            <Toolbar sx={{ backgroundColor: 'primary.main' }}>
+        <div >
+            <Toolbar sx={{ backgroundColor: 'primary.dark' }}>
                 <Typography variant="h6" noWrap sx={{ color: 'white' }}>Imobiliária 4.0</Typography>
             </Toolbar>
             <Divider />
@@ -217,7 +217,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     return (
         <Box sx={{ display: 'flex', height: '100vh' }}>
             <CssBaseline />
-            <AppBar position="fixed" sx={{ width: { sm: `calc(100% - ${drawerWidth}px)` }, ml: { sm: `${drawerWidth}px` }, zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+            <AppBar
+                position="fixed"
+                sx={{
+                    width: { sm: `calc(100% - ${drawerWidth}px)` },
+                    ml: { sm: `${drawerWidth}px` },
+                    zIndex: (theme) => theme.zIndex.drawer + 1,
+                    backgroundColor: 'primary.dark',
+                }}
+            >
                 <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flexGlow: 1 }}>
                         <IconButton

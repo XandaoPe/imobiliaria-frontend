@@ -5,6 +5,7 @@ export const appTheme = createTheme({
     palette: {
         primary: {
             main: '#1976d2', // Azul principal para botões e navegação
+            dark: '#054a39', // Verde paralelop para fundos escuros
         },
         secondary: {
             main: '#dc004e', // Cor de destaque (ex: Delete, Alerta)
