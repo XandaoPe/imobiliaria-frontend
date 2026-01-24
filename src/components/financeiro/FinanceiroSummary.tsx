@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Paper, Typography } from '@mui/material';
+import { Box, Paper, Typography, useTheme } from '@mui/material';
 import {
     TrendingUp,
     TrendingDown,
@@ -10,38 +10,26 @@ import {
 } from '@mui/icons-material';
 
 interface SummaryProps {
-    receitas: number;    // Soma de todas as RECEITAS (Pagas + Pendentes) no período
-    despesas: number;    // Soma de todas as DESPESAS/REPASSES (Pagos + Pendentes) no período
-    pendentes: number;   // Bruto total das RECEITAS com status PENDENTE
-    // Nota: Para as novas métricas, assumiremos que seu backend envie ou que calcularemos 
-    // com base no fluxo de caixa padrão do período selecionado.
+    receitas: number;
+    despesas: number;
+    pendentes: number;
     layout?: 'horizontal' | 'vertical';
 }
 
-// Estendendo a interface para cobrir os novos requisitos caso você decida enviar os dados detalhados do backend
-// Se o backend enviar apenas receitas, despesas e pendentes brutos, calcularemos as derivações abaixo:
-export const FinanceiroSummary: React.FC<SummaryProps> = ({ receitas, despesas, pendentes, layout = 'vertical' }) => {
+export const FinanceiroSummary: React.FC<SummaryProps> = ({
+    receitas,
+    despesas,
+    pendentes,
+    layout = 'vertical'
+}) => {
+    const theme = useTheme();
+    const isDarkMode = theme.palette.mode === 'dark';
 
-    // 1. Total de Parcelas (Bruto): Já é o 'receitas' (Soma de tudo o que há no período: pagas e pendentes)
     const totalParcelasBruto = receitas;
-
-    // 2. Total de Repasse (Bruto): Já é o 'despesas' (Soma de todos os REPASSES no período)
     const totalRepasseBruto = despesas;
-
-    // 3. Total de Pendentes (À RECEBER): Já é o 'pendentes' (Total de RECEITAS PENDENTES na tela)
     const totalPendentesAReceber = pendentes;
-
-    // 4. Total de Pendentes (À PAGAR): 
-    // Em um sistema de imobiliária, o repasse costuma ser proporcional. 
-    // Se o backend não enviar o 'pendentesDespesa' separadamente, 
-    // estimamos que 90% da receita pendente seja repasse pendente (conforme sua taxa de 10%).
-    // Caso o backend envie esse dado, substitua por 'props.pendentesDespesa'.
     const totalPendentesAPagar = despesas * (pendentes / receitas || 0);
-
-    // 5. Comissão Pendente (Bruto): Diferença entre VENDAS PENDENTES e REPASSES PENDENTES.
     const comissaoPendenteBruto = totalPendentesAReceber - totalPendentesAPagar;
-
-    // 6. Saldo Atual (Gerado no Período): Saldo total de tudo que foi movimentado (Bruto Receita - Bruto Repasse)
     const saldoAtualPeriodo = totalParcelasBruto - totalRepasseBruto;
 
     const isVertical = layout === 'vertical';
@@ -49,79 +37,118 @@ export const FinanceiroSummary: React.FC<SummaryProps> = ({ receitas, despesas, 
     const formatCurrency = (val: number) =>
         val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+    // Cores adaptadas para tema escuro
+    const cardStyles = [
+        {
+            title: 'TOTAL PARCELAS (Bruto)',
+            value: totalParcelasBruto,
+            icon: <TrendingUp />,
+            borderColor: isDarkMode ? '#4caf50' : '#2e7d32',
+            bgColor: isDarkMode ? '#1b5e20' : '#e8f5e9',
+            textColor: isDarkMode ? '#e8f5e9' : '#2e7d32',
+            iconColor: 'success'
+        },
+        {
+            title: 'TOTAL REPASSE (Bruto)',
+            value: totalRepasseBruto,
+            icon: <TrendingDown />,
+            borderColor: isDarkMode ? '#f44336' : '#d32f2f',
+            bgColor: isDarkMode ? '#c62828' : '#ffebee',
+            textColor: isDarkMode ? '#ffebee' : '#d32f2f',
+            iconColor: 'error'
+        },
+        {
+            title: 'PENDENTE (À Receber)',
+            value: totalPendentesAReceber,
+            icon: <AccessTime />,
+            borderColor: isDarkMode ? '#ff9800' : '#ed6c02',
+            bgColor: isDarkMode ? '#ef6c00' : '#fff3e0',
+            textColor: isDarkMode ? '#fff3e0' : '#ed6c02',
+            iconColor: 'warning'
+        },
+        {
+            title: 'PENDENTE (À Pagar)',
+            value: totalPendentesAPagar,
+            icon: <MoneyOff />,
+            borderColor: isDarkMode ? '#f44336' : '#c62828',
+            bgColor: isDarkMode ? '#b71c1c' : '#fff5f5',
+            textColor: isDarkMode ? '#ffcdd2' : '#c62828',
+            iconColor: 'error'
+        },
+        {
+            title: 'COMISSÃO PENDENTE',
+            value: comissaoPendenteBruto,
+            icon: <AccountBalanceWallet />,
+            borderColor: isDarkMode ? '#9c27b0' : '#9c27b0',
+            bgColor: isDarkMode ? '#7b1fa2' : '#fdf7ff',
+            textColor: isDarkMode ? '#f3e5f5' : '#9c27b0',
+            iconColor: 'secondary'
+        },
+        {
+            title: 'SALDO DO PERÍODO',
+            value: saldoAtualPeriodo,
+            icon: <AccountBalance />,
+            borderColor: isDarkMode ? '#2196f3' : '#1976d2',
+            bgColor: isDarkMode ? '#1565c0' : '#f8fbff',
+            textColor: isDarkMode ? '#e3f2fd' : '#1976d2',
+            iconColor: 'primary'
+        }
+    ];
+
     return (
         <Box sx={{
             display: 'flex',
             flexDirection: isVertical ? 'column' : 'row',
             flexWrap: 'wrap',
             gap: 2,
-            '& > *': { flex: isVertical ? '1 1 auto' : { xs: '1 1 100%', sm: '1 1 calc(30% - 16px)', md: '1 1 calc(16.6% - 16px)' } }
+            '& > *': {
+                flex: isVertical ? '1 1 auto' : { xs: '1 1 100%', sm: '1 1 calc(30% - 16px)', md: '1 1 calc(16.6% - 16px)' }
+            }
         }}>
-            {/* 1. TOTAL PARCELAS (BRUTO) */}
-            <Paper sx={{ p: 2, borderLeft: '4px solid #2e7d32', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-                <Typography color="textSecondary" variant="caption" fontWeight="bold">TOTAL PARCELAS (Bruto)</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
-                    <Typography variant={isVertical ? "h6" : "h5"} fontWeight="bold" color="success.main">
-                        {formatCurrency(totalParcelasBruto)}
+            {cardStyles.map((card, index) => (
+                <Paper
+                    key={index}
+                    sx={{
+                        p: 2,
+                        borderLeft: `4px solid ${card.borderColor}`,
+                        backgroundColor: isDarkMode ? 'background.paper' : card.bgColor,
+                        boxShadow: isDarkMode ? theme.shadows[2] : '0 2px 12px rgba(0,0,0,0.05)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: isDarkMode ? theme.shadows[4] : '0 4px 20px rgba(0,0,0,0.1)'
+                        }
+                    }}
+                >
+                    <Typography
+                        color={isDarkMode ? "text.secondary" : "textSecondary"}
+                        variant="caption"
+                        fontWeight="bold"
+                        sx={{ opacity: isDarkMode ? 0.8 : 1 }}
+                    >
+                        {card.title}
                     </Typography>
-                    <TrendingUp color="success" fontSize="small" />
-                </Box>
-            </Paper>
-
-            {/* 2. TOTAL REPASSE (BRUTO) */}
-            <Paper sx={{ p: 2, borderLeft: '4px solid #d32f2f', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-                <Typography color="textSecondary" variant="caption" fontWeight="bold">TOTAL REPASSE (Bruto)</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
-                    <Typography variant={isVertical ? "h6" : "h5"} fontWeight="bold" color="error.main">
-                        {formatCurrency(totalRepasseBruto)}
-                    </Typography>
-                    <TrendingDown color="error" fontSize="small" />
-                </Box>
-            </Paper>
-
-            {/* 3. TOTAL PENDENTES (À RECEBER) */}
-            <Paper sx={{ p: 2, borderLeft: '4px solid #ed6c02', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-                <Typography color="textSecondary" variant="caption" fontWeight="bold">PENDENTE (À Receber)</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
-                    <Typography variant={isVertical ? "h6" : "h5"} fontWeight="bold" color="warning.main">
-                        {formatCurrency(totalPendentesAReceber)}
-                    </Typography>
-                    <AccessTime color="warning" fontSize="small" />
-                </Box>
-            </Paper>
-
-            {/* 4. TOTAL PENDENTES (À PAGAR) */}
-            <Paper sx={{ p: 2, borderLeft: '4px solid #c62828', bgcolor: '#fff5f5', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-                <Typography color="textSecondary" variant="caption" fontWeight="bold">PENDENTE (À Pagar)</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
-                    <Typography variant={isVertical ? "h6" : "h5"} fontWeight="bold" color="#c62828">
-                        {formatCurrency(totalPendentesAPagar)}
-                    </Typography>
-                    <MoneyOff sx={{ color: '#c62828' }} fontSize="small" />
-                </Box>
-            </Paper>
-
-            {/* 5. COMISSÃO PENDENTE (BRUTO) */}
-            <Paper sx={{ p: 2, borderLeft: '4px solid #9c27b0', bgcolor: '#fdf7ff', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-                <Typography color="textSecondary" variant="caption" fontWeight="bold">COMISSÃO PENDENTE</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
-                    <Typography variant={isVertical ? "h6" : "h5"} fontWeight="bold" color="secondary.main">
-                        {formatCurrency(comissaoPendenteBruto)}
-                    </Typography>
-                    <AccountBalanceWallet color="secondary" fontSize="small" />
-                </Box>
-            </Paper>
-
-            {/* 6. SALDO ATUAL (PERÍODO) */}
-            <Paper sx={{ p: 2, borderLeft: '4px solid #1976d2', bgcolor: '#f8fbff', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-                <Typography color="textSecondary" variant="caption" fontWeight="bold">SALDO DO PERÍODO</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
-                    <Typography variant={isVertical ? "h6" : "h5"} fontWeight="bold" color="primary.main">
-                        {formatCurrency(saldoAtualPeriodo)}
-                    </Typography>
-                    <AccountBalance color="primary" fontSize="small" />
-                </Box>
-            </Paper>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
+                        <Typography
+                            variant={isVertical ? "h6" : "h5"}
+                            fontWeight="bold"
+                            color={isDarkMode ? card.textColor : `${card.iconColor}.main`}
+                            sx={{ color: card.textColor }}
+                        >
+                            {formatCurrency(card.value)}
+                        </Typography>
+                        <Box sx={{
+                            color: isDarkMode ? card.textColor : undefined,
+                            '& .MuiSvgIcon-root': {
+                                fontSize: 'small',
+                                color: isDarkMode ? card.textColor : `${card.iconColor}.main`
+                            }
+                        }}>
+                            {card.icon}
+                        </Box>
+                    </Box>
+                </Paper>
+            ))}
         </Box>
     );
 };

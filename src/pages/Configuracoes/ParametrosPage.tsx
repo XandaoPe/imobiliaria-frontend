@@ -23,16 +23,24 @@ export const ParametrosPage = () => {
             setLoading(true);
             const data = await configuracaoService.getConfigs();
 
+            const converterParaNumero = (valor: unknown): number => {
+                if (typeof valor === 'number') return valor;
+                if (typeof valor === 'string') return parseFloat(valor.replace(',', '.')) || 0;
+                return parseFloat(String(valor).replace(',', '.')) || 0;
+            };
+
             const novoEstado = { ...taxas };
             data.forEach(item => {
                 if (item.chave in novoEstado) {
+                    const valorConvertido = converterParaNumero(item.valor);
                     // @ts-ignore
-                    novoEstado[item.chave] = item.valor;
+                    novoEstado[item.chave] = valorConvertido;
                 }
             });
             setTaxas(novoEstado);
             setError(null);
         } catch (err) {
+            console.error("Erro ao carregar configurações:", err);
             setError("Não foi possível carregar as configurações do sistema.");
         } finally {
             setLoading(false);
@@ -46,10 +54,9 @@ export const ParametrosPage = () => {
         try {
             await configuracaoService.upsertConfig({
                 chave,
-                valor,
+                valor: valor, // Já é número
                 tipo: 'PERCENTUAL'
             });
-            // Opcional: toast.success("Atualizado com sucesso!");
         } catch (err) {
             alert("Erro ao salvar configuração.");
         } finally {

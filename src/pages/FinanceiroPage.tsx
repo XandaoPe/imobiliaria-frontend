@@ -53,7 +53,12 @@ const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) =>
         <Typography component="span" variant="inherit">
             {parts.map((part, i) =>
                 regex.test(part) ? (
-                    <span key={i} style={{ backgroundColor: '#ffeb3b', fontWeight: 'bold', borderRadius: '2px' }}>
+                    <span key={i} style={{
+                        backgroundColor: '#ffeb3b',
+                        fontWeight: 'bold',
+                        borderRadius: '2px',
+                        color: '#000' // Garante texto preto no highlight
+                    }}>
                         {part}
                     </span>
                 ) : (
@@ -245,7 +250,7 @@ export const FinanceiroPage: React.FC = () => {
                     </Box>
 
                     {/* BARRA DE FILTROS */}
-                    <Paper sx={{ p: 2, borderRadius: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <Paper sx={{ p: 2, borderRadius: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', bgcolor: 'background.paper' }}>
                         <TextField
                             sx={{ flexGrow: 1, minWidth: '200px' }}
                             size="small"
@@ -316,16 +321,63 @@ export const FinanceiroPage: React.FC = () => {
 
                     <TableContainer component={Paper} sx={{ boxShadow: '0 4px 20px rgba(0,0,0,0.05)', borderRadius: 3 }}>
                         <Table size="medium">
-                            <TableHead sx={{ bgcolor: '#f8f9fa' }}>
+                            <TableHead sx={{
+                                bgcolor: (theme) => theme.palette.mode === 'dark'
+                                    ? theme.palette.background.paper // Usa background.paper em vez de default
+                                    : '#f8f9fa'
+                            }}>
                                 <TableRow>
-                                    <TableCell sx={{ fontWeight: 'bold' }}>Vencimento</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold' }}>Vínculo / Cliente</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold' }}>Descrição</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold' }}>Valor</TableCell>
-                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>Ações</TableCell>
+                                    <TableCell sx={{
+                                        fontWeight: 'bold',
+                                        color: (theme) => theme.palette.mode === 'dark'
+                                            ? theme.palette.text.primary // Garante cor do texto no modo escuro
+                                            : 'inherit'
+                                    }}>
+                                        Vencimento
+                                    </TableCell>
+                                    <TableCell sx={{
+                                        fontWeight: 'bold',
+                                        color: (theme) => theme.palette.mode === 'dark'
+                                            ? theme.palette.text.primary
+                                            : 'inherit'
+                                    }}>
+                                        Vínculo / Cliente
+                                    </TableCell>
+                                    <TableCell sx={{
+                                        fontWeight: 'bold',
+                                        color: (theme) => theme.palette.mode === 'dark'
+                                            ? theme.palette.text.primary
+                                            : 'inherit'
+                                    }}>
+                                        Descrição
+                                    </TableCell>
+                                    <TableCell sx={{
+                                        fontWeight: 'bold',
+                                        color: (theme) => theme.palette.mode === 'dark'
+                                            ? theme.palette.text.primary
+                                            : 'inherit'
+                                    }}>
+                                        Valor
+                                    </TableCell>
+                                    <TableCell align="center" sx={{
+                                        fontWeight: 'bold',
+                                        color: (theme) => theme.palette.mode === 'dark'
+                                            ? theme.palette.text.primary
+                                            : 'inherit'
+                                    }}>
+                                        Status
+                                    </TableCell>
+                                    <TableCell align="right" sx={{
+                                        fontWeight: 'bold',
+                                        color: (theme) => theme.palette.mode === 'dark'
+                                            ? theme.palette.text.primary
+                                            : 'inherit'
+                                    }}>
+                                        Ações
+                                    </TableCell>
                                 </TableRow>
                             </TableHead>
+                            
                             <TableBody>
                                 {loading && transacoes.length === 0 ? (
                                     <TableRow>
@@ -415,14 +467,31 @@ export const FinanceiroPage: React.FC = () => {
                                                                 fontSize: '0.6rem',
                                                                 textTransform: 'uppercase',
                                                                 fontWeight: 'bold',
-                                                                // Lógica de cores baseada na categoria
+                                                                // Lógica de cores baseada na categoria - adaptada para tema escuro
                                                                 ...(item.categoria?.toUpperCase() === 'VENDA' && {
-                                                                    bgcolor: '#e8f5e9', // Verde claro
-                                                                    color: '#2e7d32',   // Verde escuro para contraste
+                                                                    bgcolor: (theme) => theme.palette.mode === 'dark'
+                                                                        ? theme.palette.success.dark
+                                                                        : '#e8f5e9',
+                                                                    color: (theme) => theme.palette.mode === 'dark'
+                                                                        ? theme.palette.success.contrastText
+                                                                        : '#2e7d32',
                                                                 }),
                                                                 ...(item.categoria?.toUpperCase() === 'REPASSE' && {
-                                                                    bgcolor: '#fff9c4', // Amarelo claro
-                                                                    color: '#f57f17',   // Laranja/Amarelo escuro para contraste
+                                                                    bgcolor: (theme) => theme.palette.mode === 'dark'
+                                                                        ? theme.palette.warning.dark
+                                                                        : '#fff9c4',
+                                                                    color: (theme) => theme.palette.mode === 'dark'
+                                                                        ? theme.palette.warning.contrastText
+                                                                        : '#f57f17',
+                                                                }),
+                                                                // Estilo padrão para outras categorias
+                                                                ...(item.categoria?.toUpperCase() !== 'VENDA' && item.categoria?.toUpperCase() !== 'REPASSE' && {
+                                                                    bgcolor: (theme) => theme.palette.mode === 'dark'
+                                                                        ? theme.palette.grey[800]
+                                                                        : theme.palette.grey[100],
+                                                                    color: (theme) => theme.palette.mode === 'dark'
+                                                                        ? theme.palette.grey[300]
+                                                                        : theme.palette.grey[700],
                                                                 })
                                                             }}
                                                         />
@@ -499,7 +568,15 @@ export const FinanceiroPage: React.FC = () => {
                         layout="vertical"
                     />
 
-                    <Paper sx={{ p: 2, borderRadius: 2, bgcolor: 'primary.main', color: 'white' }}>
+                    <Paper sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                        backgroundImage: (theme) => theme.palette.mode === 'dark'
+                            ? 'none'
+                            : undefined // Remove gradiente no modo escuro
+                    }}>
                         <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
                             Saldo Gerado no Período
                         </Typography>

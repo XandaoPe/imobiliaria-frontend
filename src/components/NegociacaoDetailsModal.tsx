@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button,
     TextField, MenuItem, Box, Typography, Divider, Paper,
-    Chip, IconButton, Alert, Collapse, CircularProgress
+    Chip, IconButton, Alert, Collapse, CircularProgress,
+    useTheme
 } from '@mui/material';
 import {
     Timeline, TimelineItem, TimelineSeparator, TimelineConnector,
@@ -28,6 +29,7 @@ interface Props {
 
 export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onClose, onUpdate }) => {
     const navigate = useNavigate();
+    const theme = useTheme();
     const [novaDescricao, setNovaDescricao] = useState('');
     const [novoStatus, setNovoStatus] = useState<StatusNegociacao | ''>('');
     const [loading, setLoading] = useState(false);
@@ -210,9 +212,9 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                 </Box>
             </DialogTitle>
 
-            <DialogContent dividers sx={{ bgcolor: '#fbfbfb' }}>
+            <DialogContent dividers sx={{ bgcolor: 'background.default' }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
-                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: 'background.paper' }}>
                         <Typography variant="overline" color="primary" fontWeight="bold">Dados do Cliente</Typography>
                         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, mt: 1 }}>
                             <Box>
@@ -226,7 +228,7 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                         </Box>
                     </Paper>
 
-                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: 'background.paper' }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <Box sx={{ flex: 1 }}>
                                 <Typography variant="overline" color="secondary" fontWeight="bold">Dados do Imóvel</Typography>
@@ -271,7 +273,15 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                                     {index !== (negociacao.historico.length - 1) && <TimelineConnector />}
                                 </TimelineSeparator>
                                 <TimelineContent>
-                                    <Paper elevation={0} sx={{ p: 1.5, bgcolor: '#f5f5f5', border: '1px solid #eee' }}>
+                                    <Paper elevation={0} sx={{
+                                        p: 1.5,
+                                        bgcolor: (theme) => theme.palette.mode === 'dark'
+                                            ? theme.palette.grey[800]
+                                            : '#f5f5f5',
+                                        border: (theme) => `1px solid ${theme.palette.mode === 'dark'
+                                            ? theme.palette.grey[700]
+                                            : '#eee'}`
+                                    }}>
                                         <Typography variant="body2" fontWeight="bold">{item.usuario_nome}</Typography>
                                         <Typography variant="body2">{item.descricao}</Typography>
                                     </Paper>
@@ -289,8 +299,20 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                     <Paper variant="outlined" sx={{
                         p: 3,
                         textAlign: 'center',
-                        bgcolor: isCancelado ? '#f5f5f5' : '#fff5f5',
-                        borderColor: isCancelado ? '#ddd' : '#ffcfcf'
+                        bgcolor: (theme) => isCancelado
+                            ? theme.palette.mode === 'dark'
+                                ? theme.palette.grey[900]
+                                : '#f5f5f5'
+                            : theme.palette.mode === 'dark'
+                                ? theme.palette.error.dark + '20'
+                                : '#fff5f5',
+                        borderColor: (theme) => isCancelado
+                            ? theme.palette.mode === 'dark'
+                                ? theme.palette.grey[700]
+                                : '#ddd'
+                            : theme.palette.mode === 'dark'
+                                ? theme.palette.error.dark
+                                : '#ffcfcf'
                     }}>
                         {isFechado ? (
                             <>
@@ -316,15 +338,31 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                                         Esta negociação foi CANCELADA e não permite novas interações.
                                     </Typography>
                                 </Box>
-                                <Typography variant="caption" color="text.disabled">
-                                    Para este cliente/imóvel, inicie uma nova negociação na tela de listagem.
-                                </Typography>
+                                    <Typography variant="caption" color={theme.palette.mode === 'dark' ? "text.disabled" : "text.disabled"}>
+                                        Para este cliente/imóvel, inicie uma nova negociação na tela de listagem.
+                                    </Typography>
                             </>
                         )}
                     </Paper>
                 ) : (
-                    <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#fffef0', borderColor: '#ffe58f' }}>
-                        <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#856404', mb: 1 }}>
+                    <Paper variant="outlined" sx={{
+                        p: 1.5,
+                        bgcolor: (theme) => theme.palette.mode === 'dark'
+                            ? theme.palette.warning.dark + '20'
+                            : '#fffef0',
+                        borderColor: (theme) => theme.palette.mode === 'dark'
+                            ? theme.palette.warning.dark
+                            : '#ffe58f'
+                    }}>
+                        <Typography variant="subtitle2" sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            color: (theme) => theme.palette.mode === 'dark'
+                                ? theme.palette.warning.light
+                                : '#856404',
+                            mb: 1
+                        }}>
                             <AddCommentIcon sx={{ fontSize: 18 }} /> Registrar Nova Interação
                         </Typography>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -398,6 +436,9 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
             <Dialog
                 open={modalDecisaoEstornoOpen}
                 onClose={() => setModalDecisaoEstornoOpen(false)}
+                PaperProps={{
+                    sx: { bgcolor: 'background.paper' }
+                }}
             >
                 <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <HelpOutlineIcon color="primary" /> Opções de Estorno

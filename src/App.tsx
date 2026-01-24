@@ -5,6 +5,7 @@ import { CssBaseline } from '@mui/material';
 
 // Imports da Estrutura e Tematização
 import { appTheme } from './theme/theme';
+import { AppThemeProvider } from './contexts/ThemeContext'; // NOVO
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { MainLayout } from './layouts/MainLayout';
 
@@ -23,6 +24,7 @@ import { NegociacaoPage } from './pages/NegociacaoPage';
 import { FinanceiroPage } from './pages/FinanceiroPage';
 import { ValidarReciboPage } from './pages/ValidarReciboPage';
 import { ParametrosPage } from './pages/Configuracoes/ParametrosPage';
+import { ThemeToggleButton } from './components/ThemeToggleButton'; // Este será o botão no canto
 
 /**
  * Componente de Rota Protegida
@@ -74,10 +76,13 @@ const HomeRouterWrapper = () => {
 
 const App = () => {
   return (
-    <ThemeProvider theme={appTheme}>
+    // Substitua ThemeProvider pelo AppThemeProvider
+    <AppThemeProvider>
       <CssBaseline />
       <BrowserRouter>
         <AuthProvider>
+          {/* O ThemeToggleButton agora funciona porque está dentro do AppThemeProvider */}
+          <ThemeToggleButton />
           <Routes>
 
             {/* --- ROTAS PÚBLICAS --- */}
@@ -91,7 +96,7 @@ const App = () => {
             {/* --- ROTA HÍBRIDA (Home) --- */}
             {/* Se logado, renderiza dentro do ProtectedRoute (com Layout/Menu) */}
             {/* Se deslogado, renderiza puramente a HomePage (Vitrine) */}
-            <Route path="/home" element={<HomeRouterWrapper />}/>
+            <Route path="/home" element={<HomeRouterWrapper />} />
 
             {/* --- ROTAS PROTEGIDAS (Necessitam Login) --- */}
             <Route element={<ProtectedRoute />}>
@@ -113,7 +118,7 @@ const App = () => {
           </Routes>
         </AuthProvider>
       </BrowserRouter>
-    </ThemeProvider>
+    </AppThemeProvider>
   );
 };
 

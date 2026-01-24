@@ -10,7 +10,8 @@ import {
     Typography,
     Divider,
     CircularProgress,
-    MenuItem
+    MenuItem,
+    useTheme
 } from '@mui/material';
 import { CurrencyFormatInput } from './CurrencyFormatInput';
 import { configuracaoService } from '../services/configuracaoService';
@@ -30,46 +31,45 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
     onClose,
     onConfirm
 }) => {
-    // Estados principais
+    const theme = useTheme();
     const [valorTotal, setValorTotal] = useState<number | null>(valorSugerido);
     const [entrada, setEntrada] = useState<number | null>(0);
     const [parcelas, setParcelas] = useState<number>(1);
     const [valorParcela, setValorParcela] = useState<number | null>(0);
     const [diaVencimento, setDiaVencimento] = useState<number>(new Date().getDate());
-
-    // Estados de ajuste - AGORA INDEPENDENTES
     const [porcentagemTaxa, setPorcentagemTaxa] = useState<number>(0);
     const [porcentagemAumento, setPorcentagemAumento] = useState<number>(0);
     const [valorAumentoFixo, setValorAumentoFixo] = useState<number>(0);
-
-    const firstInputRef = useRef<HTMLDivElement>(null);
-    const [loadingTaxa, setLoadingTaxa] = useState(false);
-
-    // Estado para o Select de tipo
     const [tipo, setTipo] = useState<"VENDA" | "ALUGUEL">(
         tipoInicial === "LOCACAO" ? "ALUGUEL" : (tipoInicial as "VENDA" | "ALUGUEL")
     );
 
-    // 1. Busca de Taxa e Reset de Campos ao abrir ou mudar o Tipo
-    // CORREÇÃO: Dividido para garantir que a troca de 'tipo' sempre busque a taxa correta
+    const firstInputRef = useRef<HTMLDivElement>(null);
+    const [loadingTaxa, setLoadingTaxa] = useState(false);
+
     useEffect(() => {
         const buscarTaxa = async () => {
             if (open) {
                 setLoadingTaxa(true);
                 try {
-                    const configs = await configuracaoService.getConfigs();
-                    // Garante que a chave mude dinamicamente conforme o Select
+                    const configs:any = await configuracaoService.getConfigs();
                     const chaveBusca = tipo === 'ALUGUEL' ? 'TAXA_ADM_ALUGUEL' : 'TAXA_VENDA';
-                    const config = configs.find(c => c.chave === chaveBusca);
+                    const config = Array.isArray(configs)
+                        ? configs.find(c => c.chave === chaveBusca)
+                        : null;
 
-                    if (config) {
-                        const valorDb = Number(config.valor);
-                        setPorcentagemTaxa(valorDb);
+                    // FIXAÇÃO EM 10% QUANDO NÃO HOUVER INFORMAÇÃO
+                    const valorPadrao = 10; // 10% fixo
+
+                    if (config && config.valor !== undefined && config.valor !== null) {
+                        const valorNumerico = Number(config.valor) || valorPadrao;
+                        setPorcentagemTaxa(valorNumerico);
                     } else {
-                        setPorcentagemTaxa(0);
+                        setPorcentagemTaxa(valorPadrao);
                     }
-                } catch (err) {
-                    console.error("Erro ao buscar taxas", err);
+                } catch (err: any) {
+                    // 5% também em caso de erro
+                    setPorcentagemTaxa(5);
                 } finally {
                     setLoadingTaxa(false);
                 }
@@ -77,11 +77,8 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
         };
 
         buscarTaxa();
+    }, [open, tipo]);
 
-        // Reset inicial apenas quando o modal abre (não reseta tudo ao mudar tipo para não perder o valor digitado)
-    }, [open, tipo]); // Monitora 'tipo' para atualizar a taxa instantaneamente
-
-    // Reset de campos específicos ao abrir o modal pela primeira vez
     useEffect(() => {
         if (open) {
             setValorTotal(valorSugerido || 0);
@@ -102,7 +99,6 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
         }
     }, [open, valorSugerido]);
 
-    // 2. Cálculo automático das parcelas (Usa porcentagemAumento, ignora porcentagemTaxa)
     useEffect(() => {
         const vTotal = valorTotal ?? 0;
         const vEntrada = entrada ?? 0;
@@ -110,7 +106,6 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
         const qtd = parcelas > 0 ? parcelas : 1;
 
         const valorBase = liquido / qtd;
-        // O cliente paga apenas o valor base + o aumento combinado
         const comPorcentagem = valorBase * (1 + (porcentagemAumento / 100));
         const valorFinal = comPorcentagem + valorAumentoFixo;
 
@@ -123,11 +118,7 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
         const vTotal = Number(valorTotal);
         const vEntrada = Number(entrada || 0);
         const liquidoParaBase = vTotal - vEntrada;
-
-        // Cálculo da Taxa da Empresa (Retenção interna para repasse)
         const valorTaxaEmpresa = liquidoParaBase * (Number(porcentagemTaxa) / 100);
-
-        // Valor que sobra para repassar (Ex: Dono do imóvel/Parceiro)
         const valorLiquidoRepasse = liquidoParaBase - valorTaxaEmpresa;
 
         const dadosParaEnviar = {
@@ -139,7 +130,6 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
             ajustePorcentagem: Number(porcentagemAumento),
             ajusteFixo: Number(valorAumentoFixo),
             tipoNegocio: tipo,
-            // Campos de Repasse/Internos - Gravando corretamente no banco
             porcentagemTaxaEmpresa: Number(porcentagemTaxa),
             valorRetencaoEmpresa: valorTaxaEmpresa,
             valorBaseParaRepasse: valorLiquidoRepasse
@@ -149,15 +139,21 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="xs"
+            fullWidth
+            PaperProps={{
+                sx: {
+                    bgcolor: 'background.paper'
+                }
+            }}
+        >
             <DialogTitle sx={{ fontWeight: 'bold', pb: 1 }}>Finalizar Negociação</DialogTitle>
             <DialogContent dividers sx={{ pt: 2 }}>
-
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-
                     <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-
-                        {/* Seleção do Tipo de Negócio */}
                         <TextField
                             select
                             sx={{ flex: 2 }}
@@ -169,19 +165,35 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
                             <MenuItem value="VENDA">Venda</MenuItem>
                             <MenuItem value="ALUGUEL">Aluguel / Locação</MenuItem>
                         </TextField>
-                        <TextField
-                            label="Taxa"
-                            type="number"
-                            size="small"
-                            sx={{ flex: 1 }}
-                            value={porcentagemTaxa}
-                            onChange={(e) => setPorcentagemTaxa(Number(e.target.value))}
-                            onFocus={(e) => e.target.select()}
-                            InputProps={{
-                                endAdornment: <Typography variant="body2" color="text.secondary">%</Typography>,
-                                startAdornment: loadingTaxa ? <CircularProgress size={16} sx={{ mr: 1 }} /> : null
+                        
+                        <Box
+                            sx={{
+                                flex: 1,
+                                p: 1,
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 1,
+                                bgcolor: 'background.paper',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                minHeight: 40
                             }}
-                        />
+                        >
+                            <Typography variant="body2" color="text.secondary">
+                                Taxa
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {loadingTaxa ? (
+                                    <CircularProgress size={16} />
+                                ) : (
+                                    <Typography variant="body2" fontWeight="bold">
+                                        {porcentagemTaxa}%
+                                    </Typography>
+                                )}
+                            </Box>
+                        </Box>
+
                     </Box>
 
                     <Box ref={firstInputRef}>
@@ -233,8 +245,6 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
                     </Divider>
 
                     <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-
-                        {/* Campo Aumento: Este é o que efetivamente calcula a parcela */}
                         <TextField
                             label="% Aumento"
                             type="number"
@@ -263,9 +273,13 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
 
                     <Box sx={{
                         p: 2,
-                        bgcolor: '#f0f7ff',
+                        bgcolor: (theme) => theme.palette.mode === 'dark'
+                            ? theme.palette.primary.dark + '20'
+                            : '#f0f7ff',
                         borderRadius: 1,
-                        border: '1px solid #cce3ff'
+                        border: (theme) => `1px solid ${theme.palette.mode === 'dark'
+                            ? theme.palette.primary.dark
+                            : '#cce3ff'}`
                     }}>
                         <CurrencyFormatInput
                             name="valorParcela"
@@ -274,14 +288,23 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
                             size="small"
                             onChange={(val) => setValorParcela(val)}
                         />
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{
+                            display: 'block',
+                            mt: 1,
+                            opacity: (theme) => theme.palette.mode === 'dark' ? 0.8 : 1
+                        }}>
                             Cálculo baseado no Valor Total, Entrada e % de Aumento.
                         </Typography>
                     </Box>
                 </Box>
             </DialogContent>
 
-            <DialogActions sx={{ p: 2, bgcolor: '#f8f9fa' }}>
+            <DialogActions sx={{
+                p: 2,
+                bgcolor: (theme) => theme.palette.mode === 'dark'
+                    ? theme.palette.background.default
+                    : '#f8f9fa'
+            }}>
                 <Button onClick={onClose} color="inherit" sx={{ textTransform: 'none' }}>
                     Cancelar
                 </Button>
