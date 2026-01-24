@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-    Box, Typography, Paper, Alert, CircularProgress, LinearProgress, Divider
+    Box, Typography, Paper, Alert, CircularProgress, LinearProgress, Divider,
+    useTheme
 } from '@mui/material';
 import {
     TrendingUp, Handshake, AssignmentInd, HomeWork, PeopleAlt
@@ -31,6 +32,7 @@ interface DashboardMetrics {
 }
 
 export const DashboardPage: React.FC = () => {
+    const theme = useTheme();
     const { user, isAuthenticated } = useAuth();
     const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
     const [loading, setLoading] = useState(true);
@@ -91,15 +93,21 @@ export const DashboardPage: React.FC = () => {
     if (!metrics) return null;
 
     return (
-        <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 4, bgcolor: 'background.default', minHeight: '100vh' }}>
 
             {/* TÍTULO E HEADER */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <Box>
-                    <Typography variant="h4" fontWeight="bold">📊 Dashboard CRM</Typography>
-                    <Typography variant="body2" color="text.secondary">Indicadores de desempenho da empresa</Typography>
+                    <Typography variant="h4" fontWeight="bold" sx={{ color: 'text.primary' }}>📊 Dashboard CRM</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>Indicadores de desempenho da empresa</Typography>
                 </Box>
-                <Typography variant="subtitle2" sx={{ bgcolor: 'action.selected', px: 2, py: 0.5, borderRadius: 2 }}>
+                <Typography variant="subtitle2" sx={{
+                    bgcolor: 'action.selected',
+                    px: 2,
+                    py: 0.5,
+                    borderRadius: 2,
+                    color: 'text.primary'
+                }}>
                     Usuário: {user?.nome}
                 </Typography>
             </Box>
@@ -111,39 +119,77 @@ export const DashboardPage: React.FC = () => {
                 gap: 3,
                 '& > *': { flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 24px)', lg: '1 1 0' } }
             }}>
-                <Paper sx={{ p: 2.5, borderLeft: '6px solid #1976d2', boxShadow: 2 }}>
-                    <Typography color="textSecondary" variant="caption" fontWeight="bold">PIPELINE ATIVO</Typography>
-                    <Typography variant="h4" sx={{ mt: 1, fontWeight: 'bold' }}>
+                <Paper sx={{
+                    p: 2.5,
+                    borderLeft: `6px solid ${theme.palette.primary.main}`,
+                    boxShadow: 2,
+                    bgcolor: 'background.paper'
+                }}>
+                    <Typography sx={{ color: 'text.secondary' }} variant="caption" fontWeight="bold">PIPELINE ATIVO</Typography>
+                    <Typography variant="h4" sx={{ mt: 1, fontWeight: 'bold', color: 'text.primary' }}>
                         {metrics.valorEmNegociacao.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, gap: 1 }}>
                         <TrendingUp color="success" />
-                        <Typography variant="caption" color="success.main">{metrics.totalNegociacoes} processos em curso</Typography>
+                        <Typography variant="caption" sx={{ color: 'success.main' }}>{metrics.totalNegociacoes} processos em curso</Typography>
                     </Box>
                 </Paper>
 
-                <Paper sx={{ p: 2.5, borderLeft: '6px solid #2e7d32', boxShadow: 2 }}>
-                    <Typography color="textSecondary" variant="caption" fontWeight="bold">TAXA DE CONVERSÃO</Typography>
-                    <Typography variant="h4" sx={{ mt: 1, fontWeight: 'bold' }}>{metrics.taxaConversao.toFixed(1)}%</Typography>
-                    <LinearProgress variant="determinate" value={metrics.taxaConversao} sx={{ mt: 2, height: 8, borderRadius: 4, bgcolor: '#e0e0e0' }} />
+                <Paper sx={{
+                    p: 2.5,
+                    borderLeft: `6px solid ${theme.palette.warning.main}`,
+                    boxShadow: 2,
+                    bgcolor: 'background.paper'
+                }}>
+                    <Typography sx={{ color: 'text.secondary' }} variant="caption" fontWeight="bold">TAXA DE CONVERSÃO</Typography>
+                    <Typography variant="h4" sx={{ mt: 1, fontWeight: 'bold', color: 'text.primary' }}>{metrics.taxaConversao.toFixed(1)}%</Typography>
+                    <LinearProgress
+                        variant="determinate"
+                        value={metrics.taxaConversao}
+                        sx={{
+                            mt: 2,
+                            height: 8,
+                            borderRadius: 4,
+                            bgcolor: theme.palette.mode === 'dark' ? 'grey.700' : 'grey.200'
+                        }}
+                    />
                 </Paper>
 
-                <Paper sx={{ p: 2.5, borderLeft: '6px solid #ed6c02', boxShadow: 2 }}>
-                    <Typography color="textSecondary" variant="caption" fontWeight="bold">CARTEIRA DE CLIENTES</Typography>
-                    <Typography variant="h4" sx={{ mt: 1, fontWeight: 'bold' }}>{metrics.totalClientes}</Typography>
+                <Paper sx={{
+                    p: 2.5,
+                    borderLeft: `6px solid ${theme.palette.success.main}`,
+                    boxShadow: 2,
+                    bgcolor: 'background.paper'
+                }}>
+                    <Typography sx={{ color: 'text.secondary' }} variant="caption" fontWeight="bold">CARTEIRA DE CLIENTES</Typography>
+                    <Typography variant="h4" sx={{ mt: 1, fontWeight: 'bold', color: 'text.primary' }}>{metrics.totalClientes}</Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, gap: 1 }}>
-                        <PeopleAlt color="warning" fontSize="small" />
-                        <Typography variant="caption" color="text.secondary">Base de contatos ativos</Typography>
+                        <PeopleAlt sx={{ color: 'success.main' }} fontSize="small" />
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>Base de contatos ativos</Typography>
                     </Box>
                 </Paper>
 
-                <Paper sx={{ p: 2.5, borderLeft: '6px solid #f44336', bgcolor: '#fff9f9', boxShadow: 2 }}>
-                    <Typography color="error" variant="caption" fontWeight="bold">ATENÇÃO: LEADS NOVOS</Typography>
+                <Paper sx={{
+                    p: 2.5,
+                    borderLeft: `6px solid ${theme.palette.warning.main}`,
+                    boxShadow: 2,
+                    bgcolor: 'background.paper'
+                }}>
+                    <Typography sx={{ color: 'text.secondary' }} variant="caption" fontWeight="bold">
+                        ATENÇÃO: LEADS NOVOS
+                    </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                        <Typography variant="h4" color="error" fontWeight="bold">{metrics.novosLeads}</Typography>
-                        <AssignmentInd color="error" fontSize="large" />
+                        <Typography variant="h4" sx={{
+                            fontWeight: 'bold',
+                            color: 'warning.main'
+                        }}>
+                            {metrics.novosLeads}
+                        </Typography>
+                        <AssignmentInd sx={{ color: 'warning.main' }} fontSize="large" />
                     </Box>
-                    <Typography variant="caption" color="text.secondary">Aguardando primeiro contato</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                        Aguardando primeiro contato
+                    </Typography>
                 </Paper>
             </Box>
 
@@ -154,11 +200,21 @@ export const DashboardPage: React.FC = () => {
                 gap: 3
             }}>
                 {/* Funil de Vendas */}
-                <Paper sx={{ p: 3, flex: 2, boxShadow: 3 }}>
-                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Paper sx={{
+                    p: 3,
+                    flex: 2,
+                    boxShadow: 3,
+                    bgcolor: 'background.paper'
+                }}>
+                    <Typography variant="h6" gutterBottom sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        color: 'text.primary'
+                    }}>
                         <Handshake color="primary" /> Estágios do Pipeline
                     </Typography>
-                    <Divider sx={{ mb: 3 }} />
+                    <Divider sx={{ mb: 3, borderColor: 'divider' }} />
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                         {['PROSPECCAO', 'VISITA', 'PROPOSTA', 'FECHADO'].map((status) => {
                             const count = metrics.negociacoesPorStatus[status] || 0;
@@ -166,10 +222,22 @@ export const DashboardPage: React.FC = () => {
                             return (
                                 <Box key={status}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                        <Typography variant="body2" fontWeight="500">{status.replace('_', ' ')}</Typography>
-                                        <Typography variant="body2" color="primary" fontWeight="bold">{count}</Typography>
+                                        <Typography variant="body2" fontWeight="500" sx={{ color: 'text.primary' }}>
+                                            {status.replace('_', ' ')}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                                            {count}
+                                        </Typography>
                                     </Box>
-                                    <LinearProgress variant="determinate" value={perc} sx={{ height: 10, borderRadius: 5, bgcolor: '#f0f0f0' }} />
+                                    <LinearProgress
+                                        variant="determinate"
+                                        value={perc}
+                                        sx={{
+                                            height: 10,
+                                            borderRadius: 5,
+                                            bgcolor: theme.palette.mode === 'dark' ? 'grey.700' : 'grey.100'
+                                        }}
+                                    />
                                 </Box>
                             );
                         })}
@@ -177,26 +245,53 @@ export const DashboardPage: React.FC = () => {
                 </Paper>
 
                 {/* Inventário */}
-                <Paper sx={{ p: 3, flex: 1, boxShadow: 3, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <Paper sx={{
+                    p: 3,
+                    flex: 1,
+                    boxShadow: 3,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    bgcolor: 'background.paper'
+                }}>
                     <Box>
-                        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="h6" gutterBottom sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            color: 'text.primary'
+                        }}>
                             <HomeWork color="secondary" /> Inventário
                         </Typography>
-                        <Divider sx={{ mb: 2 }} />
+                        <Divider sx={{ mb: 2, borderColor: 'divider' }} />
                         <Box sx={{ py: 3, textAlign: 'center' }}>
-                            <Typography variant="h2" fontWeight="bold" color="secondary">{metrics.imoveisDisponiveis}</Typography>
-                            <Typography variant="subtitle2" color="text.secondary">Imóveis prontos para venda/aluguel</Typography>
+                            <Typography variant="h2" fontWeight="bold" sx={{ color: 'secondary.main' }}>
+                                {metrics.imoveisDisponiveis}
+                            </Typography>
+                            <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
+                                Imóveis prontos para venda/aluguel
+                            </Typography>
                         </Box>
                     </Box>
                     <Box>
-                        <Typography variant="caption" color="text.secondary">Ocupação da Carteira</Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>Ocupação da Carteira</Typography>
                         <LinearProgress
                             variant="determinate"
                             value={(metrics.imoveisDisponiveis / (metrics.totalImoveis || 1)) * 100}
                             color="secondary"
-                            sx={{ mt: 1, height: 12, borderRadius: 6 }}
+                            sx={{
+                                mt: 1,
+                                height: 12,
+                                borderRadius: 6,
+                                bgcolor: theme.palette.mode === 'dark' ? 'grey.700' : 'grey.100'
+                            }}
                         />
-                        <Typography variant="caption" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
+                        <Typography variant="caption" sx={{
+                            mt: 1,
+                            display: 'block',
+                            textAlign: 'center',
+                            color: 'text.secondary'
+                        }}>
                             Total de {metrics.totalImoveis} imóveis cadastrados
                         </Typography>
                     </Box>
