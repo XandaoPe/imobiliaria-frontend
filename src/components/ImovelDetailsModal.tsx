@@ -7,7 +7,7 @@ import {
     Close as CloseIcon,
     BedOutlined, BathtubOutlined, HomeWorkOutlined,
     DriveEtaOutlined, Business as BusinessIcon,
-    LocationOnOutlined,
+    LandscapeOutlined,
     NavigateBefore as NavigateBeforeIcon,
     NavigateNext as NavigateNextIcon,
     SendOutlined as SendIcon
@@ -61,7 +61,7 @@ export const ImovelDetailsModal: React.FC<ImovelDetailsModalProps> = ({ open, on
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 bgcolor: 'background.paper',
-                borderBottom: `1px solid ${theme.palette.divider}` // Linha divisória para separar visualmente
+                borderBottom: `1px solid ${theme.palette.divider}`
             }}>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary' }}>
                     Detalhes do Imóvel
@@ -82,9 +82,7 @@ export const ImovelDetailsModal: React.FC<ImovelDetailsModalProps> = ({ open, on
 
             <DialogContent sx={{ p: 0 }}>
                 {/* CONTAINER DA GALERIA */}
-                <Box sx={{ position: 'relative', bgcolor: '#000' }}> {/* Mantido preto para fotos */}
-
-                    {/* Seta Esquerda */}
+                <Box sx={{ position: 'relative', bgcolor: '#000' }}>
                     {imovel.fotos?.length > 1 && (
                         <IconButton
                             onClick={() => scroll('left')}
@@ -151,7 +149,6 @@ export const ImovelDetailsModal: React.FC<ImovelDetailsModalProps> = ({ open, on
                         ))}
                     </Box>
 
-                    {/* Seta Direita */}
                     {imovel.fotos?.length > 1 && (
                         <IconButton
                             onClick={() => scroll('right')}
@@ -176,45 +173,155 @@ export const ImovelDetailsModal: React.FC<ImovelDetailsModalProps> = ({ open, on
                     )}
                 </Box>
 
-                {/* --- RESTANTE DO CONTEÚDO --- */}
+                {/* --- INFORMAÇÕES DO IMÓVEL --- */}
                 <Box sx={{ p: 3 }}>
+                    {/* CABEÇALHO: IMOBILIÁRIA E STATUS */}
+                    <Box sx={{ mb: 2 }}>
+                        <Box sx={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            // mb: 0.5 // Reduzido para aproximar dos itens abaixo
+                        }}>
+                            <Chip
+                                icon={<BusinessIcon sx={{ fontSize: '16px' }} />}
+                                label={imovel.empresa?.nome || 'Imobiliária'}
+                                color="primary"
+                                variant="outlined"
+                                size="small"
+                                sx={{
+                                    fontWeight: 'bold',
+                                    fontSize: '0.85rem',
+                                    height: 26
+                                }}
+                            />
+                            <Chip
+                                label={imovel.cidade || 'Cidade não informada'}
+                                size="small"
+                                sx={{
+                                    fontWeight: 'bold',
+                                    fontSize: '1.5rem',
+                                    height: 24
+                                }}
+                            />
+                            <Chip
+                                label={imovel.disponivel ? 'Disponível' : 'Indisponível'}
+                                color={imovel.disponivel ? 'success' : 'error'}
+                                size="small"
+                                sx={{
+                                    fontWeight: 'bold',
+                                    fontSize: '0.8rem',
+                                    height: 24
+                                }}
+                            />
+                        </Box>
+
+                    </Box>
+
+                    {/* ENDEREÇO - subtitulo 2 (requisito 3) */}
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                    }}>
+                        <Typography variant="caption" color="text.secondary">•</Typography>
+                        <Typography variant="subtitle2" color="text.secondary" >
+                            {imovel.endereco || 'Endereço não informado'}
+                        </Typography>
+                    </Box>
+
+                    {/* TIPO E TÍTULO - subtitulo 2 (requisito 4) */}
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                    }}>
+                        <Typography variant="caption" color="text.secondary">•</Typography>
+                        <Typography variant="subtitle2" color="text.secondary">
+                            {imovel.tipo || 'Tipo não informado'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">•</Typography>
+                        <Typography variant="subtitle2" color="text.secondary">
+                            {imovel.titulo || 'Título não informado'}
+                        </Typography>
+
+                    </Box>
+
+                    {/* DESCRIÇÃO */}
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                    }}>
+                        <Typography variant="caption" color="text.secondary">•</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            {imovel.descricao || 'Sem descrição disponível.'}
+                        </Typography>
+                    </Box>
+                    
+                    <Divider sx={{ my: 1 }} />
+
+                    {/* VALORES DE VENDA E ALUGUEL */}
                     <Box sx={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: 2,
                         mb: 2
                     }}>
-                        <Chip
-                            icon={<BusinessIcon />}
-                            label={imovel.empresa?.nome || 'Imobiliária'}
-                            color="primary"
-                            variant="outlined"
-                            sx={{ fontWeight: 'bold' }}
-                        />
-                        <Typography variant="h4" color="primary.main" sx={{ fontWeight: 800 }}>
-                            {imovel.aluguel?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </Typography>
-                        <Typography variant="h4" color="primary.main" sx={{ fontWeight: 800 }}>
-                            {imovel.valor?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </Typography>
+                        {imovel.para_venda && imovel.valor_venda && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <Chip
+                                    label="Venda"
+                                    size="small"
+                                    color="success"
+                                    variant="outlined"
+                                    sx={{ mb: 0.5, fontSize: '0.75rem', height: 22 }}
+                                />
+                                <Typography variant="h6" color="primary.main" sx={{ fontWeight: 800 }}>
+                                    {imovel.valor_venda.toLocaleString('pt-BR', {
+                                        style: 'currency',
+                                        currency: 'BRL'
+                                    })}
+                                </Typography>
+                            </Box>
+                        )}
+
+                        {imovel.para_aluguel && imovel.valor_aluguel && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <Chip
+                                    label="Aluguel"
+                                    size="small"
+                                    color="info"
+                                    variant="outlined"
+                                    sx={{ mb: 0.5, fontSize: '0.75rem', height: 22 }}
+                                />
+                                <Typography variant="h6" color="primary.main" sx={{ fontWeight: 800 }}>
+                                    {imovel.valor_aluguel.toLocaleString('pt-BR', {
+                                        style: 'currency',
+                                        currency: 'BRL'
+                                    })}
+                                </Typography>
+                            </Box>
+                        )}
                     </Box>
 
-                    <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>{imovel.titulo}</Typography>
-                    <Typography variant="body1" color="text.secondary" sx={{ mb: 3, lineHeight: 1.7 }}>
-                        {imovel.descricao}
-                    </Typography>
-
-                    <Divider sx={{ my: 3 }} />
-
-                    {/* CARACTERÍSTICAS EM BOX FLEX - CORRIGIDO */}
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 2, mb: 4 }}>
+                    {/* CARACTERÍSTICAS COM ÍCONES MENORES (requisito 5) */}
+                    <Box sx={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        justifyContent: 'space-between',
+                        gap: 1.5,
+                        mb: 3,
+                        py: 1.5,
+                        borderTop: `1px solid ${theme.palette.divider}`,
+                        borderBottom: `1px solid ${theme.palette.divider}`
+                    }}>
                         {[
-                            { icon: <BedOutlined />, label: 'Quartos', value: imovel.quartos },
-                            { icon: <BathtubOutlined />, label: 'Banheiros', value: imovel.banheiros },
-                            { icon: <HomeWorkOutlined />, label: 'Área Const.', value: `${imovel.area_construida}m²` },
-                            { icon: <DriveEtaOutlined />, label: 'Garagem', value: imovel.garagem ? 'Sim' : 'Não' }
+                            { icon: <BedOutlined sx={{ fontSize: '18px' }} />, label: 'Quartos', value: imovel.quartos },
+                            { icon: <BathtubOutlined sx={{ fontSize: '18px' }} />, label: 'Banheiros', value: imovel.banheiros },
+                            { icon: <LandscapeOutlined sx={{ fontSize: '18px' }} />, label: 'Área Terreno', value: `${imovel.area_terreno || 0}m²` },
+                            { icon: <HomeWorkOutlined sx={{ fontSize: '18px' }} />, label: 'Área Construída', value: `${imovel.area_construida || 0}m²` },
+                            { icon: <DriveEtaOutlined sx={{ fontSize: '18px' }} />, label: 'Garagem', value: imovel.garagem ? 'Sim' : 'Não' }
                         ].map((item, i) => (
                             <Box
                                 key={i}
@@ -222,79 +329,36 @@ export const ImovelDetailsModal: React.FC<ImovelDetailsModalProps> = ({ open, on
                                     display: 'flex',
                                     flexDirection: 'column',
                                     alignItems: 'center',
-                                    minWidth: { xs: 'calc(50% - 16px)', sm: '120px' },
-                                    p: 2,
-                                    borderRadius: 2,
-                                    bgcolor: theme.palette.mode === 'dark'
-                                        ? theme.palette.background.default
-                                        : '#f8f9fa',
-                                    border: `1px solid ${theme.palette.mode === 'dark'
-                                        ? theme.palette.divider
-                                        : '#eee'}`
+                                    minWidth: { xs: 'calc(50% - 12px)', sm: '100px' },
+                                    p: 1,
                                 }}
                             >
-                                <Box sx={{
-                                    color: 'primary.main',
-                                    mb: 0.5
-                                }}>
+                                <Box sx={{ color: 'primary.main', mb: 0.25 }}>
                                     {item.icon}
                                 </Box>
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                                     {item.label}
                                 </Typography>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
                                     {item.value || 0}
                                 </Typography>
                             </Box>
                         ))}
                     </Box>
 
-                    {/* LOCALIZAÇÃO ESTILIZADA - CORRIGIDO */}
-                    <Box sx={{
-                        p: 2,
-                        bgcolor: theme.palette.mode === 'dark'
-                            ? theme.palette.primary.dark + '20' // 20 = 12% de opacidade
-                            : '#f0f7ff',
-                        border: `1px solid ${theme.palette.mode === 'dark'
-                            ? theme.palette.primary.dark
-                            : '#d0e3ff'}`,
-                        color: theme.palette.mode === 'dark'
-                            ? theme.palette.primary.light
-                            : '#0052cc',
-                        borderRadius: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2
-                    }}>
-                        <LocationOnOutlined />
-                        <Box>
-                            <Typography variant="caption" sx={{
-                                fontWeight: 'bold',
-                                display: 'block',
-                                textTransform: 'uppercase'
-                            }}>
-                                Endereço do Imóvel
-                            </Typography>
-                            <Typography variant="body2">
-                                {imovel.endereco}, {imovel.cidade} - {imovel.estado}
-                            </Typography>
-                        </Box>
-                    </Box>
-
-                    <Divider sx={{ my: 3 }} />
-
+                    {/* BOTÃO DE INTERESSE */}
                     <Button
                         variant="contained"
                         fullWidth
-                        size="large"
+                        size="medium"
                         startIcon={<SendIcon />}
                         onClick={onInteresse}
                         disabled={!imovel.disponivel}
                         sx={{
                             borderRadius: 2,
-                            py: 1.5,
+                            py: 1.25,
                             fontWeight: 'bold',
-                            fontSize: '1.1rem',
+                            fontSize: '1rem',
                             textTransform: 'none',
                             boxShadow: theme.palette.mode === 'dark'
                                 ? '0 4px 14px rgba(25, 118, 210, 0.5)'
