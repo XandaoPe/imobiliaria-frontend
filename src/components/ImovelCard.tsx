@@ -218,15 +218,6 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse, s
                         </Tooltip>
                     )}
 
-                    {imovel.area_terreno && !imovel.area_construida && (
-                        <Tooltip title="Área do Terreno">
-                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                <LandscapeOutlined fontSize="small" sx={{ color: 'text.secondary', mb: 0.5 }} />
-                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{imovel.area_terreno}m²</Typography>
-                            </Box>
-                        </Tooltip>
-                    )}
-
                     {imovel.garagem && (
                         <Tooltip title="Possui Garagem">
                             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
