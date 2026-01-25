@@ -25,6 +25,7 @@ import { FinanceiroPage } from './pages/FinanceiroPage';
 import { ValidarReciboPage } from './pages/ValidarReciboPage';
 import { ParametrosPage } from './pages/Configuracoes/ParametrosPage';
 import { ThemeToggleButton } from './components/ThemeToggleButton'; // Este será o botão no canto
+import { EmpresaPage } from './pages/Configuracoes/EmpresaPage';
 
 /**
  * Componente de Rota Protegida
@@ -109,6 +110,7 @@ const App = () => {
               <Route path="/usuarios" element={<UsuariosPage />} />
               <Route path="/leads" element={<LeadsPage />} />
               <Route path="/configuracoes/parametros" element={<ParametrosPage />} />
+              <Route path="/configuracoes/empresa" element={<EmpresaPage />} />
             </Route>
 
             {/* --- FALLBACK --- */}

@@ -21,7 +21,6 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LockIcon from '@mui/icons-material/Lock';
-
 import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
 import { API_URL } from '../services/api';
@@ -233,6 +232,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         { text: 'Imóveis', icon: <BusinessIcon />, path: '/imoveis', requiredRoles: [] },
         { text: 'Financeiro', icon: <AttachMoneyIcon />, path: '/financeiro', requiredRoles: USER_ADMIN_ROLES },
         { text: 'Usuários', icon: <AdminPanelSettingsIcon />, path: '/usuarios', requiredRoles: USER_ADMIN_ROLES },
+        {
+            text: 'Dados da Empresa',
+            icon: <BusinessIcon />,
+            path: '/configuracoes/empresa',
+            requiredRoles: USER_ADMIN_ROLES,
+        },
         { text: 'Configurações', icon: <SettingsIcon />, path: '/configuracoes/parametros', requiredRoles: USER_ADMIN_ROLES }
     ];
 

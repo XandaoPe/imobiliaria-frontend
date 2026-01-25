@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
     Box, Typography, CircularProgress, Container, useTheme,
     TextField, InputAdornment, IconButton, Tooltip,
-    ToggleButtonGroup, ToggleButton, Chip, Button
+    ToggleButtonGroup, ToggleButton, Chip, Button, Collapse
 } from '@mui/material';
 import {
     Search as SearchIcon,
@@ -12,7 +12,9 @@ import {
     FilterList as FilterListIcon,
     Sell as SellIcon,
     Home as HomeIcon,
-    AllInclusive as AllInclusiveIcon
+    AllInclusive as AllInclusiveIcon,
+    ExpandMore as ExpandMoreIcon,
+    ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,11 +34,12 @@ export const HomePage: React.FC = () => {
     const [searching, setSearching] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [filter, setFilter] = useState('TODOS'); // Filtro de disponibilidade
-    const [tipoFilter, setTipoFilter] = useState<'TODOS' | 'VENDA' | 'ALUGUEL'>('TODOS'); // ⭐️ NOVO FILTRO
+    const [tipoFilter, setTipoFilter] = useState<'TODOS' | 'VENDA' | 'ALUGUEL'>('TODOS');
     const [selectedImovel, setSelectedImovel] = useState<any | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [leadModalOpen, setLeadModalOpen] = useState(false);
     const [imovelParaLead, setImovelParaLead] = useState<any | null>(null);
+    const [filtersExpanded, setFiltersExpanded] = useState(false); // Estado para expandir/colapsar filtros
 
     const handleOpenInteresse = (imovel: any) => {
         setImovelParaLead(imovel);
@@ -84,20 +87,18 @@ export const HomePage: React.FC = () => {
             if (filter === 'DISPONIVEIS') disponivelFilter = im.disponivel === true;
             if (filter === 'INDISPONIVEIS') disponivelFilter = im.disponivel === false;
 
-            // ⭐️ Filtro de tipo (VENDA/ALUGUEL)
+            // Filtro de tipo (VENDA/ALUGUEL)
             let tipoFilterPass = true;
             if (tipoFilter === 'VENDA') {
                 tipoFilterPass = im.para_venda === true;
             } else if (tipoFilter === 'ALUGUEL') {
                 tipoFilterPass = im.para_aluguel === true;
             }
-            // Se for "TODOS", não filtra por tipo
 
             return disponivelFilter && tipoFilterPass;
         });
     }, [imoveis, filter, tipoFilter]);
 
-    // ⭐️ Contadores para mostrar quantos imóveis em cada categoria
     const counters = useMemo(() => {
         const total = imoveis.length;
         const vendas = imoveis.filter((im: any) => im.para_venda === true).length;
@@ -123,242 +124,350 @@ export const HomePage: React.FC = () => {
 
     const hasActiveFilters = tipoFilter !== 'TODOS' || filter !== 'TODOS' || searchTerm !== '';
 
+    const toggleFilters = () => {
+        setFiltersExpanded(!filtersExpanded);
+    };
+
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
             {/* CABEÇALHO E BUSCA */}
             <Box sx={{
                 bgcolor: 'background.paper',
                 pt: 4,
-                pb: 3,
+                pb: filtersExpanded ? 3 : 3,
                 mb: 4,
                 borderBottom: '1px solid',
                 borderColor: 'divider'
             }}>
                 <Container maxWidth="lg">
+                    {/* Primeira linha: Voltar, Título e Search */}
                     <Box sx={{
                         display: 'flex',
                         flexDirection: { xs: 'column', md: 'row' },
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        gap: 3
+                        gap: 3,
+                        mb: 3
                     }}>
-                        <Tooltip title="Voltar para a página inicial" arrow>
-                            <IconButton
-                                onClick={() => navigate('/')}
+                        {/* Lado esquerdo: Voltar + Título */}
+                        <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2,
+                            width: { xs: '100%', md: 'auto' }
+                        }}>
+                            <Tooltip title="Voltar para a página inicial" arrow>
+                                <IconButton
+                                    onClick={() => navigate('/')}
+                                    sx={{
+                                        bgcolor: 'action.hover',
+                                        '&:hover': {
+                                            bgcolor: 'action.selected'
+                                        }
+                                    }}
+                                >
+                                    <ArrowBackIcon />
+                                </IconButton>
+                            </Tooltip>
+
+                            <Typography variant="h4" sx={{
+                                fontWeight: 800,
+                                color: 'primary.main',
+                                flexGrow: 1
+                            }}>
+                                Catálogo
+                            </Typography>
+                        </Box>
+
+                        {/* Lado direito: Search + Botão de Filtros */}
+                        <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2,
+                            width: { xs: '100%', md: 'auto' }
+                        }}>
+                            <TextField
+                                placeholder="Buscar cidade, título..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
                                 sx={{
-                                    bgcolor: 'action.hover',
-                                    '&:hover': {
-                                        bgcolor: 'action.selected'
+                                    flexGrow: 1,
+                                    minWidth: 250,
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: '20px',
+                                        bgcolor: 'action.hover',
+                                        '&.Mui-focused': {
+                                            bgcolor: 'background.paper'
+                                        }
                                     }
                                 }}
-                            >
-                                <ArrowBackIcon />
-                            </IconButton>
-                        </Tooltip>
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            {searching ? <CircularProgress size={20} /> : <SearchIcon color="primary" />}
+                                        </InputAdornment>
+                                    ),
+                                    endAdornment: searchTerm && (
+                                        <IconButton onClick={() => setSearchTerm('')} size="small">
+                                            <ClearIcon fontSize="small" />
+                                        </IconButton>
+                                    )
+                                }}
+                            />
 
-                        <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main' }}>
-                            Catálogo
-                        </Typography>
-
-                        <TextField
-                            placeholder="Buscar cidade, título..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            sx={{
-                                width: { xs: '100%', md: '450px' },
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: '50px',
-                                    bgcolor: 'action.hover',
-                                    '&.Mui-focused': {
-                                        bgcolor: 'background.paper'
-                                    }
-                                }
-                            }}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        {searching ? <CircularProgress size={20} /> : <SearchIcon color="primary" />}
-                                    </InputAdornment>
-                                ),
-                                endAdornment: searchTerm && (
-                                    <IconButton onClick={() => setSearchTerm('')}>
-                                        <ClearIcon />
-                                    </IconButton>
-                                )
-                            }}
-                        />
+                            {/* Botão para expandir/colapsar filtros */}
+                            <Tooltip title={filtersExpanded ? "Ocultar filtros" : "Mostrar filtros"}>
+                                <IconButton
+                                    onClick={toggleFilters}
+                                    sx={{
+                                        bgcolor: filtersExpanded ? 'primary.main' : 'action.hover',
+                                        color: filtersExpanded ? 'white' : 'inherit',
+                                        '&:hover': {
+                                            bgcolor: filtersExpanded ? 'primary.dark' : 'action.selected'
+                                        }
+                                    }}
+                                >
+                                    {filtersExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                    <FilterListIcon sx={{ ml: 0.5 }} />
+                                </IconButton>
+                            </Tooltip>
+                        </Box>
                     </Box>
 
-                    {/* ⭐️ FILTROS */}
-                    <Box sx={{
-                        mt: 4,
-                        display: 'flex',
-                        flexDirection: { xs: 'column', sm: 'row' },
-                        alignItems: { xs: 'stretch', sm: 'center' },
-                        gap: 2
-                    }}>
+                    {/* Filtros expandíveis */}
+                    <Collapse in={filtersExpanded}>
                         <Box sx={{
+                            mt: 3,
+                            p: 3,
+                            bgcolor: 'action.hover',
+                            borderRadius: 2,
+                            border: '1px solid',
+                            borderColor: 'divider',
                             display: 'flex',
-                            alignItems: 'center',
-                            gap: 1,
-                            flexWrap: 'wrap'
+                            flexDirection: { xs: 'column', md: 'row' },
+                            gap: 3
                         }}>
-                            <FilterListIcon sx={{ color: 'primary.main' }} />
-                            <Typography variant="body1" sx={{ fontWeight: 600, mr: 1 }}>
-                                Filtrar por:
-                            </Typography>
-
-                            {/* ⭐️ Toggle Buttons para VENDA/ALUGUEL/TODOS */}
-                            <ToggleButtonGroup
-                                value={tipoFilter}
-                                exclusive
-                                onChange={handleTipoFilterChange}
-                                aria-label="Tipo de negócio"
-                                size="small"
-                                sx={{
-                                    '& .MuiToggleButton-root': {
-                                        border: '1px solid',
-                                        borderColor: 'divider',
-                                        borderRadius: '20px !important',
-                                        px: 2,
-                                        textTransform: 'none',
-                                        '&.Mui-selected': {
-                                            bgcolor: 'primary.main',
-                                            color: 'white',
-                                            '&:hover': {
-                                                bgcolor: 'primary.dark'
+                            {/* Coluna dos filtros */}
+                            <Box sx={{
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 2
+                            }}>
+                                {/* Filtro de Tipo (VENDA/ALUGUEL) */}
+                                <Box sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    flexWrap: 'wrap'
+                                }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, minWidth: 80 }}>
+                                        Tipo:
+                                    </Typography>
+                                    <ToggleButtonGroup
+                                        value={tipoFilter}
+                                        exclusive
+                                        onChange={handleTipoFilterChange}
+                                        aria-label="Tipo de negócio"
+                                        size="small"
+                                        sx={{
+                                            '& .MuiToggleButton-root': {
+                                                border: '1px solid',
+                                                borderColor: 'divider',
+                                                borderRadius: '16px !important',
+                                                px: 2,
+                                                textTransform: 'none',
+                                                fontSize: '0.85rem',
+                                                '&.Mui-selected': {
+                                                    bgcolor: 'primary.main',
+                                                    color: 'white',
+                                                    '&:hover': {
+                                                        bgcolor: 'primary.dark'
+                                                    }
+                                                }
                                             }
-                                        }
-                                    }
-                                }}
-                            >
-                                <ToggleButton value="TODOS">
-                                    <AllInclusiveIcon sx={{ mr: 1, fontSize: 16 }} />
-                                    Todos ({counters.total})
-                                </ToggleButton>
-                                <ToggleButton value="VENDA">
-                                    <SellIcon sx={{ mr: 1, fontSize: 16 }} />
-                                    Venda ({counters.vendas})
-                                </ToggleButton>
-                                <ToggleButton value="ALUGUEL">
-                                    <HomeIcon sx={{ mr: 1, fontSize: 16 }} />
-                                    Aluguel ({counters.alugueis})
-                                </ToggleButton>
-                            </ToggleButtonGroup>
+                                        }}
+                                    >
+                                        <ToggleButton value="TODOS">
+                                            <AllInclusiveIcon sx={{ mr: 1, fontSize: 14 }} />
+                                            Todos
+                                        </ToggleButton>
+                                        <ToggleButton value="VENDA">
+                                            <SellIcon sx={{ mr: 1, fontSize: 14 }} />
+                                            Venda
+                                        </ToggleButton>
+                                        <ToggleButton value="ALUGUEL">
+                                            <HomeIcon sx={{ mr: 1, fontSize: 14 }} />
+                                            Aluguel
+                                        </ToggleButton>
+                                    </ToggleButtonGroup>
+                                </Box>
+
+                                {/* Filtro de Disponibilidade */}
+                                <Box sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    flexWrap: 'wrap'
+                                }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, minWidth: 80 }}>
+                                        Status:
+                                    </Typography>
+                                    <ToggleButtonGroup
+                                        value={filter}
+                                        exclusive
+                                        onChange={(e, newFilter) => {
+                                            if (newFilter !== null) setFilter(newFilter);
+                                        }}
+                                        aria-label="Status do imóvel"
+                                        size="small"
+                                        sx={{
+                                            '& .MuiToggleButton-root': {
+                                                border: '1px solid',
+                                                borderColor: 'divider',
+                                                borderRadius: '16px !important',
+                                                px: 2,
+                                                textTransform: 'none',
+                                                fontSize: '0.85rem',
+                                                '&.Mui-selected': {
+                                                    bgcolor: 'secondary.main',
+                                                    color: 'white',
+                                                    '&:hover': {
+                                                        bgcolor: 'secondary.dark'
+                                                    }
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <ToggleButton value="TODOS">Todos</ToggleButton>
+                                        <ToggleButton value="DISPONIVEIS">Disponíveis</ToggleButton>
+                                        <ToggleButton value="INDISPONIVEIS">Indisponíveis</ToggleButton>
+                                    </ToggleButtonGroup>
+                                </Box>
+
+                                {/* Botão para limpar filtros */}
+                                {hasActiveFilters && (
+                                    <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                                        <Button
+                                            onClick={handleClearFilters}
+                                            size="small"
+                                            variant="outlined"
+                                            color="error"
+                                            sx={{
+                                                borderRadius: '16px',
+                                                textTransform: 'none',
+                                                mt: 1
+                                            }}
+                                        >
+                                            Limpar Filtros
+                                        </Button>
+                                    </Box>
+                                )}
+                            </Box>
+
+                            {/* Coluna dos contadores (vertical) */}
+                            <Box sx={{
+                                width: { xs: '100%', md: 'auto' },
+                                minWidth: { md: 180 },
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 1,
+                                p: 2,
+                                bgcolor: 'background.paper',
+                                borderRadius: 1,
+                                border: '1px solid',
+                                borderColor: 'divider'
+                            }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: 'primary.main' }}>
+                                    Estatísticas
+                                </Typography>
+
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                    <Typography variant="body2" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <Box component="span" sx={{ color: 'text.secondary' }}>Total:</Box>
+                                        <Box component="span" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                            {filteredImoveis.length}
+                                        </Box>
+                                    </Typography>
+
+                                    {tipoFilter === 'TODOS' && (
+                                        <>
+                                            <Typography variant="body2" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <Box component="span" sx={{ color: 'text.secondary' }}>Venda:</Box>
+                                                <Box component="span" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                                                    {counters.vendas}
+                                                </Box>
+                                            </Typography>
+
+                                            <Typography variant="body2" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <Box component="span" sx={{ color: 'text.secondary' }}>Aluguel:</Box>
+                                                <Box component="span" sx={{ fontWeight: 'bold', color: 'info.main' }}>
+                                                    {counters.alugueis}
+                                                </Box>
+                                            </Typography>
+                                        </>
+                                    )}
+
+                                    {filter !== 'TODOS' && (
+                                        <Typography variant="body2" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <Box component="span" sx={{ color: 'text.secondary' }}>Status:</Box>
+                                            <Box component="span" sx={{
+                                                fontWeight: 'bold',
+                                                color: filter === 'DISPONIVEIS' ? 'success.main' : 'warning.main'
+                                            }}>
+                                                {filter === 'DISPONIVEIS' ? 'Disponíveis' : 'Indisponíveis'}
+                                            </Box>
+                                        </Typography>
+                                    )}
+                                </Box>
+                            </Box>
                         </Box>
 
-                        {/* Filtro de disponibilidade (existente) */}
-                        <Box sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1,
-                            flexWrap: 'wrap'
-                        }}>
-                            <Typography variant="body1" sx={{ fontWeight: 600, mr: 1 }}>
-                                Status:
-                            </Typography>
-                            <ToggleButtonGroup
-                                value={filter}
-                                exclusive
-                                onChange={(e, newFilter) => {
-                                    if (newFilter !== null) setFilter(newFilter);
-                                }}
-                                aria-label="Status do imóvel"
-                                size="small"
-                                sx={{
-                                    '& .MuiToggleButton-root': {
-                                        border: '1px solid',
-                                        borderColor: 'divider',
-                                        borderRadius: '20px !important',
-                                        px: 2,
-                                        textTransform: 'none',
-                                        '&.Mui-selected': {
-                                            bgcolor: 'secondary.main',
-                                            color: 'white',
-                                            '&:hover': {
-                                                bgcolor: 'secondary.dark'
-                                            }
-                                        }
-                                    }
-                                }}
-                            >
-                                <ToggleButton value="TODOS">Todos</ToggleButton>
-                                <ToggleButton value="DISPONIVEIS">Disponíveis</ToggleButton>
-                                <ToggleButton value="INDISPONIVEIS">Indisponíveis</ToggleButton>
-                            </ToggleButtonGroup>
-                        </Box>
-
-                        {/* Botão para limpar filtros */}
+                        {/* Resumo dos filtros ativos (abaixo do painel) */}
                         {hasActiveFilters && (
-                            <Button
-                                onClick={handleClearFilters}
-                                size="small"
-                                variant="outlined"
-                                color="error"
-                                sx={{
-                                    borderRadius: '20px',
-                                    textTransform: 'none',
-                                    ml: 'auto'
-                                }}
-                            >
-                                Limpar Filtros
-                            </Button>
+                            <Box sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                flexWrap: 'wrap',
+                                mt: 2,
+                                pt: 2,
+                                borderTop: '1px dashed',
+                                borderColor: 'divider'
+                            }}>
+                                <Typography variant="caption" color="text.secondary">
+                                    Filtros ativos:
+                                </Typography>
+                                {tipoFilter !== 'TODOS' && (
+                                    <Chip
+                                        label={`Tipo: ${tipoFilter === 'VENDA' ? 'Venda' : 'Aluguel'}`}
+                                        size="small"
+                                        color="primary"
+                                        variant="outlined"
+                                        onDelete={() => setTipoFilter('TODOS')}
+                                    />
+                                )}
+                                {filter !== 'TODOS' && (
+                                    <Chip
+                                        label={`Status: ${filter === 'DISPONIVEIS' ? 'Disponíveis' : 'Indisponíveis'}`}
+                                        size="small"
+                                        color="secondary"
+                                        variant="outlined"
+                                        onDelete={() => setFilter('TODOS')}
+                                    />
+                                )}
+                                {searchTerm && (
+                                    <Chip
+                                        label={`Busca: "${searchTerm}"`}
+                                        size="small"
+                                        color="info"
+                                        variant="outlined"
+                                        onDelete={() => setSearchTerm('')}
+                                    />
+                                )}
+                            </Box>
                         )}
-                    </Box>
-
-                    {/* ⭐️ Contadores ativos */}
-                    <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        <Chip
-                            label={`Total: ${filteredImoveis.length} imóveis`}
-                            color="primary"
-                            variant="outlined"
-                            size="small"
-                        />
-                        {tipoFilter === 'TODOS' && (
-                            <>
-                                <Chip
-                                    label={`Venda: ${counters.vendas}`}
-                                    color="success"
-                                    variant="outlined"
-                                    size="small"
-                                />
-                                <Chip
-                                    label={`Aluguel: ${counters.alugueis}`}
-                                    color="info"
-                                    variant="outlined"
-                                    size="small"
-                                />
-                            </>
-                        )}
-                        {tipoFilter === 'VENDA' && (
-                            <Chip
-                                label={`Filtrado: Venda (${filteredImoveis.length})`}
-                                color="success"
-                                size="small"
-                            />
-                        )}
-                        {tipoFilter === 'ALUGUEL' && (
-                            <Chip
-                                label={`Filtrado: Aluguel (${filteredImoveis.length})`}
-                                color="info"
-                                size="small"
-                            />
-                        )}
-                        {filter === 'DISPONIVEIS' && (
-                            <Chip
-                                label="Apenas Disponíveis"
-                                color="success"
-                                size="small"
-                            />
-                        )}
-                        {filter === 'INDISPONIVEIS' && (
-                            <Chip
-                                label="Apenas Indisponíveis"
-                                color="warning"
-                                size="small"
-                            />
-                        )}
-                    </Box>
+                    </Collapse>
                 </Container>
             </Box>
 
