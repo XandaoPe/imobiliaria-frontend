@@ -166,9 +166,9 @@ export const HomePage: React.FC = () => {
                                 Carregando Imóveis...
                             </Typography>
                             <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 400, mt: 1 }}>
-                                Nossos servidores gratuitos estão "acordando".
-                                Isso pode levar até 50 segundos no primeiro acesso do dia.
-                                Agradecemos a paciência!
+                                Nossos servidores estão "acordando".
+                                  Isso pode levar até 50 segundos.
+                                     Agradecemos a paciência!
                             </Typography>
                         </Box>
                     </Box>

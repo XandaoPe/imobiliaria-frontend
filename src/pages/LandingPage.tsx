@@ -69,7 +69,7 @@ export const LandingPage: React.FC = () => {
                             '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
                         }}
                     >
-                        Criar minha Administração
+                        Criar minha Administração/Acessos
                     </Button>
                     <Button
                         variant="contained"
@@ -91,13 +91,13 @@ export const LandingPage: React.FC = () => {
                         gutterBottom
                         sx={{ fontWeight: 700, mb: 3 }}
                     >
-                        Gerencie Imóveis de Luxo com Eficiência Máxima.
+                        Gerencie Imóveis com Eficiência Máxima.
                     </Typography>
                     <Typography
                         variant="h5"
                         sx={{ mb: 5, color: '#f0f0f0' }}
                     >
-                        A plataforma completa para imobiliárias de alto padrão.
+                        A plataforma completa para imobiliárias e corretores.
                     </Typography>
 
                     <Stack

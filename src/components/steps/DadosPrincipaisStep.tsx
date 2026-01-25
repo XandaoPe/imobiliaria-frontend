@@ -168,7 +168,7 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                     name="cidade"
                     control={control}
                     render={({ field }) => (
-                        <TextField {...field} label="Cidade" fullWidth sx={{
+                        <TextField {...field} label="Cidade/UF" fullWidth sx={{
                             '& .MuiOutlinedInput-root': {
                                 bgcolor: 'background.paper'
                             }

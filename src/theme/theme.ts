@@ -15,6 +15,9 @@ export const appThemeLight = createTheme({
             light: '#ff5c8d',
             dark: '#9a0036',
         },
+        success: {
+            main: '#637963', // Verde neon para destaques
+        },
         background: {
             default: '#d8e7e5', // Verde água muito claro
             paper: '#eef7f2', // Verde água claro para cards
@@ -66,6 +69,9 @@ export const appThemeDark = createTheme({
             main: '#ff5c8d', // Rosa mais claro
             light: '#ff8eb3',
             dark: '#c51162',
+        },
+        success: {
+            main: '#d4e0d4', // Verde neon para destaques
         },
         background: {
             default: '#0d1f1a', // Verde muito escuro

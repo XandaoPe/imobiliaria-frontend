@@ -200,6 +200,7 @@ export const RegistroMasterModal: React.FC<RegistroMasterModalProps> = ({ open, 
                         render={({ field }) => (
                             <TextField
                                 {...field}
+                                autoComplete="new-email"
                                 label="Email (Login do Admin)"
                                 fullWidth
                                 variant="outlined"
@@ -225,6 +226,7 @@ export const RegistroMasterModal: React.FC<RegistroMasterModalProps> = ({ open, 
                             <TextField
                                 {...field}
                                 label="Senha"
+                                autoComplete="new-password"
                                 type="password"
                                 fullWidth
                                 variant="outlined"

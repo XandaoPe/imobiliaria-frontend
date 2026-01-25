@@ -118,6 +118,7 @@ export const DetalhesStep: React.FC<DetalhesStepProps> = ({ control, errors }) =
                     )}
                 />
             </Box>
+            
             {/* Área Terreno */}
             <Box>
                 <Controller

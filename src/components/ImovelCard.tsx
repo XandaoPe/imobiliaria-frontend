@@ -65,14 +65,14 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse, s
         >
             <CardMedia
                 component="img"
-                height="240"
+                height="200" // Reduzido para compactar o card
                 image={imageUrl}
                 sx={{ objectFit: 'cover' }}
             />
 
-            <CardContent sx={{ flexGrow: 1, pb: 1 }}>
+            <CardContent sx={{ flexGrow: 1, pb: 1, pt: 1.5 }}>
                 {/* Cabeçalho: Empresa e Status */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <BusinessIcon sx={{ fontSize: 16, color: 'primary.main' }} />
                         <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'primary.main', textTransform: 'uppercase' }}>
@@ -87,58 +87,54 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse, s
                     />
                 </Box>
 
-                {/* Tipo e Cidade */}
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 0.5 }}>
-                    {getTipoDisplay(imovel.tipo)} | <HighlightText text={imovel.cidade || ''} highlight={searchTerm} />
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center'}}>
+                    <Typography variant="h5" color="success.main" fontWeight="bold">
+                        <HighlightText text={imovel.cidade || ''} highlight={searchTerm} />
+                    </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary">•</Typography>
+                    <Typography variant="subtitle2" color="text.secondary">
+                        <HighlightText text={imovel.endereco || ''} highlight={searchTerm} />
+                    </Typography>
+                </Box>
 
-                {/* Título */}
-                <Typography
-                    variant="h6"
-                    component="div"
-                    sx={{
-                        mb: 0.5, // Diminuído de 1 para 0.5 para aproximar do divider
-                        lineHeight: 1.2,
-                        height: '1.4em', // Ajustado para 2 linhas exatas
-                        overflow: 'hidden',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical'
-                    }}
-                >
-                    <HighlightText text={imovel.titulo || 'Imóvel sem Título'} highlight={searchTerm} />
-                </Typography>
+                {/* Tipo, Cidade e Residencial em uma linha (requisito 1) */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1.5 }}>
+                    <Typography variant="caption" color="text.secondary">•</Typography>
+                    <Typography variant="subtitle2" color="text.secondary">
+                        <HighlightText text={getTipoDisplay(imovel.tipo)} highlight={searchTerm} />
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">•</Typography>
+                    <Typography variant="subtitle2" color="text.secondary">
+                        <HighlightText text={imovel.titulo || 'Imóvel sem Título'} highlight={searchTerm} />
+                    </Typography>
+                </Box>
 
-                {/* Divider com margem reduzida */}
-                <Divider sx={{ mb: 1.5, opacity: 0.6 }} />
 
-                {/* ⭐️ NOVO: Badges para finalidade */}
-                {/* Container Pai para agrupar as modalidades de negócio */}
+                {/* Venda e Aluguel lado a lado (requisito 2) */}
                 <Box sx={{
                     display: 'flex',
-                    flexDirection: 'column', // Mantém a pilha vertical para o card
-                    alignItems: 'center',
-                    width: '100%',
-                    gap: 2 // Espaço entre o bloco de Venda e o de Aluguel caso ambos existam
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    mb: 1.5,
+                    gap: 1
                 }}>
-
-                    {/* SEÇÃO DE VENDA */}
+                    {/* VENDA */}
                     {imovel.para_venda && (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center', width: '100%' }}>
-                            <Box>
-                                <Chip
-                                    label="Venda"
-                                    size="medium"
-                                    color="success"
-                                    variant="outlined"
-                                    sx={{ height: 32, fontSize: '1.1rem', px: 1 }}
-                                />
-                            </Box>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                            <Chip
+                                label="Venda"
+                                size="small"
+                                color="success"
+                                variant="outlined"
+                                sx={{ mb: 0.5, height: 24, fontSize: '0.8rem' }}
+                            />
                             <Typography
-                                variant="h5"
+                                variant="body1"
                                 color="primary.main"
                                 fontWeight="bold"
-                                sx={{ textAlign: 'center' }}
+                                sx={{ textAlign: 'center', fontSize: '0.95rem' }}
                             >
                                 {(imovel.valor_venda || 0).toLocaleString('pt-BR', {
                                     style: 'currency',
@@ -148,23 +144,21 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse, s
                         </Box>
                     )}
 
-                    {/* SEÇÃO DE ALUGUEL */}
+                    {/* ALUGUEL */}
                     {imovel.para_aluguel && (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center', width: '100%' }}>
-                            <Box>
-                                <Chip
-                                    label="Aluguel"
-                                    size="medium"
-                                    color="info"
-                                    variant="outlined"
-                                    sx={{ height: 32, fontSize: '1.1rem', px: 1 }}
-                                />
-                            </Box>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                            <Chip
+                                label="Aluguel"
+                                size="small"
+                                color="info"
+                                variant="outlined"
+                                sx={{ mb: 0.5, height: 24, fontSize: '0.8rem' }}
+                            />
                             <Typography
-                                variant="h5"
+                                variant="body1"
                                 color="primary.main"
                                 fontWeight="bold"
-                                sx={{ textAlign: 'center' }}
+                                sx={{ textAlign: 'center', fontSize: '0.95rem' }}
                             >
                                 {(imovel.valor_aluguel || 0).toLocaleString('pt-BR', {
                                     style: 'currency',
@@ -175,64 +169,73 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse, s
                     )}
                 </Box>
 
+                {/* Divider */}
+                <Divider sx={{ mb: 1, opacity: 0.6 }} />
 
-                {/* --- CARACTERÍSTICAS DO IMÓVEL --- */}
+                {/* Características do imóvel */}
                 <Box sx={{
                     display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 2,
-                    py: 1.5,
+                    justifyContent: 'space-around',
+                    alignItems: 'center',
+                    py: 1,
                     borderTop: '1px solid #f0f0f0',
+                    borderBottom: '1px solid #f0f0f0',
                     mb: 1
                 }}>
                     {imovel.quartos && (
                         <Tooltip title="Quartos">
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <BedOutlined fontSize="small" sx={{ color: 'text.secondary' }} />
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>{imovel.quartos}</Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <BedOutlined fontSize="small" sx={{ color: 'text.secondary', mb: 0.5 }} />
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{imovel.quartos}</Typography>
                             </Box>
                         </Tooltip>
                     )}
 
                     {imovel.banheiros && (
                         <Tooltip title="Banheiros">
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <BathtubOutlined fontSize="small" sx={{ color: 'text.secondary' }} />
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>{imovel.banheiros}</Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <BathtubOutlined fontSize="small" sx={{ color: 'text.secondary', mb: 0.5 }} />
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{imovel.banheiros}</Typography>
+                            </Box>
+                        </Tooltip>
+                    )}
+
+                    {imovel.area_terreno && (
+                        <Tooltip title="Área do Terreno">
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <LandscapeOutlined fontSize="small" sx={{ color: 'text.secondary', mb: 0.5 }} />
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{imovel.area_terreno}m²</Typography>
                             </Box>
                         </Tooltip>
                     )}
 
                     {imovel.area_construida && (
                         <Tooltip title="Área Construída">
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <HomeWorkOutlined fontSize="small" sx={{ color: 'text.secondary' }} />
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>{imovel.area_construida}m²</Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <HomeWorkOutlined fontSize="small" sx={{ color: 'text.secondary', mb: 0.5 }} />
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{imovel.area_construida}m²</Typography>
                             </Box>
                         </Tooltip>
                     )}
 
                     {imovel.area_terreno && !imovel.area_construida && (
                         <Tooltip title="Área do Terreno">
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <LandscapeOutlined fontSize="small" sx={{ color: 'text.secondary' }} />
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>{imovel.area_terreno}m²</Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <LandscapeOutlined fontSize="small" sx={{ color: 'text.secondary', mb: 0.5 }} />
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{imovel.area_terreno}m²</Typography>
                             </Box>
                         </Tooltip>
                     )}
 
                     {imovel.garagem && (
                         <Tooltip title="Possui Garagem">
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <DriveEtaOutlined fontSize="small" sx={{ color: 'text.secondary' }} />
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <DriveEtaOutlined fontSize="small" sx={{ color: 'text.secondary', mb: 0.5 }} />
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Garagem</Typography>
                             </Box>
                         </Tooltip>
                     )}
                 </Box>
-
-                <Typography variant="caption" color="text.secondary" display="block" noWrap>
-                    <HighlightText text={imovel.endereco || ''} highlight={searchTerm} />
-                </Typography>
             </CardContent>
 
             <CardActions sx={{ p: 2, pt: 0 }}>
@@ -243,7 +246,13 @@ const ImovelCard: React.FC<ImovelCardProps> = ({ imovel, onClick, onInteresse, s
                         startIcon={<SendOutlined />}
                         fullWidth
                         onClick={(e) => { e.stopPropagation(); onInteresse(); }}
-                        sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 'bold' }}
+                        sx={{
+                            borderRadius: '8px',
+                            textTransform: 'none',
+                            fontWeight: 'bold',
+                            fontSize: '0.875rem',
+                            py: 0.75
+                        }}
                     >
                         Tenho Interesse
                     </Button>
