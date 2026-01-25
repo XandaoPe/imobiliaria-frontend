@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     Box, Typography, Button, Paper, Tooltip, IconButton, Chip,
-    TextField, InputAdornment, CircularProgress, Menu, MenuItem, ListSubheader
+    TextField, InputAdornment, CircularProgress, Menu, MenuItem, ListSubheader,
+    Divider
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import HandshakeIcon from '@mui/icons-material/Handshake';
@@ -48,6 +49,7 @@ const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) =>
 
 export const NegociacaoPage = () => {
     const [negociacoes, setNegociacoes] = useState<Negociacao[]>([]);
+    const [allNegociacoes, setAllNegociacoes] = useState<Negociacao[]>([]); // ⭐️ Armazena todos os registros
     const [loading, setLoading] = useState(true);
     const [selectedNegociacao, setSelectedNegociacao] = useState<Negociacao | null>(null);
     const [openDetails, setOpenDetails] = useState(false);
@@ -55,7 +57,7 @@ export const NegociacaoPage = () => {
 
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
-    const [filterStatus, setFilterStatus] = useState<StatusNegociacao | 'TODOS'>('TODOS');
+    const [filterStatus, setFilterStatus] = useState<StatusNegociacao | 'TODOS' | 'TODOS_COM_CANCELADOS' | 'CANCELADOS'>('TODOS');
     const [anchorElFilter, setAnchorElFilter] = useState<null | HTMLElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,10 +66,25 @@ export const NegociacaoPage = () => {
             setLoading(true);
             const params: any = {};
             if (search) params.search = search;
-            if (status !== 'TODOS') params.status = status;
 
+            // ⭐️ Busca TODAS as negociações sem filtro de status
             const response = await api.get('/negociacoes', { params });
-            setNegociacoes(response.data);
+            setAllNegociacoes(response.data); // ⭐️ Armazena todos os registros
+
+            // ⭐️ Aplica filtro localmente
+            let filteredData = response.data;
+
+            if (status === 'CANCELADOS') {
+                filteredData = response.data.filter((item: Negociacao) => item.status === 'CANCELADO');
+            } else if (status === 'TODOS') {
+                filteredData = response.data.filter((item: Negociacao) => item.status !== 'CANCELADO');
+            } else if (status === 'TODOS_COM_CANCELADOS') {
+                filteredData = response.data; // Todos incluindo cancelados
+            } else {
+                filteredData = response.data.filter((item: Negociacao) => item.status === status);
+            }
+
+            setNegociacoes(filteredData);
         } catch (err: any) {
             console.error('Falha ao carregar negociações.', err);
         } finally {
@@ -93,7 +110,7 @@ export const NegociacaoPage = () => {
     const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorElFilter(event.currentTarget);
     const handleMenuClose = () => setAnchorElFilter(null);
 
-    const handleSetStatus = (status: StatusNegociacao | 'TODOS') => {
+    const handleSetStatus = (status: StatusNegociacao | 'TODOS' | 'TODOS_COM_CANCELADOS' | 'CANCELADOS') => {
         setFilterStatus(status);
         handleMenuClose();
     };
@@ -103,13 +120,24 @@ export const NegociacaoPage = () => {
         setOpenDetails(true);
     }, []);
 
-    const getStatusColor = (status: StatusNegociacao): "success" | "error" | "warning" | "secondary" | "primary" => {
+    const getStatusColor = (status: StatusNegociacao): "success" | "error" | "warning" | "secondary" | "primary" | "default" => {
         switch (status) {
             case 'FECHADO': return 'success';
+            case 'CANCELADO': return 'error'; // ⭐️ Adicionado CANCELADO
             case 'PERDIDO': return 'error';
             case 'PROPOSTA': return 'warning';
             case 'VISITA': return 'secondary';
-            default: return 'primary';
+            case 'PROSPECCAO': return 'primary';
+            default: return 'default';
+        }
+    };
+
+    const getStatusDisplayLabel = (status: StatusNegociacao | 'TODOS' | 'TODOS_COM_CANCELADOS' | 'CANCELADOS') => {
+        switch (status) {
+            case 'TODOS': return 'Todas (sem cancelados)';
+            case 'TODOS_COM_CANCELADOS': return 'Todos com Cancelados';
+            case 'CANCELADOS': return 'Apenas Cancelados';
+            default: return getStatusLabel(status as StatusNegociacao);
         }
     };
 
@@ -120,13 +148,12 @@ export const NegociacaoPage = () => {
             width: 220,
             renderCell: (params) => (
                 params.row.codigo && (
-                    /* Envolvendo com o novo componente */
                     <NegociacaoHistoryTooltip historico={params.row.historico}>
                         <Chip
                             icon={<ReceiptLongIcon sx={{ fontSize: '1.1rem !important' }} />}
                             label={params.row.codigo}
                             size="medium"
-                            color="primary"
+                            color={params.row.status === 'CANCELADO' ? 'error' : 'primary'} // ⭐️ Diferencia cancelados
                             variant="filled"
                             sx={{
                                 fontSize: '0.95rem',
@@ -135,7 +162,8 @@ export const NegociacaoPage = () => {
                                 borderRadius: '8px',
                                 px: 1.5,
                                 boxShadow: '0px 2px 4px rgba(0,0,0,0.1)',
-                                cursor: 'help' // Adicionado para indicar que há algo ao passar o mouse
+                                cursor: 'help',
+                                opacity: params.row.status === 'CANCELADO' ? 0.7 : 1
                             }}
                         />
                     </NegociacaoHistoryTooltip>
@@ -145,7 +173,7 @@ export const NegociacaoPage = () => {
         {
             field: 'cliente',
             headerName: 'Cliente / Lead',
-            flex: 0.7, // Ajustado para dar mais espaço ao código
+            flex: 0.7,
             minWidth: 170,
             renderCell: (params) => (
                 <Box
@@ -155,13 +183,14 @@ export const NegociacaoPage = () => {
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'center',
-                        height: '100%'
+                        height: '100%',
+                        opacity: params.row.status === 'CANCELADO' ? 0.6 : 1 // ⭐️ Diferencia cancelados
                     }}
                 >
                     <Typography
                         variant="body2"
                         sx={{
-                            color: 'primary.main',
+                            color: params.row.status === 'CANCELADO' ? 'text.disabled' : 'primary.main',
                             fontWeight: '700',
                             lineHeight: 1.2,
                             '&:hover': { textDecoration: 'underline' }
@@ -181,11 +210,23 @@ export const NegociacaoPage = () => {
         {
             field: 'imovel',
             headerName: 'Imóvel e Localização',
-            flex: 1, // Ajustado para equilibrar com o novo código
+            flex: 1,
             minWidth: 220,
             renderCell: (params) => (
-                <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', py: 1 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', lineHeight: 1.1, fontSize: '0.8rem' }}>
+                <Box sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    height: '100%',
+                    py: 1,
+                    opacity: params.row.status === 'CANCELADO' ? 0.6 : 1 // ⭐️ Diferencia cancelados
+                }}>
+                    <Typography variant="body2" sx={{
+                        fontWeight: 'bold',
+                        lineHeight: 1.1,
+                        fontSize: '0.8rem',
+                        color: params.row.status === 'CANCELADO' ? 'text.disabled' : 'inherit'
+                    }}>
                         <HighlightedText
                             text={params.row.imovel?.titulo}
                             highlight={debouncedSearchText}
@@ -210,7 +251,11 @@ export const NegociacaoPage = () => {
                     variant="outlined"
                     size="small"
                     color={params.row.tipo === 'VENDA' ? 'success' : 'info'}
-                    sx={{ fontSize: '0.65rem', height: 18 }}
+                    sx={{
+                        fontSize: '0.65rem',
+                        height: 18,
+                        opacity: params.row.status === 'CANCELADO' ? 0.5 : 1 // ⭐️ Diferencia cancelados
+                    }}
                 />
             )
         },
@@ -223,7 +268,12 @@ export const NegociacaoPage = () => {
                     label={getStatusLabel(params.row.status)}
                     color={getStatusColor(params.row.status)}
                     size="small"
-                    sx={{ fontWeight: 'bold', fontSize: '0.7rem', height: 22 }}
+                    sx={{
+                        fontWeight: 'bold',
+                        fontSize: '0.7rem',
+                        height: 22,
+                        textDecoration: params.row.status === 'CANCELADO' ? 'line-through' : 'none'
+                    }}
                 />
             )
         },
@@ -292,19 +342,45 @@ export const NegociacaoPage = () => {
                     startIcon={<FilterListIcon />}
                     sx={{ height: 56, flexShrink: 0 }}
                 >
-                    {filterStatus === 'TODOS' ? 'Todas as Fases' : `Fase: ${getStatusLabel(filterStatus as StatusNegociacao)}`}
+                    {getStatusDisplayLabel(filterStatus)}
                 </Button>
 
                 <Menu
                     anchorEl={anchorElFilter}
                     open={Boolean(anchorElFilter)}
                     onClose={handleMenuClose}
+                    PaperProps={{
+                        sx: { maxHeight: 400 }
+                    }}
                 >
-                    <ListSubheader sx={{ fontWeight: 'bold' }}>Filtrar por Fase</ListSubheader>
+                    <ListSubheader sx={{ fontWeight: 'bold' }}>Filtrar por Status</ListSubheader>
+
+                    {/* Opções principais */}
                     <MenuItem onClick={() => handleSetStatus('TODOS')} selected={filterStatus === 'TODOS'}>
                         {filterStatus === 'TODOS' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
-                        <Box sx={{ ml: filterStatus !== 'TODOS' ? '24px' : 0 }}>Todas as Fases</Box>
+                        <Box sx={{ ml: filterStatus !== 'TODOS' ? '24px' : 0 }}>Todas (sem cancelados)</Box>
                     </MenuItem>
+
+                    <MenuItem onClick={() => handleSetStatus('TODOS_COM_CANCELADOS')} selected={filterStatus === 'TODOS_COM_CANCELADOS'}>
+                        {filterStatus === 'TODOS_COM_CANCELADOS' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
+                        <Box sx={{ ml: filterStatus !== 'TODOS_COM_CANCELADOS' ? '24px' : 0 }}>Todos com Cancelados</Box>
+                    </MenuItem>
+
+                    <MenuItem onClick={() => handleSetStatus('CANCELADOS')} selected={filterStatus === 'CANCELADOS'}>
+                        {filterStatus === 'CANCELADOS' && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'error.main' }} />}
+                        <Box sx={{
+                            ml: filterStatus !== 'CANCELADOS' ? '24px' : 0,
+                            color: 'error.main',
+                            fontWeight: filterStatus === 'CANCELADOS' ? 'bold' : 'normal'
+                        }}>
+                            Apenas Cancelados
+                        </Box>
+                    </MenuItem>
+
+                    <Divider sx={{ my: 1 }} />
+
+                    <ListSubheader sx={{ fontWeight: 'bold' }}>Fases do Funil</ListSubheader>
+
                     {(['PROSPECCAO', 'VISITA', 'PROPOSTA', 'FECHADO', 'PERDIDO'] as StatusNegociacao[]).map((s) => (
                         <MenuItem key={s} onClick={() => handleSetStatus(s)} selected={filterStatus === s}>
                             {filterStatus === s && <DoneIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />}
@@ -314,6 +390,28 @@ export const NegociacaoPage = () => {
                 </Menu>
             </Box>
 
+            {/* ⭐️ Estatísticas */}
+            <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+                <Chip
+                    label={`Total: ${allNegociacoes.length}`}
+                    color="primary"
+                    variant="outlined"
+                    size="small"
+                />
+                <Chip
+                    label={`Ativas: ${allNegociacoes.filter(n => n.status !== 'CANCELADO').length}`}
+                    color="success"
+                    variant="outlined"
+                    size="small"
+                />
+                <Chip
+                    label={`Canceladas: ${allNegociacoes.filter(n => n.status === 'CANCELADO').length}`}
+                    color="error"
+                    variant="outlined"
+                    size="small"
+                />
+            </Box>
+
             <Paper elevation={4} sx={{ height: 650, width: '100%', borderRadius: 3, overflow: 'hidden' }}>
                 <DataGrid
                     rows={negociacoes}
@@ -321,7 +419,7 @@ export const NegociacaoPage = () => {
                     getRowId={(row) => row._id || Math.random()}
                     loading={loading}
                     disableRowSelectionOnClick
-                    rowHeight={85} // Aumentado para acomodar o código maior
+                    rowHeight={85}
                     pageSizeOptions={[10, 25, 50]}
                     initialState={{
                         pagination: { paginationModel: { pageSize: 10 } },
@@ -331,8 +429,15 @@ export const NegociacaoPage = () => {
                         '& .MuiDataGrid-columnHeaders': {
                             backgroundColor: '#f5f5f5',
                             fontWeight: 'bold'
+                        },
+                        '& .MuiDataGrid-row--cancelado': {
+                            backgroundColor: 'rgba(244, 67, 54, 0.04)',
+                            '&:hover': {
+                                backgroundColor: 'rgba(244, 67, 54, 0.08)',
+                            }
                         }
                     }}
+                    getRowClassName={(params) => params.row.status === 'CANCELADO' ? 'MuiDataGrid-row--cancelado' : ''}
                 />
             </Paper>
 
