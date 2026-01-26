@@ -70,16 +70,24 @@ const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) =>
 };
 
 export const FinanceiroPage: React.FC = () => {
-    // --- ESTADOS DE DATAS (CORRIGIDOS) ---
+
+    // --- ESTADOS DE DATAS (CORRIGIDOS PARA FUSO HORÁRIO) ---
     const getPrimeiroDiaMes = (): string => {
         const d = new Date();
-        return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+        // Corrige fuso horário: cria data no fuso local
+        const year = d.getFullYear();
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        return `${year}-${month}-01`;
     };
 
     const getUltimoDiaMes = (): string => {
         const d = new Date();
-        // Ajustado para 6 meses à frente conforme sua lógica original
-        return new Date(d.getFullYear(), d.getMonth() + 6, 0).toISOString().split('T')[0];
+        // 6 meses à frente, último dia do mês
+        const targetDate = new Date(d.getFullYear(), d.getMonth() + 6 + 1, 0);
+        const year = targetDate.getFullYear();
+        const month = (targetDate.getMonth() + 1).toString().padStart(2, '0');
+        const day = targetDate.getDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
 
     const [dataInicio, setDataInicio] = useState<string>(getPrimeiroDiaMes());
@@ -137,6 +145,21 @@ export const FinanceiroPage: React.FC = () => {
         setPage(0);
     }, [debouncedSearchText]);
 
+    const formatarDataParaExibicao = (dataString: string): string => {
+        if (!dataString) return '';
+
+        const [year, month, day] = dataString.split('-').map(Number);
+        const data = new Date(year, month - 1, day);
+        return data.toLocaleDateString('pt-BR');
+    };
+
+    const formatarDataString = (dataString: string): string => {
+        if (!dataString) return '';
+        // dataString já está no formato "YYYY-MM-DD"
+        const [year, month, day] = dataString.split('-');
+        return `${day}/${month}/${year}`;
+    };
+
     const carregarDados = useCallback(async () => {
         try {
             setLoading(true);
@@ -145,15 +168,19 @@ export const FinanceiroPage: React.FC = () => {
             const params: any = {
                 page: page + 1,
                 limit: rowsPerPage,
-                dataInicio,
-                dataFim
+                dataInicio: dataInicio,  // Envia diretamente no formato YYYY-MM-DD
+                dataFim: dataFim         // Envia diretamente no formato YYYY-MM-DD
             };
 
             // O debouncedSearchText é enviado aqui
             if (debouncedSearchText) params.search = debouncedSearchText;
             if (filterStatus !== 'TODOS') params.status = filterStatus;
 
-            const resumoParams = { dataInicio, dataFim };
+            // Para o resumo, usa os mesmos parâmetros
+            const resumoParams = {
+                dataInicio: dataInicio,
+                dataFim: dataFim
+            };
 
             const [resList, resSum] = await Promise.all([
                 financeiroService.listar(params),
@@ -170,6 +197,11 @@ export const FinanceiroPage: React.FC = () => {
                 totalRecebido: s.receitas ?? 0,
                 totalPago: s.despesas ?? 0,
                 totalPendente: s.pendentes ?? 0
+            });
+
+            console.log('Datas enviadas:', {
+                dataInicio: dataInicio,
+                dataFim: dataFim
             });
 
         } catch (err) {
@@ -398,7 +430,7 @@ export const FinanceiroPage: React.FC = () => {
                                             <TableCell>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                     <Typography variant="body2" fontWeight="600">
-                                                        {new Date(item.dataVencimento).toLocaleDateString('pt-BR')}
+                                                        {formatarDataString(item.dataVencimento)}
                                                     </Typography>
                                                     <IconButton
                                                         size="small"
@@ -586,7 +618,7 @@ export const FinanceiroPage: React.FC = () => {
                     </Paper>
 
                     <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', textAlign: 'center' }}>
-                        Exibindo dados de {new Date(dataInicio).toLocaleDateString()} até {new Date(dataFim).toLocaleDateString()}
+                        Exibindo dados de {formatarDataParaExibicao(dataInicio)} até {formatarDataParaExibicao(dataFim)}
                     </Typography>
                 </Box>
             </Box>
