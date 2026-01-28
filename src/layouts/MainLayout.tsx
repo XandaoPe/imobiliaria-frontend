@@ -321,203 +321,203 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     );
 
     return (
-        <Box sx={{ display: 'flex', height: '100vh' }}>
-            <CssBaseline />
+            <Box sx={{ display: 'flex', height: '100vh' }}>
+                <CssBaseline />
 
-            {/* ⭐️ MODAL PARA SENHA DAS EMPRESAS */}
-            <Modal
-                open={modalSenhaEmpresasOpen}
-                onClose={fecharModal}
-                aria-labelledby="modal-senha-empresas"
-                aria-describedby="modal-senha-empresas-descricao"
-            >
-                <Box sx={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: 400,
-                    bgcolor: 'background.paper',
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2
-                }}>
-                    <Typography id="modal-senha-empresas" variant="h6" component="h2" gutterBottom>
-                        <LockIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                        Acesso Restrito - Empresas
-                    </Typography>
+                {/* ⭐️ MODAL PARA SENHA DAS EMPRESAS */}
+                <Modal
+                    open={modalSenhaEmpresasOpen}
+                    onClose={fecharModal}
+                    aria-labelledby="modal-senha-empresas"
+                    aria-describedby="modal-senha-empresas-descricao"
+                >
+                    <Box sx={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: 400,
+                        bgcolor: 'background.paper',
+                        boxShadow: 24,
+                        p: 4,
+                        borderRadius: 2
+                    }}>
+                        <Typography id="modal-senha-empresas" variant="h6" component="h2" gutterBottom>
+                            <LockIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                            Acesso Restrito - Empresas
+                        </Typography>
 
-                    <Typography id="modal-senha-empresas-descricao" sx={{ mb: 2, color: 'text.secondary' }}>
-                        Esta área requer uma senha adicional para acesso.
-                    </Typography>
+                        <Typography id="modal-senha-empresas-descricao" sx={{ mb: 2, color: 'text.secondary' }}>
+                            Esta área requer uma senha adicional para acesso.
+                        </Typography>
 
-                    {senhaErro && (
-                        <Alert severity="error" sx={{ mb: 2 }}>
-                            Senha incorreta. Tente novamente.
-                        </Alert>
-                    )}
+                        {senhaErro && (
+                            <Alert severity="error" sx={{ mb: 2 }}>
+                                Senha incorreta. Tente novamente.
+                            </Alert>
+                        )}
 
-                    <TextField
-                        fullWidth
-                        type="password"
-                        autoComplete='new-password'
-                        label="Digite a senha de acesso"
-                        value={senhaEmpresas}
-                        onChange={(e) => {
-                            setSenhaEmpresas(e.target.value);
-                            setSenhaErro(false);
-                        }}
-                        onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
-                                verificarSenha();
-                            }
-                        }}
-                        error={senhaErro}
-                        helperText={senhaErro ? "Senha incorreta" : ""}
-                        sx={{ mb: 2 }}
-                    />
+                        <TextField
+                            fullWidth
+                            type="password"
+                            autoComplete='new-password'
+                            label="Digite a senha de acesso"
+                            value={senhaEmpresas}
+                            onChange={(e) => {
+                                setSenhaEmpresas(e.target.value);
+                                setSenhaErro(false);
+                            }}
+                            onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                    verificarSenha();
+                                }
+                            }}
+                            error={senhaErro}
+                            helperText={senhaErro ? "Senha incorreta" : ""}
+                            sx={{ mb: 2 }}
+                        />
 
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                        <Button onClick={fecharModal} variant="outlined">
-                            Cancelar
-                        </Button>
-                        <Button
-                            onClick={verificarSenha}
-                            variant="contained"
-                            color="primary"
-                            disabled={!senhaEmpresas.trim()}
-                        >
-                            Acessar
-                        </Button>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                            <Button onClick={fecharModal} variant="outlined">
+                                Cancelar
+                            </Button>
+                            <Button
+                                onClick={verificarSenha}
+                                variant="contained"
+                                color="primary"
+                                disabled={!senhaEmpresas.trim()}
+                            >
+                                Acessar
+                            </Button>
+                        </Box>
                     </Box>
-                </Box>
-            </Modal>
+                </Modal>
 
-            <AppBar
-                position="fixed"
-                sx={{
-                    width: { sm: `calc(100% - ${drawerWidth}px)` },
-                    ml: { sm: `${drawerWidth}px` },
-                    zIndex: (theme) => theme.zIndex.drawer + 1,
-                    backgroundColor: 'primary.dark',
-                }}
-            >
-                <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flexGlow: 1 }}>
-                        <IconButton
-                            color="inherit"
-                            edge="start"
-                            onClick={handleDrawerToggle}
-                            sx={{ mr: { xs: 1, sm: 2 }, display: { sm: 'none' } }}
-                        >
-                            <MenuIcon />
-                        </IconButton>
+                <AppBar
+                    position="fixed"
+                    sx={{
+                        width: { sm: `calc(100% - ${drawerWidth}px)` },
+                        ml: { sm: `${drawerWidth}px` },
+                        zIndex: (theme) => theme.zIndex.drawer + 1,
+                        backgroundColor: 'primary.dark',
+                    }}
+                >
+                    <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, flexGlow: 1 }}>
+                            <IconButton
+                                color="inherit"
+                                edge="start"
+                                onClick={handleDrawerToggle}
+                                sx={{ mr: { xs: 1, sm: 2 }, display: { sm: 'none' } }}
+                            >
+                                <MenuIcon />
+                            </IconButton>
 
-                        {/* Typography com minWidth 0 e noWrap para não quebrar o layout */}
-                        <Typography variant="h6" noWrap sx={{ flexShrink: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {/* Oculta o nome da empresa em telas muito pequenas (xs) */}
-                            {nomeEmpresa && (
+                            {/* Typography com minWidth 0 e noWrap para não quebrar o layout */}
+                            <Typography variant="h6" noWrap sx={{ flexShrink: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {/* Oculta o nome da empresa em telas muito pequenas (xs) */}
+                                {nomeEmpresa && (
+                                    <Box component="span" sx={{
+                                        fontWeight: 800,
+                                        color: '#FFD700',
+                                        mr: 1,
+                                        display: { xs: 'none', md: 'inline-block' }
+                                    }}>
+                                        {nomeEmpresa.toUpperCase()} —
+                                    </Box>
+                                )}
+
+                                {/* Texto "Bem-vindo" some no mobile para dar lugar ao nome */}
+                                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                                    Bem-vindo,{" "}
+                                </Box>
+
                                 <Box component="span" sx={{
                                     fontWeight: 800,
                                     color: '#FFD700',
-                                    mr: 1,
-                                    display: { xs: 'none', md: 'inline-block' }
+                                    fontSize: { xs: '0.9em', sm: '1.1em' }
                                 }}>
-                                    {nomeEmpresa.toUpperCase()} —
+                                    {user?.nome.split(' ')[0]} {/* Pega apenas o primeiro nome no mobile */}
                                 </Box>
-                            )}
+                                !
+                            </Typography>
+                        </Box>
 
-                            {/* Texto "Bem-vindo" some no mobile para dar lugar ao nome */}
-                            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-                                Bem-vindo,{" "}
-                            </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 2 }, flexShrink: 0 }}>
+                            <AtivarNotificacoes />
+                            <Tooltip title="Agenda de Visitas">
+                                <IconButton color="inherit" onClick={() => setAgendaOpen(true)}>
+                                    <Badge badgeContent={agendamentosCount} color="error">
+                                        <CalendarMonthIcon />
+                                    </Badge>
+                                </IconButton>
+                            </Tooltip>
 
-                            <Box component="span" sx={{
-                                fontWeight: 800,
-                                color: '#FFD700',
-                                fontSize: { xs: '0.9em', sm: '1.1em' }
-                            }}>
-                                {user?.nome.split(' ')[0]} {/* Pega apenas o primeiro nome no mobile */}
-                            </Box>
-                            !
-                        </Typography>
-                    </Box>
+                            {/* Perfil só aparece do tablet para cima */}
+                            <Typography variant="caption" sx={{ opacity: 0.8, display: { xs: 'none', md: 'block' } }}>
+                                {user?.perfil}
+                            </Typography>
+                        </Box>
+                    </Toolbar>
+                </AppBar>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 2 }, flexShrink: 0 }}>
-                        <AtivarNotificacoes />
-                        <Tooltip title="Agenda de Visitas">
-                            <IconButton color="inherit" onClick={() => setAgendaOpen(true)}>
-                                <Badge badgeContent={agendamentosCount} color="error">
-                                    <CalendarMonthIcon />
-                                </Badge>
-                            </IconButton>
-                        </Tooltip>
-
-                        {/* Perfil só aparece do tablet para cima */}
-                        <Typography variant="caption" sx={{ opacity: 0.8, display: { xs: 'none', md: 'block' } }}>
-                            {user?.perfil}
-                        </Typography>
-                    </Box>
-                </Toolbar>
-            </AppBar>
-
-            <Box
-                component="nav"
-                sx={{
-                    width: { sm: drawerWidth },
-                    flexShrink: { sm: 0 }
-                }}
-            >
-                <Drawer
-                    variant="temporary"
-                    open={mobileOpen}
-                    onClose={handleDrawerToggle}
-                    ModalProps={{ keepMounted: true }}
+                <Box
+                    component="nav"
                     sx={{
-                        display: { xs: 'block', sm: 'none' },
-                        '& .MuiDrawer-paper': {
-                            boxSizing: 'border-box',
-                            width: drawerWidth,
-                            backgroundColor: 'background.paper',
-                        }
+                        width: { sm: drawerWidth },
+                        flexShrink: { sm: 0 }
                     }}
                 >
-                    {drawer}
-                </Drawer>
-                <Drawer
-                    variant="permanent"
+                    <Drawer
+                        variant="temporary"
+                        open={mobileOpen}
+                        onClose={handleDrawerToggle}
+                        ModalProps={{ keepMounted: true }}
+                        sx={{
+                            display: { xs: 'block', sm: 'none' },
+                            '& .MuiDrawer-paper': {
+                                boxSizing: 'border-box',
+                                width: drawerWidth,
+                                backgroundColor: 'background.paper',
+                            }
+                        }}
+                    >
+                        {drawer}
+                    </Drawer>
+                    <Drawer
+                        variant="permanent"
+                        sx={{
+                            display: { xs: 'none', sm: 'block' },
+                            '& .MuiDrawer-paper': {
+                                boxSizing: 'border-box',
+                                width: drawerWidth,
+                                backgroundColor: 'background.paper'
+                            }
+                        }}
+                        open
+                    >
+                        {drawer}
+                    </Drawer>
+                </Box>
+
+                <Box
+                    component="main"
                     sx={{
-                        display: { xs: 'none', sm: 'block' },
-                        '& .MuiDrawer-paper': {
-                            boxSizing: 'border-box',
-                            width: drawerWidth,
-                            backgroundColor: 'background.paper'
-                        }
+                        flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` },
+                        bgcolor: 'background.default',
+                        height: '100vh',
+                        overflowY: 'auto'
                     }}
-                    open
                 >
-                    {drawer}
-                </Drawer>
-            </Box>
+                    <Toolbar />
+                    {children ? children : <Outlet />}
+                </Box>
 
-            <Box
-                component="main"
-                sx={{
-                    flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` },
-                    bgcolor: 'background.default',
-                    height: '100vh',
-                    overflowY: 'auto'
-                }}
-            >
-                <Toolbar />
-                {children ? children : <Outlet />}
+                {/* ⭐️ COMPONENTE DA AGENDA LATERAL */}
+                <AgendaLateral
+                    open={agendaOpen}
+                    onClose={() => setAgendaOpen(false)}
+                />
             </Box>
-
-            {/* ⭐️ COMPONENTE DA AGENDA LATERAL */}
-            <AgendaLateral
-                open={agendaOpen}
-                onClose={() => setAgendaOpen(false)}
-            />
-        </Box>
     );
 };

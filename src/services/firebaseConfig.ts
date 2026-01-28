@@ -71,3 +71,22 @@ export const onMessageListener = () =>
     });
 
 export { messaging };
+
+export const setupAgendaNotificationHandler = () => {
+    onMessage(messaging, (payload: any) => {
+        console.log('📅 Notificação de agenda recebida:', payload);
+
+        if (payload.data?.type === 'new_agendamento' || payload.data?.type === 'status_agendamento') {
+            // Dispara evento para atualizar contadores
+            window.dispatchEvent(new CustomEvent('agendaNotification'));
+
+            // Mostra notificação local
+            if (Notification.permission === 'granted') {
+                new Notification(payload.notification?.title || 'Nova Agenda', {
+                    body: payload.notification?.body || '',
+                    icon: '/logo192.png'
+                });
+            }
+        }
+    });
+};

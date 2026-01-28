@@ -70,5 +70,33 @@ export const NotificationBadge: React.FC = () => {
         }
     }, [user, checkLeads]);
 
+    useEffect(() => {
+        // Configurar listener para notificações de agenda
+        const handleAgendaNotification = async () => {
+            // Atualiza o contador de agendamentos
+            window.dispatchEvent(new CustomEvent('updateAgenda'));
+
+            // Toca som de notificação
+            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // Som diferente do lead
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.8);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.8);
+        };
+
+        // Ouvir evento global de atualização de agenda
+        window.addEventListener('agendaNotification', handleAgendaNotification);
+
+        return () => {
+            window.removeEventListener('agendaNotification', handleAgendaNotification);
+        };
+    }, []);
+
     return null; // Este componente não precisa renderizar nada, apenas processar o som
 };

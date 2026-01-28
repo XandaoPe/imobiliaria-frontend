@@ -28,6 +28,7 @@ export interface Usuario {
 
 export interface UsuarioLogado extends Usuario {
     token: string;
+    pushToken?: string;
 }
 
 // Interface para o formulário de CRIAÇÃO
