@@ -61,8 +61,12 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
         const buscarOcupados = async () => {
             if (dataVisita && negociacao?.imovel?._id) {
                 try {
+                    // CORREÇÃO: Passa o ID do imóvel como parâmetro
                     const { data } = await api.get('/agendamentos/horarios-ocupados', {
-                        params: { data: dataVisita }
+                        params: {
+                            data: dataVisita,
+                            imovelId: negociacao.imovel._id
+                        }
                     });
                     setHorariosBloqueados(data);
                 } catch (e) {
@@ -86,17 +90,45 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
             todos.push(`${hora}:00`);
             if (h !== 22) todos.push(`${hora}:30`);
         }
-        const agoraBr = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
-        const hojeStr = agoraBr.toISOString().split('T')[0];
-        const horaAtual = agoraBr.getHours();
-        const minAtual = agoraBr.getMinutes();
+
+        // CORREÇÃO: Usar o timezone de São Paulo corretamente
+        // Obter a data/hora atual no timezone de São Paulo
+        const agora = new Date();
+
+        // Formatar data atual no timezone de São Paulo (YYYY-MM-DD)
+        const hojeSP = new Date(agora.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+        const hojeFormatado = hojeSP.getFullYear() + '-' +
+            String(hojeSP.getMonth() + 1).padStart(2, '0') + '-' +
+            String(hojeSP.getDate()).padStart(2, '0');
+
+        // Obter hora e minuto atual no timezone de São Paulo
+        const horaAtualSP = hojeSP.getHours();
+        const minutoAtualSP = hojeSP.getMinutes();
+
+        // Debug: Mostrar o que está sendo calculado
+        console.log('Data atual (SP):', hojeFormatado);
+        console.log('Hora atual (SP):', horaAtualSP + ':' + minutoAtualSP);
+        console.log('Data selecionada:', dataVisita);
+        console.log('Horários bloqueados:', horariosBloqueados);
 
         return todos.filter(h => {
-            if (horariosBloqueados.includes(h)) return false;
-            if (dataVisita === hojeStr) {
+            // Filtrar horários já ocupados
+            if (horariosBloqueados.includes(h)) {
+                console.log('Horário bloqueado:', h);
+                return false;
+            }
+
+            // Só filtrar horários passados se for hoje (no timezone de SP)
+            if (dataVisita === hojeFormatado) {
                 const [hSlot, mSlot] = h.split(':').map(Number);
-                if (hSlot < horaAtual) return false;
-                if (hSlot === horaAtual && mSlot <= minAtual) return false;
+
+                // Verificar se o horário já passou
+                const jaPassou = hSlot < horaAtualSP || (hSlot === horaAtualSP && mSlot <= minutoAtualSP);
+
+                if (jaPassou) {
+                    console.log('Horário já passou:', h, 'vs atual:', horaAtualSP + ':' + minutoAtualSP);
+                    return false;
+                }
             }
             return true;
         });
@@ -152,21 +184,28 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
         try {
             let dataAgendamentoCompleta = undefined;
             if (novoStatus === 'VISITA') {
-                dataAgendamentoCompleta = `${dataVisita}T${horaVisita}:00-03:00`;
+                // CORREÇÃO SIMPLIFICADA: Formatar data/hora no formato ISO com offset correto
+                // dataVisita está no formato YYYY-MM-DD, horaVisita no formato HH:MM
+                dataAgendamentoCompleta = `${dataVisita}T${horaVisita}:00.000-03:00`;
+
+                // VALIDAÇÃO: Verificar se a data/hora é válida
+                const dataAgendamentoObj = new Date(dataAgendamentoCompleta);
+                if (isNaN(dataAgendamentoObj.getTime())) {
+                    throw new Error('Data/hora de agendamento inválida');
+                }
 
                 // Disparar notificação de visita agendada
                 try {
-                    const dataFormatada = new Date(dataVisita).toLocaleDateString('pt-BR');
+                    const dataFormatada = new Date(dataVisita + 'T00:00:00').toLocaleDateString('pt-BR');
                     await api.post(`/negociacoes/${negociacao._id}/notificar-visita`, {
-                        dataVisita: new Date(dataVisita).toLocaleDateString('pt-BR'),
+                        dataVisita: dataFormatada,
                         horaVisita: horaVisita,
                         imovelTitulo: negociacao.imovel?.titulo,
                         clienteNome: negociacao.cliente?.nome,
-                        corretorNome: user?.nome || 'Corretor' // user deve vir do useAuth()
+                        corretorNome: user?.nome || 'Corretor'
                     });
                 } catch (notifyError) {
                     console.error("Erro ao enviar notificação:", notifyError);
-                    // Continua mesmo se a notificação falhar
                 }
             }
 
@@ -178,18 +217,19 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
             await api.patch(`/negociacoes/${negociacao._id}`, {
                 status: novoStatus || undefined,
                 descricao: descricaoFinal,
-                dataAgendamento: dataAgendamentoCompleta
+                dataAgendamento: dataAgendamentoCompleta // Envia timestamp no timezone correto
             });
 
             // Feedback ao usuário
             if (novoStatus === 'VISITA') {
                 console.log('=== DEBUG NOTIFICAÇÃO VISITA ===');
-                console.log('Usuário do AuthContext:', user);
-                console.log('ID do usuário:', user?.id);
-                console.log('Nome do usuário:', user?.nome);
+                console.log('Data/Hora enviada:', dataAgendamentoCompleta);
+                if (dataAgendamentoCompleta) {
+                    console.log('Data/Hora local:', new Date(dataAgendamentoCompleta).toLocaleString('pt-BR'));
+                }
 
                 try {
-                    const dataFormatada = new Date(dataVisita).toLocaleDateString('pt-BR');
+                    const dataFormatada = new Date(dataVisita + 'T00:00:00').toLocaleDateString('pt-BR');
                     console.log('Enviando payload para notificação:', {
                         dataVisita: dataFormatada,
                         horaVisita,
@@ -217,7 +257,7 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
             onUpdate();
             onClose();
         } catch (error: any) {
-            const mensagem = error.response?.data?.message || "Erro ao salvar interação.";
+            const mensagem = error.response?.data?.message || error.message || "Erro ao salvar interação.";
             setErrorMsg(Array.isArray(mensagem) ? mensagem[0] : mensagem);
         } finally {
             setLoading(false);
