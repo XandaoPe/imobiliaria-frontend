@@ -10,6 +10,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import { ImovelFormData } from '../../types/imovel';
 import { CurrencyFormatInput } from '../CurrencyFormatInput';
 import api from '../../services/api';
+import { Usuario } from '../../types/usuario';
 
 interface Cliente {
     _id: string;
@@ -31,7 +32,9 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
     const paraAluguel = useWatch({ control, name: 'para_aluguel' });
 
     const [clientes, setClientes] = useState<Cliente[]>([]);
+    const [corretores, setCorretores] = useState<Usuario[]>([]);
     const [loadingClientes, setLoadingClientes] = useState(false);
+    const [loadingCorretores, setLoadingCorretores] = useState(false);
 
     const fetchClientes = async () => {
         setLoadingClientes(true);
@@ -45,8 +48,36 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
         }
     };
 
+    // src/components/imovel/steps/DadosPrincipaisStep.tsx
+
+    const fetchCorretores = async () => {
+        setLoadingCorretores(true);
+        try {
+            // ⭐️ Adicione query param para buscar todos os usuários
+            const response = await api.get('/imoveis/usuarios/disponiveis', {
+                params: { todos: true } // ⭐️ Busca todos os usuários
+            });
+
+            console.log('📊 Resposta bruta dos usuários:', response.data);
+
+            const normalizedUsuarios = response.data.map((usuario: any) => ({
+                ...usuario,
+                id: usuario._id || usuario.id,
+                _id: usuario._id || usuario.id
+            }));
+
+            console.log('📊 Usuários normalizados:', normalizedUsuarios);
+            setCorretores(normalizedUsuarios);
+        } catch (error) {
+            console.error("Erro ao carregar usuários:", error);
+        } finally {
+            setLoadingCorretores(false);
+        }
+    };
+
     useEffect(() => {
         fetchClientes();
+        fetchCorretores();
     }, []);
 
     // Monitora quando a modal de cliente fecha para atualizar a lista local
@@ -103,7 +134,7 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                                 </li>
                             )}
                             renderInput={(params) => (
-                                <TextField                                
+                                <TextField
                                     {...params}
                                     label="Proprietário (Cliente)"
                                     required
@@ -127,6 +158,101 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                             )}
                         />
                     )}
+                />
+            </Box>
+
+            <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' }, mt: 2 }}>
+                <Controller
+                    name="corretor"
+                    control={control}
+                    defaultValue={null}
+                    render={({ field }) => {
+                        console.log('🔍 Controller corretor - field:', field);
+
+                        // ⭐️ Função auxiliar para encontrar pelo id ou _id
+                        const findCorretor = (value: string | null | undefined) => {
+                            if (!value) return null;
+                            return corretores.find(c => c.id === value || c._id === value) || null;
+                        };
+
+                        const autocompleteValue = findCorretor(field.value);
+
+                        return (
+                            <Autocomplete
+                                options={corretores}
+                                loading={loadingCorretores}
+                                getOptionLabel={(option) =>
+                                    option && option.nome ? `${option.nome} (${option.perfil}) - ${option.email || ''}` : ''
+                                }
+                                value={autocompleteValue}
+                                onChange={(_, data) => {
+                                    console.log('🎯 Corretor selecionado:', data);
+
+                                    // ⭐️ Pega o id (que agora sempre existe)
+                                    const newValue = data ? data.id : null;
+                                    console.log('🎯 Novo valor a ser definido:', newValue);
+
+                                    field.onChange(newValue);
+
+                                    setTimeout(() => {
+                                        console.log('🎯 Valor APÓS o onChange:', field.value);
+                                    }, 0);
+                                }}
+                                isOptionEqualToValue={(option, value) => {
+                                    // ⭐️ Compara por id
+                                    return option?.id === value?.id;
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Corretor Responsável (Opcional)"
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                bgcolor: 'background.paper'
+                                            }
+                                        }}
+                                        error={!!errors.corretor}
+                                        helperText={errors.corretor?.message}
+                                        InputProps={{
+                                            ...params.InputProps,
+                                            endAdornment: (
+                                                <React.Fragment>
+                                                    {loadingCorretores ? <CircularProgress color="inherit" size={20} /> : null}
+                                                    {params.InputProps.endAdornment}
+                                                </React.Fragment>
+                                            ),
+                                        }}
+                                    />
+                                )}
+                                renderOption={(props, option) => {
+                                    const { key, ...otherProps } = props;
+                                    return (
+                                        <li key={key} {...otherProps} style={{
+                                            backgroundColor: theme.palette.background.paper,
+                                            borderBottom: `1px solid ${theme.palette.divider}`
+                                        }}>
+                                            <Box>
+                                                <Typography variant="body1" fontWeight="medium">
+                                                    {option.nome}
+                                                    <Typography component="span" variant="caption" sx={{
+                                                        ml: 1,
+                                                        color: option.perfil === 'CORRETOR' ? 'primary.main' :
+                                                            option.perfil === 'GERENTE' ? 'warning.main' :
+                                                                option.perfil === 'ADM_GERAL' ? 'error.main' : 'text.secondary'
+                                                    }}>
+                                                        ({option.perfil})
+                                                    </Typography>
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    {option.email}
+                                                </Typography>
+                                            </Box>
+                                        </li>
+                                    );
+                                }}
+                            />
+                        );
+                    }}
                 />
             </Box>
 
@@ -200,7 +326,7 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                                             Para Venda
                                         </Typography>
                                     }
-                                 />
+                                />
                             )}
                         />
                         <Controller

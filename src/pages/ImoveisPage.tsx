@@ -323,6 +323,42 @@ export const ImoveisPage = () => {
             }
         },
         {
+            field: 'corretor',
+            headerName: 'Corretor',
+            width: 200,
+            valueGetter: (value, row) => {
+                if (!row.corretor) return 'Não definido';
+                if (typeof row.corretor === 'object') {
+                    return row.corretor.nome || 'Corretor';
+                }
+                return 'ID: ' + row.corretor.substring(0, 8) + '...';
+            },
+            renderCell: (params: GridRenderCellParams<Imovel>) => {
+                const corretor = params.row.corretor;
+                if (!corretor) return <Typography variant="body2">Não definido</Typography>;
+
+                if (typeof corretor === 'object') {
+                    return (
+                        <Box>
+                            <Typography variant="body2" fontWeight="medium">
+                                {corretor.nome}
+                            </Typography>
+                            {corretor.email && (
+                                <Typography variant="caption" color="text.secondary">
+                                    {corretor.email}
+                                </Typography>
+                            )}
+                        </Box>
+                    );
+                }
+                return (
+                    <Typography variant="body2" color="text.secondary">
+                        ID: {corretor.substring(0, 8)}...
+                    </Typography>
+                );
+            },
+        },
+        {
             field: 'descricao',
             headerName: 'Descrição',
             width: 300,

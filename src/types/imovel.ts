@@ -21,7 +21,8 @@ export interface ImovelFormData {
     area_terreno: number | null;
     area_construida: number | null;
     garagem: boolean;
-    proprietario: string; // ⭐️ Mantém como string obrigatória para o formulário
+    proprietario: string;
+    corretor?: string | null;
 }
 
 export interface EmpresaInfo {
@@ -57,6 +58,13 @@ export interface Imovel {
         nome: string;
         [key: string]: any; // outras propriedades do cliente
     };
+    corretor?: string | null | {
+        _id: string;
+        nome: string;
+        email: string;
+        perfil?: string;
+        [key: string]: any;
+    };
     createdAt?: string;
     updatedAt?: string;
 }
@@ -70,6 +78,22 @@ export const extractProprietarioId = (proprietario: string | { _id: string;[key:
     }
 
     return proprietario || '';
+};
+
+// src/types/imovel.ts
+
+export const extractCorretorId = (corretor: string | null | { _id: string;[key: string]: any } | undefined): string | null => {
+    if (!corretor) return null;
+
+    if (typeof corretor === 'string') {
+        return corretor.trim() === '' ? null : corretor;
+    }
+
+    if (typeof corretor === 'object' && corretor !== null) {
+        return corretor._id || null;
+    }
+
+    return null;
 };
 
 // Função para obter o nome do proprietário (se disponível)
@@ -102,7 +126,8 @@ export const imovelToFormData = (imovel: Imovel): ImovelFormData => {
         area_terreno: imovel.area_terreno,
         area_construida: imovel.area_construida,
         garagem: imovel.garagem,
-        proprietario: extractProprietarioId(imovel.proprietario), // ⭐️ Extrai apenas o ID
+        proprietario: extractProprietarioId(imovel.proprietario),
+        corretor: extractCorretorId(imovel.corretor),
     };
 };
 
@@ -232,4 +257,10 @@ export const imovelValidationSchema = yup.object().shape({
         .string()
         .required('Selecione o proprietário do imóvel.')
         .min(1, 'Selecione um proprietário válido.'),
+
+    corretor: yup
+        .string()
+        .nullable()
+        .optional()
+        .transform((value) => value === '' ? null : value),
 });

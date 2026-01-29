@@ -203,7 +203,7 @@ export const AgendaLateral: React.FC<AgendaLateralProps> = ({ open, onClose }) =
 
                                 <Typography
                                     variant="caption"
-                                    color="blue"
+                                    color="primary"
                                     sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.2, fontSize: '18' }}
                                 >
                                     <PersonIcon sx={{ fontSize: 18}} />

@@ -57,11 +57,12 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
         area_construida: null,
         garagem: false,
         proprietario: '',
+        corretor: null,
     };
 
     const {
         handleSubmit, control, reset, setValue,
-        formState: { errors }, trigger, getValues,
+        formState: { errors }, trigger, getValues, register,
     } = useForm<ImovelFormData>({
         resolver: yupResolver(imovelValidationSchema) as any,
         defaultValues,
@@ -71,6 +72,7 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
     useEffect(() => {
         if (open) {
             if (isEdit && imovelToEdit) {
+
                 const extractProprietarioId = (proprietario: any): string => {
                     if (!proprietario) return '';
                     if (typeof proprietario === 'string') return proprietario;
@@ -85,7 +87,23 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                     return '';
                 };
 
+                const extractCorretorId = (corretor: any): string => {
+                    if (!corretor) return '';
+                    if (typeof corretor === 'string') return corretor;
+                    if (typeof corretor === 'object' && corretor !== null) {
+                        if (corretor._id) {
+                            if (typeof corretor._id === 'object' && corretor._id.$oid) {
+                                return corretor._id.$oid;
+                            }
+                            return String(corretor._id);
+                        }
+                        if (corretor.id) return String(corretor.id);
+                    }
+                    return '';
+                };
+
                 const proprietarioId = extractProprietarioId(imovelToEdit.proprietario);
+                const corretorId = extractCorretorId(imovelToEdit.corretor);
 
                 reset({
                     titulo: imovelToEdit.titulo || '',
@@ -105,6 +123,7 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                     area_construida: imovelToEdit.area_construida ?? null,
                     garagem: imovelToEdit.garagem ?? false,
                     proprietario: proprietarioId,
+                    corretor: corretorId,
                 });
 
                 setCurrentImovel(imovelToEdit);
@@ -140,19 +159,33 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
         setError(null);
 
         try {
+            console.log('data', data)
             const payload = {
-                ...data,
+                titulo: data.titulo,
+                tipo: data.tipo,
+                endereco: data.endereco,
+                para_venda: data.para_venda,
+                para_aluguel: data.para_aluguel,
                 valor_venda: data.valor_venda ? Number(data.valor_venda) : null,
                 valor_aluguel: data.valor_aluguel ? Number(data.valor_aluguel) : null,
+                disponivel: data.disponivel,
+                cidade: data.cidade,
+                descricao: data.descricao,
+                detalhes: data.detalhes,
                 quartos: data.quartos ? Number(data.quartos) : null,
                 banheiros: data.banheiros ? Number(data.banheiros) : null,
                 area_terreno: data.area_terreno ? Number(data.area_terreno) : null,
                 area_construida: data.area_construida ? Number(data.area_construida) : null,
-                garagem: !!data.garagem,
-                disponivel: !!data.disponivel,
-                para_venda: !!data.para_venda,
-                para_aluguel: !!data.para_aluguel,
+                garagem: data.garagem,
+                proprietario: data.proprietario,
+                // ⭐️ CRÍTICO: Inclua o corretor explicitamente
+                corretor: data.corretor === undefined ? null : data.corretor
             };
+
+            console.log('📤 Payload COM corretor EXPLÍCITO:', payload);
+
+            console.log('📤 Payload enviado:', payload);
+            console.log('📤 Corretor no payload:', payload.corretor);
 
             let response;
             if (isEdit && currentImovel?._id) {
@@ -162,6 +195,7 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
             }
 
             const imovelResult = response.data;
+            console.log('📥 Resposta recebida:', imovelResult);
             setCurrentImovel(imovelResult);
             setCurrentPhotos(imovelResult.fotos || []);
             reset({ ...imovelResult, tipo: normalizeTipoImovel(imovelResult.tipo) });
