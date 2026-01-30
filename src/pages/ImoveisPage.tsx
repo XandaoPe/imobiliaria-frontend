@@ -81,6 +81,7 @@ export const ImoveisPage = () => {
 
     const [columnVisibilityModel, setColumnVisibilityModel] = useState<GridColumnVisibilityModel>({
         _id: false,
+        tipo: false,
         descricao: false,
     });
 
@@ -174,9 +175,6 @@ export const ImoveisPage = () => {
     };
 
     const handleOpenEdit = (imovel: Imovel) => {
-        console.log('🔍 Imóvel para editar completo:', imovel);
-        console.log('🔍 Proprietário do imóvel:', imovel.proprietario);
-        console.log('🔍 Tipo do proprietário:', typeof imovel.proprietario);
 
         setImovelToEdit(imovel);
         setOpenModal(true);
@@ -226,15 +224,21 @@ export const ImoveisPage = () => {
             field: '_id',
             headerName: 'ID',
             width: 90,
-            hideable: true
+            hideable: true,
+            renderCell: (params: GridRenderCellParams<Imovel>) => (
+                <HighlightedText
+                    text={params.row._id}
+                    highlight={debouncedSearchText}
+                />
+            ),
         },
         {
             field: 'titulo',
             headerName: 'Título',
-            width: 250,
+            width: 150,
             renderCell: (params: GridRenderCellParams<Imovel>) => (
                 <ImovelImageTooltip
-                    images={params.row.fotos} // Certifique-se que o campo no seu tipo Imovel chama-se 'imagens'
+                    images={params.row.fotos}
                     titulo={params.row.titulo}
                 >
                     <Typography
@@ -244,7 +248,7 @@ export const ImoveisPage = () => {
                         sx={{
                             cursor: 'pointer',
                             color: 'primary.main',
-                            fontWeight: '500', // Um pouco de destaque para o título
+                            fontWeight: '500',
                             '&:hover': {
                                 textDecoration: 'underline'
                             }
@@ -261,8 +265,59 @@ export const ImoveisPage = () => {
         {
             field: 'tipo',
             headerName: 'Tipo',
-            width: 130,
-            valueGetter: (value, row) => getTipoDisplay(row.tipo)
+            width: 110,
+            valueGetter: (value, row) => getTipoDisplay(row.tipo),
+            renderCell: (params: GridRenderCellParams<Imovel>) => (
+                <HighlightedText
+                    text={getTipoDisplay(params.row.tipo)}
+                    highlight={debouncedSearchText}
+                />
+            ),
+        },
+        {
+            field: 'proprietario',
+            headerName: 'Proprietário',
+            width: 200,
+            align: 'center',
+            headerAlign: 'center',
+            valueGetter: (value, row) => {
+                if (!row.proprietario) return 'Não definido';
+                if (typeof row.proprietario === 'object') {
+                    return row.proprietario.nome || 'Proprietário';
+                }
+                return 'ID: ' + row.proprietario.substring(0, 8) + '...';
+            },
+            renderCell: (params: GridRenderCellParams<Imovel>) => {
+                const proprietario = params.row.proprietario;
+                if (!proprietario) return (
+                    <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                        <Typography variant="body2">Não definido</Typography>
+                    </Box>
+                );
+
+                if (typeof proprietario === 'object') {
+                    return (
+                        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                            <Typography variant="body2" fontWeight="medium">
+                                <HighlightedText
+                                    text={proprietario.nome || 'Proprietário'}
+                                    highlight={debouncedSearchText}
+                                />
+                            </Typography>
+                        </Box>
+                    );
+                }
+                return (
+                    <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                        <Typography variant="body2" color="text.secondary">
+                            <HighlightedText
+                                text={'ID: ' + proprietario.substring(0, 8) + '...'}
+                                highlight={debouncedSearchText}
+                            />
+                        </Typography>
+                    </Box>
+                );
+            },
         },
         {
             field: 'endereco',
@@ -275,24 +330,34 @@ export const ImoveisPage = () => {
                 />
             ),
         },
-        // ⭐️ MANTENHA OS CAMPOS ORIGINAIS
         {
             field: 'aluguel',
             headerName: 'Aluguel (R$)',
-            width: 150,
-            valueGetter: (value, row) => formatValor(row.valor_aluguel || 0)
+            width: 110,
+            valueGetter: (value, row) => formatValor(row.valor_aluguel || 0),
+            renderCell: (params: GridRenderCellParams<Imovel>) => (
+                <HighlightedText
+                    text={formatValor(params.row.valor_aluguel || 0)}
+                    highlight={debouncedSearchText}
+                />
+            ),
         },
         {
             field: 'valor',
             headerName: 'Valor (R$)',
-            width: 150,
-            valueGetter: (value, row) => formatValor(row.valor_venda || 0)
+            width: 130,
+            valueGetter: (value, row) => formatValor(row.valor_venda || 0),
+            renderCell: (params: GridRenderCellParams<Imovel>) => (
+                <HighlightedText
+                    text={formatValor(params.row.valor_venda || 0)}
+                    highlight={debouncedSearchText}
+                />
+            ),
         },
-        // ⭐️ NOVAS COLUNAS: Checkboxes
         {
             field: 'para_venda',
             headerName: 'Venda',
-            width: 100,
+            width: 80,
             renderCell: (params: GridRenderCellParams<Imovel>) => (
                 <Checkbox
                     checked={params.row.para_venda || false}
@@ -304,7 +369,7 @@ export const ImoveisPage = () => {
         {
             field: 'para_aluguel',
             headerName: 'Aluguel',
-            width: 100,
+            width: 80,
             renderCell: (params: GridRenderCellParams<Imovel>) => (
                 <Checkbox
                     checked={params.row.para_aluguel || false}
@@ -316,16 +381,24 @@ export const ImoveisPage = () => {
         {
             field: 'disponivel',
             headerName: 'Status',
-            width: 130,
+            width: 110,
             valueGetter: (value, row) => row.disponivel ? "Disponível" : "Indisponível",
             cellClassName: (params) => {
                 return params.row.disponivel ? 'status-disponivel' : 'status-indisponivel';
-            }
+            },
+            renderCell: (params: GridRenderCellParams<Imovel>) => (
+                <HighlightedText
+                    text={params.row.disponivel ? "Disponível" : "Indisponível"}
+                    highlight={debouncedSearchText}
+                />
+            ),
         },
         {
             field: 'corretor',
             headerName: 'Corretor',
             width: 200,
+            align: 'center',
+            headerAlign: 'center',
             valueGetter: (value, row) => {
                 if (!row.corretor) return 'Não definido';
                 if (typeof row.corretor === 'object') {
@@ -335,26 +408,33 @@ export const ImoveisPage = () => {
             },
             renderCell: (params: GridRenderCellParams<Imovel>) => {
                 const corretor = params.row.corretor;
-                if (!corretor) return <Typography variant="body2">Não definido</Typography>;
+                if (!corretor) return (
+                    <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                        <Typography variant="body2">Não definido</Typography>
+                    </Box>
+                );
 
                 if (typeof corretor === 'object') {
                     return (
-                        <Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
                             <Typography variant="body2" fontWeight="medium">
-                                {corretor.nome}
+                                <HighlightedText
+                                    text={corretor.nome || 'Corretor'}
+                                    highlight={debouncedSearchText}
+                                />
                             </Typography>
-                            {corretor.email && (
-                                <Typography variant="caption" color="text.secondary">
-                                    {corretor.email}
-                                </Typography>
-                            )}
                         </Box>
                     );
                 }
                 return (
-                    <Typography variant="body2" color="text.secondary">
-                        ID: {corretor.substring(0, 8)}...
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                        <Typography variant="body2" color="text.secondary">
+                            <HighlightedText
+                                text={'ID: ' + corretor.substring(0, 8) + '...'}
+                                highlight={debouncedSearchText}
+                            />
+                        </Typography>
+                    </Box>
                 );
             },
         },
@@ -469,7 +549,7 @@ export const ImoveisPage = () => {
                 <Box sx={{ flexGrow: 1 }}>
                     <TextField
                         fullWidth
-                        label="Pesquisar Imóveis por Título, Endereço ou Descrição"
+                        label="Pesquisar Imóveis por Título, Proprietário, Endereço, Corretor ou Descrição"
                         variant="outlined"
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}
