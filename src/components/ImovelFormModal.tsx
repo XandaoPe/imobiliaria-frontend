@@ -256,8 +256,8 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                 <Stepper
                     activeStep={activeStep}
                     sx={{
-                        p: 3,
-                        pb: 1,
+                        p: 2,
+                        pb: 0.5,
                         bgcolor: 'background.paper'
                     }}
                 >
@@ -274,7 +274,8 @@ const ImovelFormModal: React.FC<ImovelFormModalProps> = ({ open, onClose, imovel
                         sx={{
                             bgcolor: 'background.default',
                             borderTop: `1px solid ${theme.palette.divider}`,
-                            borderBottom: `1px solid ${theme.palette.divider}`
+                            borderBottom: `1px solid ${theme.palette.divider}`,
+                            py: 1,
                         }}
                     >
                         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

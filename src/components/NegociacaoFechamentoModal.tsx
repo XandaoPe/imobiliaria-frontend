@@ -150,7 +150,31 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
                 }
             }}
         >
-            <DialogTitle sx={{ fontWeight: 'bold', pb: 1 }}>Finalizar Negociação</DialogTitle>
+            <DialogTitle sx={{
+                fontWeight: 'bold',
+                pb: 1,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+            }}>
+                Finalizar Negociação
+                <Button
+                    onClick={onClose}
+                    sx={{
+                        minWidth: 'auto',
+                        width: 36,
+                        height: 36,
+                        borderRadius: '50%',
+                        color: 'text.secondary',
+                        '&:hover': {
+                            bgcolor: 'action.hover',
+                            color: 'text.primary'
+                        }
+                    }}
+                >
+                    ✕
+                </Button>
+            </DialogTitle>
             <DialogContent dividers sx={{ pt: 2 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>

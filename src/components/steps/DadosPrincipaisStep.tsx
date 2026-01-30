@@ -48,8 +48,6 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
         }
     };
 
-    // src/components/imovel/steps/DadosPrincipaisStep.tsx
-
     const fetchCorretores = async () => {
         setLoadingCorretores(true);
         try {
@@ -88,7 +86,7 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
     }, []);
 
     return (
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 0.5 }}>
 
             {/* Proprietário com funcionalidade de "+ ADICIONAR" */}
             <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' }, mt: 1 }}>
@@ -256,18 +254,82 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                 />
             </Box>
 
-            <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' } }}>
+            <Box sx={{
+                gridColumn: { xs: '1', md: '1 / span 2' },
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                mt: 1
+            }}>
                 <Controller
-                    name="titulo"
+                    name="disponivel"
                     control={control}
                     render={({ field }) => (
-                        <TextField {...field} label="Título do Imóvel" fullWidth required sx={{
-                            '& .MuiOutlinedInput-root': {
-                                bgcolor: 'background.paper'
+                        <FormControlLabel
+                            control={
+                                <Switch
+                                    checked={!!field.value}
+                                    onChange={field.onChange}
+                                    color="primary"
+                                    size="medium"
+                                />
                             }
-                        }} error={!!errors.titulo} helperText={errors.titulo?.message} margin="normal" />
+                            label={
+                                <Typography
+                                    variant="body1" // Mudado de body2 para body1 (maior)
+                                    sx={{
+                                        fontWeight: 'medium',
+                                        color: field.value ? 'success.main' : 'text.secondary',
+                                        minWidth: '90px',
+                                        lineHeight: '1.5' // Melhor espaçamento vertical
+                                    }}
+                                >
+                                    {field.value ? "Disponível" : "Indisponível"}
+                                </Typography>
+                            }
+                            sx={{
+                                flexShrink: 0,
+                                mr: 1,
+                                height: '60px', // Altura fixa para alinhar com o TextField
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
+                        />
                     )}
                 />
+
+                <Box sx={{ flex: 1 }}>
+                    <Controller
+                        name="titulo"
+                        control={control}
+                        render={({ field }) => (
+                            <TextField
+                                {...field}
+                                label="Título do Imóvel"
+                                fullWidth
+                                required
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        bgcolor: 'background.paper',
+                                        '& .MuiOutlinedInput-input': {
+                                            py: 1.75, // Aumentado de 1.5 para 1.75
+                                            fontSize: '1rem',
+                                            height: '56px',
+                                            boxSizing: 'border-box'
+                                        },
+                                        height: '56px',
+                                    },
+                                    '& .MuiInputLabel-root': {
+                                        fontSize: '1rem',
+                                    }
+                                }} 
+                                error={!!errors.titulo}
+                                helperText={errors.titulo?.message}
+                                size="medium" // Mudado de "small" para "medium" (padrão, que é maior)
+                            />
+                        )}
+                    />
+                </Box>
             </Box>
 
             <Box>
@@ -303,40 +365,73 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                 />
             </Box>
 
-            <Box sx={{ gridColumn: { xs: '1', md: '1 / span 2' } }}>
-                <Box sx={{
-                    border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: 1,
-                    p: 2,
-                    mb: 1,
-                    mt: 1,
-                    backgroundColor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50'
+            <Box sx={{
+                gridColumn: { xs: '1', md: '1 / span 2' },
+                display: 'flex',
+                alignItems: 'center',
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: 1,
+                p: 1.5, // Aumentei um pouco o padding para melhor espaçamento
+                mb: 1.5,
+                mt: 0.5,
+                backgroundColor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
+                gap: 2
+            }}>
+                <Typography variant="subtitle1" sx={{
+                    fontWeight: 'bold',
+                    color: 'text.primary',
+                    flexShrink: 0,
+                    mr: 1,
+                    whiteSpace: 'nowrap' // Evita quebra de linha
                 }}>
-                    <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold', color: 'text.primary' }}>
-                        Finalidade do Imóvel
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 3 }}>
-                        <Controller
-                            name="para_venda"
-                            control={control}
-                            render={({ field }) => (
-                                <FormControlLabel control={<Checkbox checked={!!field.value} onChange={field.onChange} color="primary" />}
-                                    label={
-                                        <Typography sx={{ color: 'text.primary' }}>
-                                            Para Venda
-                                        </Typography>
-                                    }
-                                />
-                            )}
-                        />
-                        <Controller
-                            name="para_aluguel"
-                            control={control}
-                            render={({ field }) => (
-                                <FormControlLabel control={<Checkbox checked={!!field.value} onChange={field.onChange} color="primary" />} label="Para Aluguel" />
-                            )}
-                        />
-                    </Box>
+                    Finalidade do Imóvel:
+                </Typography>
+
+                <Box sx={{ display: 'flex', gap: 3, alignItems: 'center'}}>
+                    <Controller
+                        name="para_venda"
+                        control={control}
+                        render={({ field }) => (
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={!!field.value}
+                                        onChange={field.onChange}
+                                        color="primary"
+                                        size="medium"
+                                    />
+                                }
+                                label={
+                                    <Typography sx={{ color: 'text.primary', fontSize: '0.95rem' }}>
+                                        Para Venda
+                                    </Typography>
+                                }
+                                sx={{ m: 0 }}
+                            />
+                        )}
+                    />
+                    <Controller
+                        name="para_aluguel"
+                        control={control}
+                        render={({ field }) => (
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                        checked={!!field.value}
+                                        onChange={field.onChange}
+                                        color="primary"
+                                        size="medium"
+                                    />
+                                }
+                                label={
+                                    <Typography sx={{ color: 'text.primary', fontSize: '0.95rem' }}>
+                                        Para Aluguel
+                                    </Typography>
+                                }
+                                sx={{ m: 0 }}
+                            />
+                        )}
+                    />
                 </Box>
             </Box>
 
@@ -374,16 +469,6 @@ export const DadosPrincipaisStep: React.FC<DadosPrincipaisStepProps> = ({ contro
                                 bgcolor: 'background.paper'
                             }
                         }} error={!!errors.endereco} helperText={errors.endereco?.message} margin="normal" multiline rows={2} />
-                    )}
-                />
-            </Box>
-
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <Controller
-                    name="disponivel"
-                    control={control}
-                    render={({ field }) => (
-                        <FormControlLabel control={<Switch checked={!!field.value} onChange={field.onChange} color="primary" />} label={field.value ? "Disponível" : "Indisponível"} />
                     )}
                 />
             </Box>
