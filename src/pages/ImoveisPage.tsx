@@ -277,7 +277,7 @@ export const ImoveisPage = () => {
         {
             field: 'proprietario',
             headerName: 'Proprietário',
-            width: 200,
+            width: 150,
             align: 'center',
             headerAlign: 'center',
             valueGetter: (value, row) => {
@@ -297,8 +297,23 @@ export const ImoveisPage = () => {
 
                 if (typeof proprietario === 'object') {
                     return (
-                        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-                            <Typography variant="body2" fontWeight="medium">
+                        <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            height: '100%',
+                            width: '100%', // ADICIONE ESTA LINHA
+                            overflow: 'hidden' // ADICIONE ESTA LINHA
+                        }}>
+                            <Typography
+                                variant="body2"
+                                fontWeight="medium"
+                                sx={{
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    width: '100%'
+                                }}
+                            >
                                 <HighlightedText
                                     text={proprietario.nome || 'Proprietário'}
                                     highlight={debouncedSearchText}
@@ -308,8 +323,23 @@ export const ImoveisPage = () => {
                     );
                 }
                 return (
-                    <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-                        <Typography variant="body2" color="text.secondary">
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        height: '100%',
+                        width: '100%', // ADICIONE ESTA LINHA
+                        overflow: 'hidden' // ADICIONE ESTA LINHA
+                    }}>
+                        <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                width: '100%'
+                            }}
+                        >
                             <HighlightedText
                                 text={'ID: ' + proprietario.substring(0, 8) + '...'}
                                 highlight={debouncedSearchText}
@@ -324,10 +354,27 @@ export const ImoveisPage = () => {
             headerName: 'Endereço',
             width: 200,
             renderCell: (params: GridRenderCellParams<Imovel>) => (
-                <HighlightedText
-                    text={params.row.endereco}
-                    highlight={debouncedSearchText}
-                />
+                <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    height: '100%',
+                    width: '100%', // ADICIONE ESTA LINHA
+                    overflow: 'hidden' // ADICIONE ESTA LINHA
+                }}>
+                    <Typography
+                        sx={{
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            width: '100%'
+                        }}
+                    >
+                        <HighlightedText
+                            text={params.row.endereco}
+                            highlight={debouncedSearchText}
+                        />
+                    </Typography>
+                </Box>
             ),
         },
         {
@@ -396,7 +443,7 @@ export const ImoveisPage = () => {
         {
             field: 'corretor',
             headerName: 'Corretor',
-            width: 200,
+            width: 150,
             align: 'center',
             headerAlign: 'center',
             valueGetter: (value, row) => {
@@ -416,8 +463,23 @@ export const ImoveisPage = () => {
 
                 if (typeof corretor === 'object') {
                     return (
-                        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-                            <Typography variant="body2" fontWeight="medium">
+                        <Box sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            height: '100%',
+                            width: '100%', // ADICIONE ESTA LINHA
+                            overflow: 'hidden' // ADICIONE ESTA LINHA
+                        }}>
+                            <Typography
+                                variant="body2"
+                                fontWeight="medium"
+                                sx={{
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    width: '100%'
+                                }}
+                            >
                                 <HighlightedText
                                     text={corretor.nome || 'Corretor'}
                                     highlight={debouncedSearchText}
@@ -427,8 +489,23 @@ export const ImoveisPage = () => {
                     );
                 }
                 return (
-                    <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-                        <Typography variant="body2" color="text.secondary">
+                    <Box sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        height: '100%',
+                        width: '100%', // ADICIONE ESTA LINHA
+                        overflow: 'hidden' // ADICIONE ESTA LINHA
+                    }}>
+                        <Typography
+                            variant="body2"
+                            fontWeight="medium"
+                            sx={{
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                width: '100%'
+                            }}
+                        >
                             <HighlightedText
                                 text={'ID: ' + corretor.substring(0, 8) + '...'}
                                 highlight={debouncedSearchText}
@@ -634,6 +711,11 @@ export const ImoveisPage = () => {
                         '& .status-indisponivel': {
                             color: 'error.main',
                             fontWeight: 'bold',
+                        },
+                        '& .MuiDataGrid-cell': {
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
                         }
                     }}
                 />
