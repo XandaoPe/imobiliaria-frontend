@@ -520,6 +520,7 @@ export const NegociacaoDetailsModal: React.FC<Props> = ({ open, negociacao, onCl
                     open={modalFechamentoOpen}
                     valorSugerido={negociacao.imovel?.preco || 0}
                     tipoNegocio={negociacao.tipoNegocio || 'VENDA'}
+                    empresaId={user?.empresa || ''}
                     onClose={() => {
                         setModalFechamentoOpen(false);
                         setNovoStatus('');
