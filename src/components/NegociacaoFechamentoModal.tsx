@@ -12,20 +12,18 @@ import {
     CircularProgress,
     MenuItem,
     useTheme,
-    Chip,
     Alert,
     IconButton,
     FormControl,
     InputLabel,
     Select,
-    OutlinedInput,
-    FormHelperText
+    FormHelperText,
+    Paper,
 } from '@mui/material';
 import { CurrencyFormatInput } from './CurrencyFormatInput';
 import { configuracaoService } from '../services/configuracaoService';
 import { comissaoRegraService } from '../services/comissaoRegraService';
 import { usuarioService } from '../services/usuarioService';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 
 interface Props {
@@ -47,7 +45,7 @@ interface ComissaoRegra {
     prioridade: number;
     cargo: string[];
     nivel: string[];
-    ativo: boolean; 
+    ativo: boolean;
 }
 
 interface Usuario {
@@ -56,8 +54,8 @@ interface Usuario {
     email: string;
     perfil: string;
     nivel?: string;
-    ativo: boolean; 
-    ativoFinanceiro: boolean; 
+    ativo: boolean;
+    ativoFinanceiro: boolean;
 }
 interface ComissaoAdicionada {
     id: string;
@@ -80,7 +78,6 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
     onClose,
     onConfirm
 }) => {
-    const theme = useTheme();
     const [valorTotal, setValorTotal] = useState<number | null>(valorSugerido);
     const [entrada, setEntrada] = useState<number | null>(0);
     const [parcelas, setParcelas] = useState<number>(1);
@@ -111,6 +108,9 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
 
     // Calcular valor da taxa administrativa
     const valorTaxaEmpresa = valorBaseComissao * (porcentagemTaxa / 100);
+
+    const formatCurrency = (val: number) =>
+        val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
     // Carregar regras de comissão
     useEffect(() => {
@@ -218,15 +218,16 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
 
         setValorParcela(valorFinal);
 
-        // Recalcular comissões quando o valor base mudar
+        // Recalcular comissões quando o valor da TAXA mudar
         if (comissoesAdicionadas.length > 0) {
             const novasComissoes = comissoesAdicionadas.map(comissao => ({
                 ...comissao,
-                valorCalculado: calcularValorComissao(comissao, valorBaseComissao)
+                // AGORA recalcula baseado na Taxa Administrativa
+                valorCalculado: calcularValorComissao(comissao, valorTaxaEmpresa)
             }));
             setComissoesAdicionadas(novasComissoes);
         }
-    }, [valorTotal, entrada, parcelas, porcentagemAumento, valorAumentoFixo, porcentagemTaxa]);
+    }, [valorTotal, entrada, parcelas, porcentagemAumento, valorAumentoFixo, porcentagemTaxa, valorTaxaEmpresa]);
 
     // Calcular valor total das comissões
     const totalComissoes = comissoesAdicionadas.reduce((total, comissao) =>
@@ -237,29 +238,34 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
     const excedeTaxa = totalComissoes > valorTaxaEmpresa;
     const saldoDisponivel = valorTaxaEmpresa - totalComissoes;
 
-    // Função para calcular valor da comissão
-    const calcularValorComissao = (comissao: ComissaoAdicionada, valorBase: number): number => {
+    // Função para calcular valor da comissão - AGORA baseada na Taxa Administrativa
+    const calcularValorComissao = (comissao: ComissaoAdicionada, valorTaxa: number): number => {
         switch (comissao.tipoCalculo) {
             case 'PERCENTUAL':
-                return (valorBase * comissao.percentual) / 100;
+                return (valorTaxa * comissao.percentual) / 100;
             case 'FIXO':
                 return comissao.valorFixo || 0;
             case 'MISTO':
-                return ((valorBase * comissao.percentual) / 100) + (comissao.valorFixo || 0);
+                return ((valorTaxa * comissao.percentual) / 100) + (comissao.valorFixo || 0);
             default:
                 return 0;
         }
     };
 
-    // Adicionar nova comissão
-    const handleAdicionarComissao = () => {
-        if (!regraSelecionada || !usuarioSelecionado) {
+    // Remover comissão
+    const handleRemoverComissao = (id: string) => {
+        setComissoesAdicionadas(comissoesAdicionadas.filter(c => c.id !== id));
+    };
+
+    // Função para adicionar comissão automaticamente
+    const handleAdicionarComissaoAutomatica = (regraId: string, usuarioId: string) => {
+        if (!regraId || !usuarioId) {
             setErroComissao('Selecione uma regra e um usuário');
             return;
         }
 
-        const regra = regrasComissao.find(r => r._id === regraSelecionada);
-        const usuario = usuarios.find(u => u._id === usuarioSelecionado);
+        const regra = regrasComissao.find(r => r._id === regraId);
+        const usuario = usuarios.find(u => u._id === usuarioId);
 
         if (!regra || !usuario) {
             setErroComissao('Regra ou usuário não encontrado');
@@ -268,7 +274,7 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
 
         // Verificar se já existe comissão para este usuário
         const comissaoExistente = comissoesAdicionadas.find(
-            c => c.usuarioId === usuarioSelecionado && c.regraId === regraSelecionada
+            c => c.usuarioId === usuarioId && c.regraId === regraId
         );
 
         if (comissaoExistente) {
@@ -285,63 +291,19 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
             percentual: regra.percentual,
             valorFixo: regra.valorFixo,
             tipoCalculo: regra.tipoCalculo,
+            // AGORA calcula baseado na Taxa Administrativa
             valorCalculado: calcularValorComissao({
                 percentual: regra.percentual,
                 valorFixo: regra.valorFixo,
                 tipoCalculo: regra.tipoCalculo
-            } as any, valorBaseComissao),
+            } as any, valorTaxaEmpresa), // valorTaxaEmpresa em vez de valorBaseComissao
             editavel: false
         };
 
         setComissoesAdicionadas([...comissoesAdicionadas, novaComissao]);
-        setRegraSelecionada('');
-        setUsuarioSelecionado('');
+        setRegraSelecionada(''); // Limpa após adicionar
+        setUsuarioSelecionado(''); // Limpa após adicionar
         setErroComissao('');
-    };
-
-    // Remover comissão
-    const handleRemoverComissao = (id: string) => {
-        setComissoesAdicionadas(comissoesAdicionadas.filter(c => c.id !== id));
-    };
-
-    // Atualizar valor da comissão manualmente
-    const handleAtualizarComissao = (id: string, novoValor: number) => {
-        if (novoValor < 0) return;
-
-        const novasComissoes = comissoesAdicionadas.map(comissao => {
-            if (comissao.id === id) {
-                return {
-                    ...comissao,
-                    valorCalculado: novoValor,
-                    editavel: true
-                };
-            }
-            return comissao;
-        });
-        setComissoesAdicionadas(novasComissoes);
-    };
-
-    // Atualizar percentual da comissão
-    const handleAtualizarPercentual = (id: string, novoPercentual: number) => {
-        if (novoPercentual < 0 || novoPercentual > 100) return;
-
-        const comissao = comissoesAdicionadas.find(c => c.id === id);
-        if (!comissao) return;
-
-        const novoValor = (valorBaseComissao * novoPercentual) / 100;
-
-        const novasComissoes = comissoesAdicionadas.map(c => {
-            if (c.id === id) {
-                return {
-                    ...c,
-                    percentual: novoPercentual,
-                    valorCalculado: novoValor,
-                    editavel: true
-                };
-            }
-            return c;
-        });
-        setComissoesAdicionadas(novasComissoes);
     };
 
     const handleConfirmar = () => {
@@ -388,12 +350,14 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
         <Dialog
             open={open}
             onClose={onClose}
-            maxWidth="sm"
+            maxWidth="lg"
             fullWidth
             PaperProps={{
                 sx: {
                     bgcolor: 'background.paper',
-                    maxHeight: '90vh'
+                    maxHeight: '90vh',
+                    width: '100%',
+                    maxWidth: '1000px'
                 }
             }}
         >
@@ -402,7 +366,9 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
                 pb: 1,
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center'
+                alignItems: 'center',
+                borderBottom: '1px solid',
+                borderColor: 'divider'
             }}>
                 Finalizar Negociação
                 <Button
@@ -423,369 +389,589 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
                 </Button>
             </DialogTitle>
             <DialogContent dividers sx={{ pt: 2, overflow: 'auto' }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {/* Seção Tipo e Taxa */}
-                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-                        <TextField
-                            select
-                            sx={{ flex: 2 }}
-                            size="small"
-                            label="Tipo de Negócio"
-                            value={tipo}
-                            onChange={(e) => setTipo(e.target.value as "VENDA" | "ALUGUEL")}
-                        >
-                            <MenuItem value="VENDA">Venda</MenuItem>
-                            <MenuItem value="ALUGUEL">Aluguel / Locação</MenuItem>
-                        </TextField>
 
-                        <Box
-                            sx={{
-                                flex: 1,
-                                p: 1,
-                                border: '1px solid',
-                                borderColor: 'divider',
-                                borderRadius: 1,
-                                bgcolor: 'background.paper',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                minHeight: 40
-                            }}
-                        >
-                            <Typography variant="body2" color="text.secondary">
-                                Taxa
-                            </Typography>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                {loadingTaxa ? (
-                                    <CircularProgress size={16} />
-                                ) : (
-                                    <Typography variant="body2" fontWeight="bold">
-                                        {porcentagemTaxa}%
-                                    </Typography>
-                                )}
-                            </Box>
-                        </Box>
-                    </Box>
+                {/* Layout horizontal com duas colunas usando BOX */}
+                <Box sx={{
+                    display: 'flex',
+                    gap: 3,
+                    width: '100%'
+                }}>
 
-                    {/* Seção Valores */}
-                    <Box ref={firstInputRef}>
-                        <CurrencyFormatInput
-                            name="valorTotal"
-                            label="Valor Total Negociado"
-                            value={valorTotal}
-                            onChange={(val) => setValorTotal(val)}
-                            required
-                            size="small"
-                        />
-                    </Box>
-
-                    <CurrencyFormatInput
-                        name="entrada"
-                        label="Valor da Entrada"
-                        value={entrada}
-                        onChange={(val) => setEntrada(val)}
-                        size="small"
-                    />
-
-                    <Box sx={{ display: 'flex', gap: 1.5 }}>
-                        <TextField
-                            label="Qtd Parcelas"
-                            type="number"
-                            sx={{ flex: 1 }}
-                            size="small"
-                            value={parcelas}
-                            onChange={(e) => setParcelas(Math.max(1, Number(e.target.value)))}
-                            onFocus={(e) => e.target.select()}
-                        />
-
-                        <TextField
-                            label="Dia Vencimento"
-                            type="number"
-                            sx={{ flex: 1 }}
-                            size="small"
-                            value={diaVencimento}
-                            onChange={(e) => setDiaVencimento(Math.min(31, Math.max(1, Number(e.target.value))))}
-                            onFocus={(e) => e.target.select()}
-                            helperText="Ex: Todo dia 10"
-                        />
-                    </Box>
-
-                    <Divider>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: '600' }}>
-                            AJUSTES E TAXAS
-                        </Typography>
-                    </Divider>
-
-                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-                        <TextField
-                            label="% Aumento"
-                            type="number"
-                            size="small"
-                            sx={{ flex: 1 }}
-                            value={porcentagemAumento}
-                            onChange={(e) => setPorcentagemAumento(Number(e.target.value))}
-                            onFocus={(e) => e.target.select()}
-                            InputProps={{
-                                endAdornment: <Typography variant="body2" color="text.secondary">%</Typography>
-                            }}
-                        />
-                        <TextField
-                            label="Aumento em R$"
-                            type="number"
-                            size="small"
-                            sx={{ flex: 1 }}
-                            value={valorAumentoFixo}
-                            onChange={(e) => setValorAumentoFixo(Number(e.target.value))}
-                            onFocus={(e) => e.target.select()}
-                        />
-                    </Box>
-
+                    {/* Coluna Esquerda - Informações do Negócio */}
                     <Box sx={{
-                        p: 2,
-                        bgcolor: (theme) => theme.palette.mode === 'dark'
-                            ? theme.palette.primary.dark + '20'
-                            : '#f0f7ff',
-                        borderRadius: 1,
-                        border: (theme) => `1px solid ${theme.palette.mode === 'dark'
-                            ? theme.palette.primary.dark
-                            : '#cce3ff'}`
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2,
+                        minWidth: 0
                     }}>
-                        <CurrencyFormatInput
-                            name="valorParcela"
-                            label="Valor Final da Parcela (Editável)"
-                            value={valorParcela}
-                            size="small"
-                            onChange={(val) => setValorParcela(val)}
-                        />
-                        <Typography variant="caption" color="text.secondary" sx={{
-                            display: 'block',
-                            mt: 1,
-                            opacity: (theme) => theme.palette.mode === 'dark' ? 0.8 : 1
-                        }}>
-                            Cálculo baseado no Valor Total, Entrada e % de Aumento.
-                        </Typography>
-                    </Box>
-
-                    {/* Seção Comissões */}
-                    <Divider>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: '600' }}>
-                            COMISSÕES
-                        </Typography>
-                    </Divider>
-
-                    {/* Informações sobre taxa administrativa */}
-                    <Alert
-                        severity={excedeTaxa ? "error" : "info"}
-                        sx={{ mb: 1 }}
-                    >
-                        <Typography variant="body2">
-                            Taxa administrativa: <strong>R$ {valorTaxaEmpresa.toFixed(2)}</strong> ({porcentagemTaxa}% sobre R$ {valorBaseComissao.toFixed(2)})
-                            {comissoesAdicionadas.length > 0 && (
-                                <>
-                                    <br />
-                                    Total comissões: <strong>R$ {totalComissoes.toFixed(2)}</strong>
-                                    <br />
-                                    Saldo disponível: <strong>R$ {saldoDisponivel.toFixed(2)}</strong>
-                                </>
-                            )}
-                        </Typography>
-                    </Alert>
-
-                    {/* Seletor para adicionar comissões */}
-                    <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-end' }}>
-                        <FormControl size="small" sx={{ flex: 1 }}>
-                            <InputLabel>Regra de Comissão</InputLabel>
-                            <Select
-                                value={regraSelecionada}
-                                onChange={(e) => setRegraSelecionada(e.target.value)}
-                                disabled={loadingRegras}
-                                label="Regra de Comissão"
-                            >
-                                {loadingRegras ? (
-                                    <MenuItem value="">
-                                        <CircularProgress size={16} />
-                                    </MenuItem>
-                                ) : (
-                                    regrasComissao.map(regra => (
-                                        <MenuItem key={regra._id} value={regra._id}>
-                                            {regra.nome} ({regra.percentual}% {regra.tipoCalculo === 'MISTO' && `+ R$ ${regra.valorFixo}`})
-                                        </MenuItem>
-                                    ))
-                                )}
-                            </Select>
-                        </FormControl>
-
-                        <FormControl size="small" sx={{ flex: 1 }}>
-                            <InputLabel>Usuário</InputLabel>
-                            <Select
-                                value={usuarioSelecionado}
-                                onChange={(e) => setUsuarioSelecionado(e.target.value)}
-                                disabled={loadingUsuarios}
-                                label="Usuário"
-                            >
-                                {loadingUsuarios ? (
-                                    <MenuItem value="">
-                                        <CircularProgress size={16} />
-                                    </MenuItem>
-                                ) : (
-                                    usuarios.map(usuario => (
-                                        <MenuItem key={usuario._id} value={usuario._id}>
-                                            {usuario.nome} ({usuario.perfil})
-                                        </MenuItem>
-                                    ))
-                                )}
-                            </Select>
-                        </FormControl>
-
-                        <IconButton
-                            color="primary"
-                            onClick={handleAdicionarComissao}
-                            disabled={!regraSelecionada || !usuarioSelecionado}
-                            size="small"
-                        >
-                            <AddCircleOutlineIcon />
-                        </IconButton>
-                    </Box>
-
-                    {/* Mensagem de erro */}
-                    {erroComissao && (
-                        <Alert severity="error" sx={{ mt: 1 }}>
-                            {erroComissao}
-                        </Alert>
-                    )}
-
-                    {/* Lista de comissões adicionadas */}
-                    {comissoesAdicionadas.length > 0 && (
-                        <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" gutterBottom>
-                                Comissões Adicionadas ({comissoesAdicionadas.length})
+                        <Box>
+                            <Typography variant="h6" sx={{ mb: 1, fontWeight: 600, color: 'text.primary' }}>
+                                Informações do Negócio
                             </Typography>
+                        </Box>
 
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                {comissoesAdicionadas.map((comissao) => (
-                                    <Box
-                                        key={comissao.id}
-                                        sx={{
-                                            p: 2,
-                                            border: '1px solid',
-                                            borderColor: 'divider',
-                                            borderRadius: 1,
-                                            bgcolor: 'background.paper'
-                                        }}
-                                    >
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                            <Box>
-                                                <Typography variant="body2" fontWeight="bold">
-                                                    {comissao.regraNome}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {comissao.usuarioNome}
-                                                </Typography>
-                                            </Box>
-
-                                            <IconButton
-                                                size="small"
-                                                color="error"
-                                                onClick={() => handleRemoverComissao(comissao.id)}
+                        {/* Tipo e Taxa */}
+                        <Paper elevation={0} sx={{
+                            p: 2,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 2
+                        }}>
+                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                <Box sx={{ width: '180px' }}> {/* Diminuído de flex:1 para width fixo */}
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Tipo de Negócio</InputLabel>
+                                        <Select
+                                            value={tipo}
+                                            onChange={(e) => setTipo(e.target.value as "VENDA" | "ALUGUEL")}
+                                            label="Tipo de Negócio"
+                                        >
+                                            <MenuItem value="VENDA">Venda</MenuItem>
+                                            <MenuItem value="ALUGUEL">Aluguel / Locação</MenuItem>
+                                        </Select>
+                                    </FormControl>
+                                </Box>
+                                <Box sx={{
+                                    p: 1.5,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    borderRadius: 1,
+                                    bgcolor: 'background.paper',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    flex: 1, // Agora ocupa o espaço restante
+                                    minWidth: 0 // Evita quebra de linha
+                                }}>
+                                    <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                                        Taxa Adm.:
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                                        {loadingTaxa ? (
+                                            <CircularProgress size={16} />
+                                        ) : (
+                                            <Typography
+                                                variant="body1"
+                                                fontWeight="bold"
+                                                color="primary"
+                                                sx={{ whiteSpace: 'nowrap' }}
                                             >
-                                                <RemoveCircleOutlineIcon fontSize="small" />
-                                            </IconButton>
-                                        </Box>
-
-                                        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                                            <TextField
-                                                label="%"
-                                                type="number"
-                                                size="small"
-                                                sx={{ width: 80 }}
-                                                value={comissao.percentual}
-                                                onChange={(e) => handleAtualizarPercentual(comissao.id, Number(e.target.value))}
-                                                InputProps={{
-                                                    endAdornment: <Typography variant="caption">%</Typography>
-                                                }}
-                                            />
-
-                                            <Typography variant="body2">
-                                                =
-                                            </Typography>
-
-                                            <TextField
-                                                label="Valor"
-                                                type="number"
-                                                size="small"
-                                                sx={{ flex: 1 }}
-                                                value={comissao.valorCalculado}
-                                                onChange={(e) => handleAtualizarComissao(comissao.id, Number(e.target.value))}
-                                                InputProps={{
-                                                    startAdornment: <Typography variant="caption">R$</Typography>
-                                                }}
-                                            />
-
-                                            {comissao.valorFixo && comissao.valorFixo > 0 && (
-                                                <Typography variant="caption" color="text.secondary">
-                                                    + R$ {comissao.valorFixo} fixo
-                                                </Typography>
-                                            )}
-                                        </Box>
-
-                                        {comissao.editavel && (
-                                            <Typography variant="caption" color="warning.main" sx={{ display: 'block', mt: 1 }}>
-                                                Valor editado manualmente
+                                                {porcentagemTaxa}%
                                             </Typography>
                                         )}
                                     </Box>
-                                ))}
+                                </Box>
+                            </Box>
+                        </Paper>
+
+                        {/* Valores Principais */}
+                        <Paper elevation={0} sx={{
+                            p: 2,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 2
+                        }}>
+                            {/* Valor Total Negociado - Maior e Centralizado */}
+                            <Box ref={firstInputRef} sx={{ mb: 3 }}>
+                                <CurrencyFormatInput
+                                    name="valorTotal"
+                                    label="Valor Total Negociado *"
+                                    value={valorTotal}
+                                    onChange={(val) => setValorTotal(val)}
+                                    required
+                                    size="small"
+                                    sx={{
+                                        '& .MuiInputBase-input': {
+                                            fontSize: '1.5rem',
+                                            fontWeight: 'bold',
+                                            textAlign: 'center',
+                                            height: '56px',
+                                            py: 1
+                                        },
+                                        '& .MuiInputLabel-root': {
+                                            fontSize: '1rem'
+                                        }
+                                    }}
+                                />
                             </Box>
 
-                            {/* Resumo das comissões */}
+                            {/* Primeira linha: Valor Entrada, Parcelas e Dia Vencimento */}
                             <Box sx={{
-                                mt: 2,
-                                p: 2,
-                                bgcolor: excedeTaxa ? 'error.light' : 'success.light',
-                                borderRadius: 1,
-                                border: '1px solid',
-                                borderColor: excedeTaxa ? 'error.main' : 'success.main'
+                                display: 'flex',
+                                gap: 2,
+                                alignItems: 'flex-start',
+                                mb: 2
                             }}>
-                                <Typography variant="subtitle2" gutterBottom>
-                                    Resumo das Comissões
-                                </Typography>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <Typography variant="body2">
-                                        Total de Comissões:
-                                    </Typography>
-                                    <Typography variant="body2" fontWeight="bold">
-                                        R$ {totalComissoes.toFixed(2)}
-                                    </Typography>
+                                {/* Valor Entrada - Ocupa mais espaço */}
+                                <Box sx={{ flex: 2 }}>
+                                    <CurrencyFormatInput
+                                        name="entrada"
+                                        label="Valor da Entrada"
+                                        value={entrada}
+                                        onChange={(val) => setEntrada(val)}
+                                        size="small"
+                                        sx={{
+                                            '& .MuiInputBase-root': {
+                                                height: '48px' // Altura padrão dos TextFields
+                                            },
+                                            '& .MuiInputBase-input': {
+                                                fontSize: '1.1rem',
+                                                py: 1.375 // Ajuste para altura padrão
+                                            }
+                                        }}
+                                    />
                                 </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <Typography variant="body2">
-                                        Taxa Administrativa:
-                                    </Typography>
-                                    <Typography variant="body2">
-                                        R$ {valorTaxaEmpresa.toFixed(2)}
-                                    </Typography>
+
+                                {/* Qtd Parcelas - Altura igual ao Valor da Entrada */}
+                                <Box sx={{ width: '100px' }}>
+                                    <TextField
+                                        label="Parcelas"
+                                        type="number"
+                                        size="small"
+                                        fullWidth
+                                        value={parcelas}
+                                        onChange={(e) => setParcelas(Math.max(1, Number(e.target.value)))}
+                                        onFocus={(e) => e.target.select()}
+                                        sx={{
+                                            '& .MuiInputBase-root': {
+                                                height: '48px' // Mesma altura
+                                            }
+                                        }}
+                                        InputProps={{
+                                            sx: {
+                                                fontSize: '0.95rem',
+                                                '& input': {
+                                                    textAlign: 'center',
+                                                    py: 1.375 // Mesmo padding
+                                                }
+                                            }
+                                        }}
+                                    />
                                 </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                                    <Typography variant="body2" fontWeight="bold">
-                                        {excedeTaxa ? 'Excedente:' : 'Saldo:'}
-                                    </Typography>
-                                    <Typography variant="body2" fontWeight="bold" color={excedeTaxa ? 'error.main' : 'success.main'}>
-                                        {excedeTaxa ? '+' : ''}R$ {Math.abs(saldoDisponivel).toFixed(2)}
-                                    </Typography>
+
+                                {/* Dia Vencimento - Altura igual ao Valor da Entrada */}
+                                <Box sx={{ width: '100px' }}>
+                                    <TextField
+                                        label="Dia"
+                                        type="number"
+                                        size="small"
+                                        fullWidth
+                                        value={diaVencimento}
+                                        onChange={(e) => setDiaVencimento(Math.min(31, Math.max(1, Number(e.target.value))))}
+                                        onFocus={(e) => e.target.select()}
+                                        sx={{
+                                            '& .MuiInputBase-root': {
+                                                height: '48px' // Mesma altura
+                                            }
+                                        }}
+                                        InputProps={{
+                                            sx: {
+                                                fontSize: '0.95rem',
+                                                '& input': {
+                                                    textAlign: 'center',
+                                                    py: 1.375 // Mesmo padding
+                                                }
+                                            }
+                                        }}
+                                    />
                                 </Box>
                             </Box>
+
+                            {/* Segunda linha: Valor da Parcela - Altura igual */}
+                            <Box sx={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                mb: 2
+                            }}>
+                                <Box sx={{ width: '200px' }}>
+                                    <CurrencyFormatInput
+                                        name="valorParcela"
+                                        label="Valor Estimado por Parcela"
+                                        value={valorParcela}
+                                        size="small"
+                                        onChange={(val) => setValorParcela(val)}
+                                        sx={{
+                                            '& .MuiInputBase-root': {
+                                                height: '48px' // Mesma altura que os outros
+                                            },
+                                            '& .MuiInputBase-input': {
+                                                fontSize: '1.2rem',
+                                                fontWeight: '600',
+                                                textAlign: 'center',
+                                                py: 1.375 // Mesmo padding
+                                            },
+                                            '& .MuiInputLabel-root': {
+                                                fontSize: '0.9rem',
+                                                textAlign: 'center'
+                                            }
+                                        }}
+                                    />
+                                </Box>
+                            </Box>
+                        </Paper>
+
+                        <Paper elevation={0} sx={{
+                            p: 1.5,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 1.5
+                        }}>
+                            {/* Cabeçalho com título e ícone */}
+                            <Box sx={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                mb: 1.5
+                            }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                                    Adicionar Comissão
+                                </Typography>
+
+                            </Box>
+
+                            {/* Campos mais compactos */}
+                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                                {/* Regra de Comissão */}
+                                <Box sx={{ flex: 1 }}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Regra de Comissão</InputLabel>
+                                        <Select
+                                            value={regraSelecionada}
+                                            onChange={(e) => {
+                                                setRegraSelecionada(e.target.value);
+                                                // Limpa o usuário selecionado quando mudar a regra
+                                                setUsuarioSelecionado('');
+                                            }}
+                                            disabled={loadingRegras}
+                                            label="Regra de Comissão"
+                                            sx={{
+                                                '& .MuiSelect-select': {
+                                                    py: 0.75
+                                                }
+                                            }}
+                                        >
+                                            {loadingRegras ? (
+                                                <MenuItem value="">
+                                                    <CircularProgress size={16} />
+                                                </MenuItem>
+                                            ) : (
+                                                regrasComissao.map(regra => (
+                                                    <MenuItem key={regra._id} value={regra._id}>
+                                                        {regra.nome}
+                                                    </MenuItem>
+                                                ))
+                                            )}
+                                        </Select>
+                                        {regraSelecionada && regrasComissao.find(r => r._id === regraSelecionada) && (
+                                            <FormHelperText sx={{
+                                                mt: 0.25,
+                                                mb: 0,
+                                                lineHeight: 1.2
+                                            }}>
+                                                <Typography variant="caption">
+                                                    {regrasComissao.find(r => r._id === regraSelecionada)?.percentual}%
+                                                    {regrasComissao.find(r => r._id === regraSelecionada)?.tipoCalculo === 'MISTO' &&
+                                                        ` + R$ ${regrasComissao.find(r => r._id === regraSelecionada)?.valorFixo}`}
+                                                </Typography>
+                                            </FormHelperText>
+                                        )}
+                                    </FormControl>
+                                </Box>
+
+                                {/* Usuário - Só habilita após escolher regra */}
+                                <Box sx={{ flex: 1 }}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Usuário</InputLabel>
+                                        <Select
+                                            value={usuarioSelecionado}
+                                            onChange={(e) => {
+                                                const usuarioId = e.target.value;
+                                                setUsuarioSelecionado(usuarioId);
+
+                                                // Adiciona automaticamente quando selecionar usuário
+                                                if (regraSelecionada && usuarioId) {
+                                                    setTimeout(() => {
+                                                        handleAdicionarComissaoAutomatica(regraSelecionada, usuarioId);
+                                                    }, 100);
+                                                }
+                                            }}
+                                            disabled={loadingUsuarios || !regraSelecionada} // Desabilitado se não tiver regra
+                                            label="Usuário"
+                                            sx={{
+                                                '& .MuiSelect-select': {
+                                                    py: 0.75
+                                                }
+                                            }}
+                                        >
+                                            {loadingUsuarios ? (
+                                                <MenuItem value="">
+                                                    <CircularProgress size={16} />
+                                                </MenuItem>
+                                            ) : (
+                                                usuarios.map(usuario => (
+                                                    <MenuItem key={usuario._id} value={usuario._id}>
+                                                        {usuario.nome}
+                                                    </MenuItem>
+                                                ))
+                                            )}
+                                        </Select>
+                                        {/* HelperText invisível apenas para layout */}
+                                        <FormHelperText sx={{
+                                            visibility: 'hidden',
+                                            mt: 0.25,
+                                            mb: 0,
+                                            height: '16px'
+                                        }}>
+                                            &nbsp;
+                                        </FormHelperText>
+                                    </FormControl>
+                                </Box>
+                            </Box>
+
+                            {erroComissao && (
+                                <Alert
+                                    severity="error"
+                                    sx={{
+                                        mt: 1.5,
+                                        py: 0.5,
+                                        '& .MuiAlert-message': {
+                                            py: 0.25
+                                        }
+                                    }}
+                                >
+                                    {erroComissao}
+                                </Alert>
+                            )}
+                        </Paper>
+
+                    </Box>
+
+                    {/* Coluna Direita - Comissões e Cálculos */}
+                    <Box sx={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2,
+                        minWidth: 0
+                    }}>
+                        <Box>
+                            <Typography variant="h6" sx={{ mb: 1, fontWeight: 600, color: 'text.primary' }}>
+                                Distribuição de Comissões
+                            </Typography>
                         </Box>
-                    )}
+
+                        {/* Resumo Financeiro */}
+                        <Paper elevation={0} sx={{
+                            p: 2,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 2
+                        }}>
+                            <Alert
+                                severity={excedeTaxa ? "error" : "info"}
+                                sx={{ mb: 0 }}
+                                icon={false}
+                            >
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <Typography variant="body2">Valor Base para Comissões:</Typography>
+                                        <Typography variant="body2" fontWeight="bold">
+                                            {formatCurrency(valorBaseComissao)}
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <Typography variant="body2">Taxa Administrativa ({porcentagemTaxa}%):</Typography>
+                                        <Typography variant="body2" fontWeight="bold">
+                                            {formatCurrency(valorTaxaEmpresa)}
+                                        </Typography>
+                                    </Box>
+                                    {comissoesAdicionadas.length > 0 && (
+                                        <>
+                                            <Divider sx={{ my: 0.5 }} />
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <Typography variant="body2">Total Comissões:</Typography>
+                                                <Typography variant="body2" fontWeight="bold">
+                                                    {formatCurrency(totalComissoes)}
+                                                </Typography>
+                                            </Box>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <Typography variant="body2">
+                                                    {excedeTaxa ? 'Excedente:' : 'Saldo Disponível:'}
+                                                </Typography>
+                                                <Typography
+                                                    variant="body2"
+                                                    fontWeight="bold"
+                                                    color={excedeTaxa ? 'error.main' : 'success.main'}
+                                                >
+                                                    {formatCurrency(Math.abs(saldoDisponivel))}
+                                                </Typography>
+                                            </Box>
+                                        </>
+                                    )}
+                                </Box>
+                            </Alert>
+                        </Paper>
+
+                        {/* Lista de Comissões Adicionadas */}
+                        {comissoesAdicionadas.length > 0 && (
+                            <Paper elevation={0} sx={{
+                                p: 2,
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                borderRadius: 2,
+                                flex: 1
+                            }}>
+
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                    <Typography variant="subtitle2" fontWeight={600} color="text.primary">
+                                        Comissões Adicionadas ({comissoesAdicionadas.length})
+                                    </Typography>
+                                </Box>
+
+                                <Box sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 1.5,
+                                    maxHeight: '300px',
+                                    overflow: 'auto',
+                                    pr: 1
+                                }}>
+                                    {comissoesAdicionadas.map((comissao) => (
+                                        <Box
+                                            key={comissao.id}
+                                            sx={{
+                                                p: 2,
+                                                border: '1px solid',
+                                                borderColor: 'divider',
+                                                borderRadius: 1,
+                                                bgcolor: 'background.paper',
+                                                '&:hover': {
+                                                    bgcolor: 'action.hover'
+                                                }
+                                            }}
+                                        >
+                                            {/* Nome e Regra na mesma linha */}
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                                                <Box sx={{ flex: 1 }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                                        <Typography variant="body2" fontWeight="bold">
+                                                            {comissao.usuarioNome}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            • {comissao.regraNome}
+                                                        </Typography>
+                                                    </Box>
+                                                </Box>
+
+                                                <IconButton
+                                                    size="small"
+                                                    color="error"
+                                                    onClick={() => handleRemoverComissao(comissao.id)}
+                                                    sx={{ ml: 1 }}
+                                                >
+                                                    <RemoveCircleOutlineIcon fontSize="small" />
+                                                </IconButton>
+                                            </Box>
+
+                                            <Box>
+
+                                                <Box sx={{
+                                                    display: 'grid',
+                                                    gridTemplateColumns: '80px 20px 1fr', // 80px para %, 20px para =, resto para valor
+                                                    gap: 1,
+                                                    alignItems: 'center',
+                                                    width: '100%',
+                                                }}>
+                                                    {/* Porcentagem - 80px */}
+                                                    <Paper
+                                                        variant="outlined"
+                                                        sx={{
+                                                            width: '100%',
+                                                            height: '40px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            px: 1,
+                                                            bgcolor: 'background.paper'
+                                                        }}
+                                                    >
+                                                        <Typography variant="body2" sx={{ fontSize: '0.9rem' }}>
+                                                            {comissao.percentual?.toFixed(2).replace('.', ',')}
+                                                        </Typography>
+                                                        <Typography
+                                                            variant="caption"
+                                                            sx={{
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: 'bold',
+                                                                color: 'text.secondary'
+                                                            }}
+                                                        >
+                                                            %
+                                                        </Typography>
+                                                    </Paper>
+
+                                                    {/* Símbolo = */}
+                                                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            =
+                                                        </Typography>
+                                                    </Box>
+
+                                                    {/* Valor - ocupa o resto do espaço */}
+                                                    <Box>
+                                                        <Paper
+                                                        variant="outlined"
+                                                        sx={{
+                                                            width: '100%',
+                                                            height: '40px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            px: 1,
+                                                            bgcolor: 'background.paper'
+                                                        }}
+                                                    >
+                                                            <Typography
+                                                                variant="caption"
+                                                                sx={{
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: 'bold',
+                                                                    color: 'text.secondary'
+                                                                }}
+                                                            >
+                                                                R$
+                                                            </Typography>
+                                                            <Typography variant="body2" sx={{ fontSize: '0.9rem' }}>
+                                                                {formatCurrency(comissao.valorCalculado || 0)}
+                                                            </Typography>
+                                                    </Paper>
+                                                    </Box>
+                                                </Box>
+                                            </Box>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </Paper>
+                        )}
+                    </Box>
                 </Box>
             </DialogContent>
 
             <DialogActions sx={{
                 p: 2,
-                bgcolor: (theme) => theme.palette.mode === 'dark'
-                    ? theme.palette.background.default
-                    : '#f8f9fa'
+                borderTop: '1px solid',
+                borderColor: 'divider',
+                bgcolor: 'background.paper'
             }}>
-                <Button onClick={onClose} color="inherit" sx={{ textTransform: 'none' }}>
+                <Button
+                    onClick={onClose}
+                    color="inherit"
+                    sx={{
+                        textTransform: 'none',
+                        px: 3
+                    }}
+                >
                     Cancelar
                 </Button>
                 <Button
@@ -793,7 +979,12 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
                     color={excedeTaxa ? "warning" : "success"}
                     onClick={handleConfirmar}
                     disabled={!valorTotal || valorTotal <= 0 || excedeTaxa}
-                    sx={{ fontWeight: 'bold', textTransform: 'none' }}
+                    sx={{
+                        fontWeight: 'bold',
+                        textTransform: 'none',
+                        px: 4,
+                        boxShadow: 2
+                    }}
                 >
                     {excedeTaxa ? 'Ajustar Comissões' : 'Confirmar e Gerar Financeiro'}
                 </Button>
