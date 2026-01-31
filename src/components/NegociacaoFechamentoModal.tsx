@@ -320,6 +320,18 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
         const valorTaxaEmpresaCalculada = liquidoParaBase * (Number(porcentagemTaxa) / 100);
         const valorLiquidoRepasse = liquidoParaBase - valorTaxaEmpresaCalculada;
 
+        console.log('=== Dados sendo enviados para o backend ===');
+        console.log('Comissões a enviar:', comissoesAdicionadas);
+        console.log('Estrutura das comissões:', comissoesAdicionadas.map(c => ({
+            regraId: c.regraId,
+            usuarioId: c.usuarioId,
+            usuarioNome: c.usuarioNome, 
+            regraNome: c.regraNome, 
+            percentual: c.percentual,
+            valorCalculado: c.valorCalculado,
+            tipoCalculo: c.tipoCalculo
+        })));
+
         const dadosParaEnviar = {
             valorTotal: vTotal,
             valorEntrada: vEntrada,
@@ -328,18 +340,15 @@ export const NegociacaoFechamentoModal: React.FC<Props> = ({
             diaVencimento: Number(diaVencimento),
             ajustePorcentagem: Number(porcentagemAumento),
             ajusteFixo: Number(valorAumentoFixo),
-            tipoNegocio: tipo,
-            porcentagemTaxaEmpresa: Number(porcentagemTaxa),
-            valorRetencaoEmpresa: valorTaxaEmpresaCalculada,
-            valorBaseParaRepasse: valorLiquidoRepasse,
             comissoes: comissoesAdicionadas.map(c => ({
                 regraId: c.regraId,
                 usuarioId: c.usuarioId,
+                usuarioNome: c.usuarioNome,
                 percentual: c.percentual,
                 valorFixo: c.valorFixo,
                 tipoCalculo: c.tipoCalculo,
                 valorCalculado: c.valorCalculado,
-                editavel: c.editavel
+                regraNome: c.regraNome,
             }))
         };
 
