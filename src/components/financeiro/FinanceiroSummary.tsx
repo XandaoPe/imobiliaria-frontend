@@ -13,6 +13,11 @@ interface SummaryProps {
     receitas: number;
     despesas: number;
     pendentes: number;
+    // Novas props para cálculo correto
+    receitasBruto?: number;
+    despesasBruto?: number;
+    receitasPendentes?: number;
+    despesasPendentes?: number;
     layout?: 'horizontal' | 'vertical';
 }
 
@@ -20,24 +25,35 @@ export const FinanceiroSummary: React.FC<SummaryProps> = ({
     receitas,
     despesas,
     pendentes,
+    receitasBruto,
+    despesasBruto,
+    receitasPendentes = 0,
+    despesasPendentes = 0,
     layout = 'vertical'
 }) => {
     const theme = useTheme();
     const isDarkMode = theme.palette.mode === 'dark';
 
-    const totalParcelasBruto = receitas;
-    const totalRepasseBruto = despesas;
-    const totalPendentesAReceber = pendentes;
-    const totalPendentesAPagar = despesas * (pendentes / receitas || 0);
+    // Usar os valores brutos se disponíveis, senão usar os valores recebidos
+    const totalParcelasBruto = receitasBruto !== undefined ? receitasBruto : receitas;
+    const totalRepasseBruto = despesasBruto !== undefined ? despesasBruto : despesas;
+    const totalPendentesAReceber = receitasPendentes !== undefined ? receitasPendentes : pendentes;
+    const totalPendentesAPagar = despesasPendentes !== undefined ? despesasPendentes : 0;
+
+    // Cálculo correto da comissão pendente
     const comissaoPendenteBruto = totalPendentesAReceber - totalPendentesAPagar;
-    const saldoAtualPeriodo = totalParcelasBruto - totalRepasseBruto;
+
+    // Saldo do período = Receitas pagas - Despesas pagas
+    const saldoAtualPeriodo = receitas - despesas;
+
+    // Saldo Gerado no Período = Total Bruto Receitas - Total Bruto Despesas
+    const saldoGeradoPeriodo = totalParcelasBruto - totalRepasseBruto;
 
     const isVertical = layout === 'vertical';
 
     const formatCurrency = (val: number) =>
         val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-    // Cores adaptadas para tema escuro
     const cardStyles = [
         {
             title: 'TOTAL PARCELAS (Bruto)',

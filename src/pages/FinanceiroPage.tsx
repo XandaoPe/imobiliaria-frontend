@@ -48,6 +48,16 @@ interface HighlightedTextProps {
     highlight: string;
 }
 
+interface ResumoFinanceiro {
+    totalRecebido: number;
+    totalPago: number;
+    totalPendente: number;
+    receitasBruto?: number;
+    despesasBruto?: number;
+    receitasPendentes?: number;
+    despesasPendentes?: number;
+}
+
 const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) => {
     const textToDisplay = text ?? '';
     if (!textToDisplay.trim() || !highlight.trim()) {
@@ -102,7 +112,15 @@ export const FinanceiroPage: React.FC = () => {
 
     // Estados de Dados
     const [transacoes, setTransacoes] = useState<Transacao[]>([]);
-    const [resumo, setResumo] = useState({ totalPendente: 0, totalRecebido: 0, totalPago: 0 });
+    const [resumo, setResumo] = useState<ResumoFinanceiro>({
+        totalPendente: 0,
+        totalRecebido: 0,
+        totalPago: 0,
+        receitasBruto: 0,
+        despesasBruto: 0,
+        receitasPendentes: 0,
+        despesasPendentes: 0
+    });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [baixando, setBaixando] = useState<string | null>(null);
@@ -188,31 +206,25 @@ export const FinanceiroPage: React.FC = () => {
                 dataFim: dataFim
             };
 
-            // Filtro de busca geral
+            // Aplicar todos os filtros
             if (debouncedSearchText) params.search = debouncedSearchText;
-
-            // Filtros de status, tipo e categoria
             if (filterStatus !== 'TODOS') params.status = filterStatus;
             if (filterTipo !== 'TODOS') params.tipo = filterTipo;
             if (filterCategoria !== 'TODOS') params.categoria = filterCategoria;
-
-            // Filtros de valor
             if (valorMin !== '') params.valorMin = valorMin;
             if (valorMax !== '') params.valorMax = valorMax;
-
-            // Filtros específicos
             if (imovelCodigo) params.imovelCodigo = imovelCodigo;
             if (negociacaoCodigo) params.negociacaoCodigo = negociacaoCodigo;
 
-            // Para o resumo, usa apenas os filtros de data
-            const resumoParams = {
-                dataInicio: dataInicio,
-                dataFim: dataFim
-            };
+            // PARA O RESUMO, USA OS MESMOS PARÂMETROS QUE A LISTA
+            const resumoParams = { ...params };
+            // Remove parâmetros de paginação do resumo
+            delete resumoParams.page;
+            delete resumoParams.limit;
 
             const [resList, resSum] = await Promise.all([
                 financeiroService.listar(params),
-                financeiroService.getResumo(resumoParams)
+                financeiroService.getResumo(resumoParams) // ← AGORA COM TODOS OS FILTROS
             ]);
 
             const listaData = resList?.data?.data || [];
@@ -224,7 +236,12 @@ export const FinanceiroPage: React.FC = () => {
             setResumo({
                 totalRecebido: s.receitas ?? 0,
                 totalPago: s.despesas ?? 0,
-                totalPendente: s.pendentes ?? 0
+                totalPendente: s.pendentes ?? 0,
+                // Adicionar os dados brutos para o Summary
+                receitasBruto: s.receitasBruto ?? s.receitas ?? 0,
+                despesasBruto: s.despesasBruto ?? s.despesas ?? 0,
+                receitasPendentes: s.receitasPendentes ?? s.pendentes ?? 0,
+                despesasPendentes: s.despesasPendentes ?? 0
             });
 
         } catch (err) {
@@ -640,6 +657,10 @@ export const FinanceiroPage: React.FC = () => {
                         receitas={resumo.totalRecebido}
                         despesas={resumo.totalPago}
                         pendentes={resumo.totalPendente}
+                        receitasBruto={resumo.receitasBruto}
+                        despesasBruto={resumo.despesasBruto}
+                        receitasPendentes={resumo.receitasPendentes}
+                        despesasPendentes={resumo.despesasPendentes}
                         layout="vertical"
                     />
 
