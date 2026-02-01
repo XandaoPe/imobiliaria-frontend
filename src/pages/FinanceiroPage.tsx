@@ -194,6 +194,35 @@ export const FinanceiroPage: React.FC = () => {
         return `${day}/${month}/${year}`;
     };
 
+    const formatarFiltrosAtivos = (): string => {
+        const filtros: string[] = [];
+
+        if (filterStatus !== 'TODOS') filtros.push(`Status: ${filterStatus.toLowerCase()}`);
+        if (filterTipo !== 'TODOS') filtros.push(`Tipo: ${filterTipo.toLowerCase()}`);
+        if (filterCategoria !== 'TODOS') filtros.push(`Categoria: ${filterCategoria.toLowerCase()}`);
+        if (valorMin !== '') filtros.push(`Valor ≥ ${formatCurrency(valorMin as number)}`);
+        if (valorMax !== '') filtros.push(`Valor ≤ ${formatCurrency(valorMax as number)}`);
+        if (imovelCodigo) filtros.push(`Imóvel: ${imovelCodigo}`);
+        if (negociacaoCodigo) filtros.push(`Contrato: ${negociacaoCodigo}`);
+        if (searchText) filtros.push(`Busca: "${searchText}"`);
+
+        // Filtros de data
+        filtros.push(`Período: ${formatarDataParaExibicao(dataInicio)} - ${formatarDataParaExibicao(dataFim)}`);
+
+        return filtros.join(' • ');
+    };
+
+    const temFiltrosAplicados = () => {
+        return filterStatus !== 'TODOS' ||
+            filterTipo !== 'TODOS' ||
+            filterCategoria !== 'TODOS' ||
+            valorMin !== '' ||
+            valorMax !== '' ||
+            imovelCodigo !== '' ||
+            negociacaoCodigo !== '' ||
+            searchText !== '';
+    };
+
     const carregarDados = useCallback(async () => {
         try {
             setLoading(true);
@@ -274,11 +303,14 @@ export const FinanceiroPage: React.FC = () => {
         setNegociacaoCodigo('');
         setSearchText('');
         setDebouncedSearchText('');
+
+        // Resetar datas para o período padrão
+        setDataInicio(getPrimeiroDiaMes());
+        setDataFim(getUltimoDiaMes());
+
         setPage(0);
         setFiltrosModalOpen(false);
     };
-
-    const handleMenuClose = () => setAnchorElFilter(null);
 
     const handleDownload = async (id: string) => {
         setBaixando(id);
@@ -331,73 +363,74 @@ export const FinanceiroPage: React.FC = () => {
 
                     {/* BARRA DE FILTROS */}
                     {/* BARRA DE FILTROS SIMPLIFICADA */}
-                    <Paper sx={{
-                        p: 2,
-                        borderRadius: 2,
-                        display: 'flex',
-                        gap: 2,
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        bgcolor: 'background.paper'
-                    }}>
-                        {/* Busca Geral */}
-                        <TextField
-                            sx={{ flexGrow: 1, minWidth: '200px' }}
-                            size="small"
-                            placeholder="Descrição, Cliente ou Código..."
-                            value={searchText}
-                            onChange={(e) => setSearchText(e.target.value)}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        {loading ? <CircularProgress size={20} /> : <SearchIcon color="action" />}
-                                    </InputAdornment>
-                                ),
-                                endAdornment: searchText && (
-                                    <InputAdornment position="end">
-                                        <IconButton size="small" onClick={() => setSearchText('')}>
-                                            <ClearIcon fontSize="small" />
-                                        </IconButton>
-                                    </InputAdornment>
-                                )
-                            }}
-                        />
-
-                        {/* SELETORES DE DATA */}
-                        <Stack direction="row" spacing={1} alignItems="center">
+                    {/* BARRA DE FILTROS SIMPLIFICADA */}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <Paper sx={{
+                            p: 2,
+                            borderRadius: 2,
+                            display: 'flex',
+                            gap: 2,
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            bgcolor: 'background.paper'
+                        }}>
+                            {/* Busca Geral */}
                             <TextField
-                                label="Início"
-                                type="date"
+                                sx={{ flexGrow: 1, minWidth: '200px' }}
                                 size="small"
-                                value={dataInicio}
-                                onChange={(e) => { setDataInicio(e.target.value); setPage(0); }}
-                                InputLabelProps={{ shrink: true }}
-                                sx={{ width: 150 }}
+                                placeholder="Descrição, Cliente ou Código..."
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            {loading ? <CircularProgress size={20} /> : <SearchIcon color="action" />}
+                                        </InputAdornment>
+                                    ),
+                                    endAdornment: searchText && (
+                                        <InputAdornment position="end">
+                                            <IconButton size="small" onClick={() => setSearchText('')}>
+                                                <ClearIcon fontSize="small" />
+                                            </IconButton>
+                                        </InputAdornment>
+                                    )
+                                }}
                             />
-                            <TextField
-                                label="Fim"
-                                type="date"
-                                size="small"
-                                value={dataFim}
-                                onChange={(e) => { setDataFim(e.target.value); setPage(0); }}
-                                InputLabelProps={{ shrink: true }}
-                                sx={{ width: 150 }}
-                            />
-                        </Stack>
 
-                        {/* BOTÃO PARA ABRIR FILTROS AVANÇADOS */}
-                        <Button
-                            variant="outlined"
-                            onClick={() => setFiltrosModalOpen(true)}
-                            startIcon={<FilterListIcon />}
-                            sx={{ whiteSpace: 'nowrap', textTransform: 'none', height: 40 }}
-                        >
-                            Filtros Avançados
-                        </Button>
+                            {/* SELETORES DE DATA */}
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <TextField
+                                    label="Início"
+                                    type="date"
+                                    size="small"
+                                    value={dataInicio}
+                                    onChange={(e) => { setDataInicio(e.target.value); setPage(0); }}
+                                    InputLabelProps={{ shrink: true }}
+                                    sx={{ width: 150 }}
+                                />
+                                <TextField
+                                    label="Fim"
+                                    type="date"
+                                    size="small"
+                                    value={dataFim}
+                                    onChange={(e) => { setDataFim(e.target.value); setPage(0); }}
+                                    InputLabelProps={{ shrink: true }}
+                                    sx={{ width: 150 }}
+                                />
+                            </Stack>
 
-                        {/* BOTÃO LIMPAR FILTROS (visível apenas se houver filtros ativos) */}
-                        {(filterStatus !== 'TODOS' || filterTipo !== 'TODOS' || filterCategoria !== 'TODOS' ||
-                            valorMin !== '' || valorMax !== '' || imovelCodigo !== '' || negociacaoCodigo !== '') && (
+                            {/* BOTÃO PARA ABRIR FILTROS AVANÇADOS */}
+                            <Button
+                                variant="outlined"
+                                onClick={() => setFiltrosModalOpen(true)}
+                                startIcon={<FilterListIcon />}
+                                sx={{ whiteSpace: 'nowrap', textTransform: 'none', height: 40 }}
+                            >
+                                Filtros Avançados
+                            </Button>
+
+                            {/* BOTÃO LIMPAR FILTROS (visível apenas se houver filtros ativos) */}
+                            {temFiltrosAplicados() && (
                                 <Button
                                     variant="outlined"
                                     color="secondary"
@@ -407,7 +440,49 @@ export const FinanceiroPage: React.FC = () => {
                                     Limpar Filtros
                                 </Button>
                             )}
-                    </Paper>
+                        </Paper>
+
+                        {/* LINHA DE FILTROS APLICADOS (nova seção) */}
+                        {temFiltrosAplicados() && (
+                            <Box sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                px: 1,
+                                minHeight: 24
+                            }}>
+                                <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                    sx={{
+                                        fontWeight: 500,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 0.5
+                                    }}
+                                >
+                                    <FilterListIcon fontSize="inherit" />
+                                    Filtros ativos:
+                                </Typography>
+                                <Typography
+                                    variant="caption"
+                                    color="primary.main"
+                                    sx={{
+                                        fontWeight: 500,
+                                        fontSize: '0.75rem',
+                                        lineHeight: 1.2,
+                                        maxWidth: '100%',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                    title={formatarFiltrosAtivos()}
+                                >
+                                    {formatarFiltrosAtivos()}
+                                </Typography>
+                            </Box>
+                        )}
+                    </Box>
 
                     {error && <Alert severity="error" sx={{ borderRadius: 2 }}>{error}</Alert>}
 
