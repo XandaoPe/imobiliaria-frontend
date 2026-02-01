@@ -8,7 +8,9 @@ import {
     Select,
     DialogContent,
     DialogTitle,
-    Dialog
+    Dialog,
+    Checkbox,
+    ListItemText
 } from '@mui/material';
 import {
     Add, Download, CheckCircle, HomeWork, Person,
@@ -133,7 +135,8 @@ export const FinanceiroPage: React.FC = () => {
     // Estados de Pesquisa e Paginação
     const [searchText, setSearchText] = useState('');
     const [debouncedSearchText, setDebouncedSearchText] = useState('');
-    const [filterStatus, setFilterStatus] = useState<StatusFinanceiroFilter>('TODOS');
+    const [filterStatus, setFilterStatus] = useState<StatusFinanceiroFilter[]>(['TODOS']);
+    const [filterCategoria, setFilterCategoria] = useState<CategoriaFilter[]>(['TODOS']);
 
     const [anchorElFilter, setAnchorElFilter] = useState<null | HTMLElement>(null);
     const [totalItems, setTotalItems] = useState(0);
@@ -144,7 +147,6 @@ export const FinanceiroPage: React.FC = () => {
     const [previewData, setPreviewData] = useState<Transacao | null>(null);
 
     const [filterTipo, setFilterTipo] = useState<TipoLancamentoFilter>('TODOS');
-    const [filterCategoria, setFilterCategoria] = useState<CategoriaFilter>('TODOS');
     const [valorMin, setValorMin] = useState<number | ''>('');
     const [valorMax, setValorMax] = useState<number | ''>('');
     const [imovelCodigo, setImovelCodigo] = useState<string>('');
@@ -197,9 +199,9 @@ export const FinanceiroPage: React.FC = () => {
     const formatarFiltrosAtivos = (): string => {
         const filtros: string[] = [];
 
-        if (filterStatus !== 'TODOS') filtros.push(`Status: ${filterStatus.toLowerCase()}`);
+        if (filterStatus.length > 0 && !filterStatus.includes('TODOS')) filtros.push(`Status: ${filterStatus.map(s => s.toLowerCase()).join(', ')}`);
         if (filterTipo !== 'TODOS') filtros.push(`Tipo: ${filterTipo.toLowerCase()}`);
-        if (filterCategoria !== 'TODOS') filtros.push(`Categoria: ${filterCategoria.toLowerCase()}`);
+        if (filterCategoria.length > 0 && !filterCategoria.includes('TODOS')) filtros.push(`Categoria: ${filterCategoria.map(c => c.toLowerCase()).join(', ')}`);
         if (valorMin !== '') filtros.push(`Valor ≥ ${formatCurrency(valorMin as number)}`);
         if (valorMax !== '') filtros.push(`Valor ≤ ${formatCurrency(valorMax as number)}`);
         if (imovelCodigo) filtros.push(`Imóvel: ${imovelCodigo}`);
@@ -213,9 +215,9 @@ export const FinanceiroPage: React.FC = () => {
     };
 
     const temFiltrosAplicados = () => {
-        return filterStatus !== 'TODOS' ||
+        return (filterStatus.length > 0 && !filterStatus.includes('TODOS')) ||
             filterTipo !== 'TODOS' ||
-            filterCategoria !== 'TODOS' ||
+            (filterCategoria.length > 0 && !filterCategoria.includes('TODOS')) ||
             valorMin !== '' ||
             valorMax !== '' ||
             imovelCodigo !== '' ||
@@ -237,9 +239,9 @@ export const FinanceiroPage: React.FC = () => {
 
             // Aplicar todos os filtros
             if (debouncedSearchText) params.search = debouncedSearchText;
-            if (filterStatus !== 'TODOS') params.status = filterStatus;
+            if (filterStatus.length > 0 && !filterStatus.includes('TODOS')) params.status = filterStatus;
             if (filterTipo !== 'TODOS') params.tipo = filterTipo;
-            if (filterCategoria !== 'TODOS') params.categoria = filterCategoria;
+            if (filterCategoria.length > 0 && !filterCategoria.includes('TODOS')) params.categoria = filterCategoria;
             if (valorMin !== '') params.valorMin = valorMin;
             if (valorMax !== '') params.valorMax = valorMax;
             if (imovelCodigo) params.imovelCodigo = imovelCodigo;
@@ -294,9 +296,9 @@ export const FinanceiroPage: React.FC = () => {
     }, [carregarDados]);
 
     const limparFiltros = () => {
-        setFilterStatus('TODOS');
+        setFilterStatus(['TODOS']);
         setFilterTipo('TODOS');
-        setFilterCategoria('TODOS');
+        setFilterCategoria(['TODOS']);
         setValorMin('');
         setValorMax('');
         setImovelCodigo('');
@@ -789,18 +791,34 @@ export const FinanceiroPage: React.FC = () => {
                         <Box>
                             <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>Filtros Básicos</Typography>
                             <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2}>
-                                {/* STATUS */}
+                                {/* STATUS - Agora com múltipla escolha */}
                                 <Box sx={{ minWidth: 200 }}>
                                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Status</Typography>
                                     <Select
+                                        multiple
                                         value={filterStatus}
-                                        onChange={(e) => setFilterStatus(e.target.value as StatusFinanceiroFilter)}
+                                        onChange={(e) => {
+                                            const value = e.target.value as StatusFinanceiroFilter[];
+                                            // Se selecionar "TODOS", limpar outras seleções
+                                            if (value.includes('TODOS')) {
+                                                setFilterStatus(['TODOS']);
+                                            } else {
+                                                setFilterStatus(value);
+                                            }
+                                        }}
                                         size="small"
                                         fullWidth
+                                        renderValue={(selected) => {
+                                            if (selected.length === 0 || selected.includes('TODOS')) {
+                                                return 'Todos';
+                                            }
+                                            return selected.map(s => s.charAt(0) + s.slice(1).toLowerCase()).join(', ');
+                                        }}
                                     >
                                         {(['TODOS', 'PENDENTE', 'PAGO', 'CANCELADO', 'ATRASADO'] as StatusFinanceiroFilter[]).map((status) => (
                                             <MenuItem key={status} value={status}>
-                                                {status.charAt(0) + status.slice(1).toLowerCase()}
+                                                <Checkbox checked={filterStatus.includes(status)} />
+                                                <ListItemText primary={status.charAt(0) + status.slice(1).toLowerCase()} />
                                             </MenuItem>
                                         ))}
                                     </Select>
@@ -823,18 +841,34 @@ export const FinanceiroPage: React.FC = () => {
                                     </Select>
                                 </Box>
 
-                                {/* CATEGORIA */}
+                                {/* CATEGORIA - Agora com múltipla escolha */}
                                 <Box sx={{ minWidth: 200 }}>
                                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Categoria</Typography>
                                     <Select
+                                        multiple
                                         value={filterCategoria}
-                                        onChange={(e) => setFilterCategoria(e.target.value as CategoriaFilter)}
+                                        onChange={(e) => {
+                                            const value = e.target.value as CategoriaFilter[];
+                                            // Se selecionar "TODOS", limpar outras seleções
+                                            if (value.includes('TODOS')) {
+                                                setFilterCategoria(['TODOS']);
+                                            } else {
+                                                setFilterCategoria(value);
+                                            }
+                                        }}
                                         size="small"
                                         fullWidth
+                                        renderValue={(selected) => {
+                                            if (selected.length === 0 || selected.includes('TODOS')) {
+                                                return 'Todos';
+                                            }
+                                            return selected.map(c => c.charAt(0) + c.slice(1).toLowerCase()).join(', ');
+                                        }}
                                     >
                                         {(['TODOS', 'ALUGUEL', 'VENDA', 'COMISSAO', 'REPASSE', 'MANUTENCAO', 'OPERACIONAL', 'OUTROS'] as CategoriaFilter[]).map((cat) => (
                                             <MenuItem key={cat} value={cat}>
-                                                {cat.charAt(0) + cat.slice(1).toLowerCase()}
+                                                <Checkbox checked={filterCategoria.includes(cat)} />
+                                                <ListItemText primary={cat.charAt(0) + cat.slice(1).toLowerCase()} />
                                             </MenuItem>
                                         ))}
                                     </Select>

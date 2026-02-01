@@ -6,15 +6,49 @@ export const financeiroService = {
      * Lista os lançamentos usando os filtros (tipo, status, datas, negociacaoCodigo)
      */
     listar: (filtros: any) => {
-        return api.get('/financeiro', { params: filtros });
+        // Converter arrays para strings separadas por vírgula
+        const params = { ...filtros };
+
+        if (Array.isArray(params.status)) {
+            params.status = params.status.filter((s: any) => s !== 'TODOS').join(',');
+            if (params.status === '') {
+                delete params.status;
+            }
+        }
+
+        if (Array.isArray(params.categoria)) {
+            params.categoria = params.categoria.filter((c: any) => c !== 'TODOS').join(',');
+            if (params.categoria === '') {
+                delete params.categoria;
+            }
+        }
+
+        return api.get('/financeiro', { params });
     },
 
     /**
      * GET /financeiro/resumo
      * Pega os totais (Receitas, Despesas, Pendentes) filtrados por data
      */
-    getResumo: (params?: { dataInicio?: string; dataFim?: string }) => {
-        return api.get('/financeiro/resumo', { params });
+    getResumo: (params: any) => {
+        // Mesma lógica para o resumo
+        const processedParams = { ...params };
+
+        if (Array.isArray(processedParams.status)) {
+            processedParams.status = processedParams.status.filter((s: any) => s !== 'TODOS').join(',');
+            if (processedParams.status === '') {
+                delete processedParams.status;
+            }
+        }
+
+        if (Array.isArray(processedParams.categoria)) {
+            processedParams.categoria = processedParams.categoria.filter((c: any) => c !== 'TODOS').join(',');
+            if (processedParams.categoria === '') {
+                delete processedParams.categoria;
+            }
+        }
+
+        return api.get('/financeiro/resumo', { params: processedParams });
     },
 
     /**
@@ -35,19 +69,13 @@ export const financeiroService = {
                 responseType: 'blob',
             });
 
-            // Cria o link para download
             const blob = new Blob([response.data], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-
-            // Sugestão: Nome do arquivo mais amigável
             link.setAttribute('download', `recibo_${id.substring(0, 8)}.pdf`);
-
             document.body.appendChild(link);
             link.click();
-
-            // Limpeza
             link.remove();
             window.URL.revokeObjectURL(url);
         } catch (error) {
