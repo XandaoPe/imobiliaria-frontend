@@ -25,6 +25,9 @@ import { FinanceiroDetalhesModal } from '../components/financeiro/FinanceiroDeta
 import { financeiroService } from '../services/financeiroService';
 import { FinanceiroPreviewTooltip } from '../components/FinanceiroPreviewTooltip';
 
+import { Edit as EditIcon } from '@mui/icons-material';
+import { FinanceiroEdicaoModal } from '../components/financeiro/FinanceiroEdicaoModal';
+
 const DEBOUNCE_DELAY = 400;
 
 type StatusFinanceiroFilter = 'TODOS' | 'PENDENTE' | 'PAGO' | 'CANCELADO' | 'ATRASADO';
@@ -41,8 +44,19 @@ interface Transacao {
     categoria: string;
     parcelaNumero?: number;
     negociacaoCodigo?: string;
-    cliente?: { nome: string };
-    imovel?: { codigo: string, titulo?: string };
+    dataPagamento?: string;
+    valorPago?: number;
+    observacoes?: string;
+    cliente?: {
+        _id: string;
+        nome: string;
+    };
+    imovel?: {
+        _id: string;
+        codigo: string;
+        titulo?: string;
+    };
+    comissoesDistribuidas?: boolean;
 }
 
 interface HighlightedTextProps {
@@ -153,6 +167,8 @@ export const FinanceiroPage: React.FC = () => {
     const [negociacaoCodigo, setNegociacaoCodigo] = useState<string>('');
 
     const [filtrosModalOpen, setFiltrosModalOpen] = useState(false);
+    const [edicaoModalOpen, setEdicaoModalOpen] = useState(false);
+    const [transacaoParaEditar, setTransacaoParaEditar] = useState<Transacao | null>(null);
 
     const handlePopoverOpen = (event: React.MouseEvent<HTMLElement>, item: Transacao) => {
         setAnchorElPreview(event.currentTarget);
@@ -162,6 +178,11 @@ export const FinanceiroPage: React.FC = () => {
     const handlePopoverClose = () => {
         setAnchorElPreview(null);
         setPreviewData(null);
+    };
+
+    const handleAbrirEdicao = (transacao: Transacao) => {
+        setTransacaoParaEditar(transacao);
+        setEdicaoModalOpen(true);
     };
 
     const formatCurrency = (val: number) =>
@@ -685,6 +706,17 @@ export const FinanceiroPage: React.FC = () => {
                                             </TableCell>
                                             <TableCell align="right">
                                                 <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                                                    {/* Botão de Edição - SEMPRE VISÍVEL */}
+                                                    <Tooltip title="Editar Lançamento">
+                                                        <IconButton
+                                                            color="primary"
+                                                            onClick={() => handleAbrirEdicao(item)}
+                                                            size="small"
+                                                        >
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+
                                                     {item.status === 'PENDENTE' && (
                                                         <Tooltip title="Baixar Título">
                                                             <IconButton color="success" onClick={() => handleDarBaixa(item._id)} size="small">
@@ -962,6 +994,17 @@ export const FinanceiroPage: React.FC = () => {
                 handleClose={handlePopoverClose}
                 data={previewData}
             />
+
+            <FinanceiroEdicaoModal
+                open={edicaoModalOpen}
+                onClose={() => {
+                    setEdicaoModalOpen(false);
+                    setTransacaoParaEditar(null);
+                }}
+                onSuccess={carregarDados}
+                transacaoId={transacaoParaEditar?._id || null}
+            />
+
         </Box>
     );
 };

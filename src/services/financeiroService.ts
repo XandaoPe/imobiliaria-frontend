@@ -60,9 +60,34 @@ export const financeiroService = {
     },
 
     /**
+    * GET /financeiro/:id
+    * Busca um lançamento específico por ID
+    */
+    buscarPorId: (id: string) => {
+        return api.get(`/financeiro/${id}`);
+    },
+
+    /**
+     * PUT /financeiro/:id
+     * Atualiza um lançamento existente
+     */
+    atualizar: (id: string, dados: any) => {
+        return api.put(`/financeiro/${id}`, dados);
+    },
+
+    /**
+     * DELETE /financeiro/:id
+     * Cancela um lançamento
+     */
+    cancelar: (id: string) => {
+        return api.delete(`/financeiro/${id}`);
+    },
+
+    /**
      * GET /financeiro/:id/recibo
      * Baixa o PDF gerado pelo FinanceiroPdfService
      */
+   
     baixarRecibo: async (id: string) => {
         try {
             const response = await api.get(`/financeiro/${id}/recibo`, {
