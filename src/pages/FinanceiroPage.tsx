@@ -3,7 +3,12 @@ import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Chip, IconButton, Tooltip,
     CircularProgress, Avatar, TextField, InputAdornment, Menu, MenuItem, ListSubheader,
-    TablePagination, Alert, Stack
+    TablePagination, Alert, Stack,
+    DialogActions,
+    Select,
+    DialogContent,
+    DialogTitle,
+    Dialog
 } from '@mui/material';
 import {
     Add, Download, CheckCircle, HomeWork, Person,
@@ -21,6 +26,8 @@ import { FinanceiroPreviewTooltip } from '../components/FinanceiroPreviewTooltip
 const DEBOUNCE_DELAY = 400;
 
 type StatusFinanceiroFilter = 'TODOS' | 'PENDENTE' | 'PAGO' | 'CANCELADO' | 'ATRASADO';
+type TipoLancamentoFilter = 'TODOS' | 'RECEITA' | 'DESPESA';
+type CategoriaFilter = 'TODOS' | 'ALUGUEL' | 'VENDA' | 'COMISSAO' | 'REPASSE' | 'MANUTENCAO' | 'OPERACIONAL' | 'OUTROS';
 
 interface Transacao {
     _id: string;
@@ -118,6 +125,15 @@ export const FinanceiroPage: React.FC = () => {
     const [anchorElPreview, setAnchorElPreview] = useState<HTMLElement | null>(null);
     const [previewData, setPreviewData] = useState<Transacao | null>(null);
 
+    const [filterTipo, setFilterTipo] = useState<TipoLancamentoFilter>('TODOS');
+    const [filterCategoria, setFilterCategoria] = useState<CategoriaFilter>('TODOS');
+    const [valorMin, setValorMin] = useState<number | ''>('');
+    const [valorMax, setValorMax] = useState<number | ''>('');
+    const [imovelCodigo, setImovelCodigo] = useState<string>('');
+    const [negociacaoCodigo, setNegociacaoCodigo] = useState<string>('');
+
+    const [filtrosModalOpen, setFiltrosModalOpen] = useState(false);
+
     const handlePopoverOpen = (event: React.MouseEvent<HTMLElement>, item: Transacao) => {
         setAnchorElPreview(event.currentTarget);
         setPreviewData(item);
@@ -168,15 +184,27 @@ export const FinanceiroPage: React.FC = () => {
             const params: any = {
                 page: page + 1,
                 limit: rowsPerPage,
-                dataInicio: dataInicio,  // Envia diretamente no formato YYYY-MM-DD
-                dataFim: dataFim         // Envia diretamente no formato YYYY-MM-DD
+                dataInicio: dataInicio,
+                dataFim: dataFim
             };
 
-            // O debouncedSearchText é enviado aqui
+            // Filtro de busca geral
             if (debouncedSearchText) params.search = debouncedSearchText;
-            if (filterStatus !== 'TODOS') params.status = filterStatus;
 
-            // Para o resumo, usa os mesmos parâmetros
+            // Filtros de status, tipo e categoria
+            if (filterStatus !== 'TODOS') params.status = filterStatus;
+            if (filterTipo !== 'TODOS') params.tipo = filterTipo;
+            if (filterCategoria !== 'TODOS') params.categoria = filterCategoria;
+
+            // Filtros de valor
+            if (valorMin !== '') params.valorMin = valorMin;
+            if (valorMax !== '') params.valorMax = valorMax;
+
+            // Filtros específicos
+            if (imovelCodigo) params.imovelCodigo = imovelCodigo;
+            if (negociacaoCodigo) params.negociacaoCodigo = negociacaoCodigo;
+
+            // Para o resumo, usa apenas os filtros de data
             const resumoParams = {
                 dataInicio: dataInicio,
                 dataFim: dataFim
@@ -199,18 +227,14 @@ export const FinanceiroPage: React.FC = () => {
                 totalPendente: s.pendentes ?? 0
             });
 
-            console.log('Datas enviadas:', {
-                dataInicio: dataInicio,
-                dataFim: dataFim
-            });
-
         } catch (err) {
             console.error("Erro ao buscar dados financeiros", err);
             setError("Não foi possível carregar os lançamentos financeiros.");
         } finally {
             setLoading(false);
         }
-    }, [page, rowsPerPage, debouncedSearchText, filterStatus, dataInicio, dataFim]);
+    }, [page, rowsPerPage, debouncedSearchText, filterStatus, filterTipo, filterCategoria,
+        valorMin, valorMax, imovelCodigo, negociacaoCodigo, dataInicio, dataFim]);
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -223,14 +247,21 @@ export const FinanceiroPage: React.FC = () => {
         carregarDados();
     }, [carregarDados]);
 
-    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorElFilter(event.currentTarget);
-    const handleMenuClose = () => setAnchorElFilter(null);
-
-    const handleSetStatus = (newStatus: StatusFinanceiroFilter) => {
-        setFilterStatus(newStatus);
+    const limparFiltros = () => {
+        setFilterStatus('TODOS');
+        setFilterTipo('TODOS');
+        setFilterCategoria('TODOS');
+        setValorMin('');
+        setValorMax('');
+        setImovelCodigo('');
+        setNegociacaoCodigo('');
+        setSearchText('');
+        setDebouncedSearchText('');
         setPage(0);
-        handleMenuClose();
+        setFiltrosModalOpen(false);
     };
+
+    const handleMenuClose = () => setAnchorElFilter(null);
 
     const handleDownload = async (id: string) => {
         setBaixando(id);
@@ -282,7 +313,17 @@ export const FinanceiroPage: React.FC = () => {
                     </Box>
 
                     {/* BARRA DE FILTROS */}
-                    <Paper sx={{ p: 2, borderRadius: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', bgcolor: 'background.paper' }}>
+                    {/* BARRA DE FILTROS SIMPLIFICADA */}
+                    <Paper sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        display: 'flex',
+                        gap: 2,
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        bgcolor: 'background.paper'
+                    }}>
+                        {/* Busca Geral */}
                         <TextField
                             sx={{ flexGrow: 1, minWidth: '200px' }}
                             size="small"
@@ -327,26 +368,28 @@ export const FinanceiroPage: React.FC = () => {
                             />
                         </Stack>
 
+                        {/* BOTÃO PARA ABRIR FILTROS AVANÇADOS */}
                         <Button
                             variant="outlined"
-                            onClick={handleMenuOpen}
+                            onClick={() => setFiltrosModalOpen(true)}
                             startIcon={<FilterListIcon />}
                             sx={{ whiteSpace: 'nowrap', textTransform: 'none', height: 40 }}
                         >
-                            {filterStatus === 'TODOS' ? 'Todos os Status' : filterStatus}
+                            Filtros Avançados
                         </Button>
 
-                        <Menu anchorEl={anchorElFilter} open={Boolean(anchorElFilter)} onClose={handleMenuClose}>
-                            <ListSubheader>Filtrar por Status</ListSubheader>
-                            {(['TODOS', 'PENDENTE', 'PAGO', 'CANCELADO', 'ATRASADO'] as StatusFinanceiroFilter[]).map((status) => (
-                                <MenuItem key={status} onClick={() => handleSetStatus(status)} selected={filterStatus === status}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                                        {filterStatus === status ? <DoneIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} /> : <Box sx={{ width: 28 }} />}
-                                        {status.charAt(0) + status.slice(1).toLowerCase()}
-                                    </Box>
-                                </MenuItem>
-                            ))}
-                        </Menu>
+                        {/* BOTÃO LIMPAR FILTROS (visível apenas se houver filtros ativos) */}
+                        {(filterStatus !== 'TODOS' || filterTipo !== 'TODOS' || filterCategoria !== 'TODOS' ||
+                            valorMin !== '' || valorMax !== '' || imovelCodigo !== '' || negociacaoCodigo !== '') && (
+                                <Button
+                                    variant="outlined"
+                                    color="secondary"
+                                    onClick={limparFiltros}
+                                    sx={{ textTransform: 'none', height: 40 }}
+                                >
+                                    Limpar Filtros
+                                </Button>
+                            )}
                     </Paper>
 
                     {error && <Alert severity="error" sx={{ borderRadius: 2 }}>{error}</Alert>}
@@ -622,6 +665,154 @@ export const FinanceiroPage: React.FC = () => {
                     </Typography>
                 </Box>
             </Box>
+
+            {/* MODAL DE FILTROS AVANÇADOS */}
+            <Dialog
+                open={filtrosModalOpen}
+                onClose={() => setFiltrosModalOpen(false)}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    pb: 2
+                }}>
+                    <Typography variant="h6" fontWeight="bold">Filtros Avançados</Typography>
+                    <IconButton onClick={() => setFiltrosModalOpen(false)} size="small">
+                        <ClearIcon />
+                    </IconButton>
+                </DialogTitle>
+
+                <DialogContent dividers sx={{ pt: 3 }}>
+                    <Stack spacing={3}>
+                        {/* FILTROS BÁSICOS */}
+                        <Box>
+                            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>Filtros Básicos</Typography>
+                            <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2}>
+                                {/* STATUS */}
+                                <Box sx={{ minWidth: 200 }}>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Status</Typography>
+                                    <Select
+                                        value={filterStatus}
+                                        onChange={(e) => setFilterStatus(e.target.value as StatusFinanceiroFilter)}
+                                        size="small"
+                                        fullWidth
+                                    >
+                                        {(['TODOS', 'PENDENTE', 'PAGO', 'CANCELADO', 'ATRASADO'] as StatusFinanceiroFilter[]).map((status) => (
+                                            <MenuItem key={status} value={status}>
+                                                {status.charAt(0) + status.slice(1).toLowerCase()}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </Box>
+
+                                {/* TIPO */}
+                                <Box sx={{ minWidth: 200 }}>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Tipo</Typography>
+                                    <Select
+                                        value={filterTipo}
+                                        onChange={(e) => setFilterTipo(e.target.value as TipoLancamentoFilter)}
+                                        size="small"
+                                        fullWidth
+                                    >
+                                        {(['TODOS', 'RECEITA', 'DESPESA'] as TipoLancamentoFilter[]).map((tipo) => (
+                                            <MenuItem key={tipo} value={tipo}>
+                                                {tipo.charAt(0) + tipo.slice(1).toLowerCase()}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </Box>
+
+                                {/* CATEGORIA */}
+                                <Box sx={{ minWidth: 200 }}>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Categoria</Typography>
+                                    <Select
+                                        value={filterCategoria}
+                                        onChange={(e) => setFilterCategoria(e.target.value as CategoriaFilter)}
+                                        size="small"
+                                        fullWidth
+                                    >
+                                        {(['TODOS', 'ALUGUEL', 'VENDA', 'COMISSAO', 'REPASSE', 'MANUTENCAO', 'OPERACIONAL', 'OUTROS'] as CategoriaFilter[]).map((cat) => (
+                                            <MenuItem key={cat} value={cat}>
+                                                {cat.charAt(0) + cat.slice(1).toLowerCase()}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </Box>
+                            </Stack>
+                        </Box>
+
+                        {/* FILTROS DE VALOR */}
+                        <Box>
+                            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>Filtros por Valor</Typography>
+                            <Stack direction="row" spacing={2} alignItems="flex-end">
+                                <TextField
+                                    label="Valor Mínimo"
+                                    type="number"
+                                    size="small"
+                                    value={valorMin}
+                                    onChange={(e) => setValorMin(e.target.value === '' ? '' : Number(e.target.value))}
+                                    InputProps={{ inputProps: { min: 0 } }}
+                                    sx={{ width: 150 }}
+                                />
+                                <Typography variant="body2" color="text.secondary">até</Typography>
+                                <TextField
+                                    label="Valor Máximo"
+                                    type="number"
+                                    size="small"
+                                    value={valorMax}
+                                    onChange={(e) => setValorMax(e.target.value === '' ? '' : Number(e.target.value))}
+                                    InputProps={{ inputProps: { min: 0 } }}
+                                    sx={{ width: 150 }}
+                                />
+                            </Stack>
+                        </Box>
+
+                        {/* FILTROS ESPECÍFICOS */}
+                        <Box>
+                            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 2 }}>Filtros Específicos</Typography>
+                            <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2}>
+                                <TextField
+                                    label="Código do Imóvel"
+                                    size="small"
+                                    value={imovelCodigo}
+                                    onChange={(e) => setImovelCodigo(e.target.value)}
+                                    sx={{ width: 200 }}
+                                />
+
+                                <TextField
+                                    label="Código da Negociação"
+                                    size="small"
+                                    value={negociacaoCodigo}
+                                    onChange={(e) => setNegociacaoCodigo(e.target.value)}
+                                    sx={{ width: 200 }}
+                                />
+                            </Stack>
+                        </Box>
+                    </Stack>
+                </DialogContent>
+
+                <DialogActions sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Button
+                        onClick={limparFiltros}
+                        color="secondary"
+                        sx={{ textTransform: 'none' }}
+                    >
+                        Limpar Todos
+                    </Button>
+                    <Button
+                        onClick={() => setFiltrosModalOpen(false)}
+                        variant="contained"
+                        sx={{ textTransform: 'none' }}
+                    >
+                        Aplicar Filtros
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             <FinanceiroFormModal
                 open={modalOpen}
