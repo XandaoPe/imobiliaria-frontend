@@ -13,9 +13,42 @@ export interface Cliente {
     perfil?: string;
     endereco?: string;
     cidade?: string;
+
+    // 🔑 CAMPOS PIX DO BACKEND
+    chavePix?: {
+        tipo: string;
+        chave: string;
+        validado: boolean;
+        dataValidacao?: string;
+        preferencial: boolean;
+        dataCadastro: string;
+    };
+
+    chavesPixAlternativas?: string[];
+    pixValidacaoStatus?: {
+        ultimaTentativaValidacao?: string;
+        tentativas: number;
+        bloqueadoAte?: string;
+    };
 }
 
-// Interface para dados do formulário
+export interface ClienteComPix extends Cliente {
+    chavePix?: {
+        tipo: string;
+        chave: string;
+        validado: boolean;
+        dataValidacao?: string;
+        preferencial: boolean;
+        dataCadastro: string;
+    };
+    chavesPixAlternativas?: string[];
+    pixValidacaoStatus?: {
+        ultimaTentativaValidacao?: string;
+        tentativas: number;
+        bloqueadoAte?: string;
+    };
+}
+
 export interface ClienteFormData {
     nome: string;
     cpf: string;
