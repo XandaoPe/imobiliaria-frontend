@@ -105,11 +105,19 @@ const HighlightedText: React.FC<HighlightedTextProps> = ({ text, highlight }) =>
 export const FinanceiroPage: React.FC = () => {
 
     // --- ESTADOS DE DATAS (CORRIGIDOS PARA FUSO HORÁRIO) ---
-    const getPrimeiroDiaMes = (): string => {
+    const getPrimeiroDiaMesAnterior = (): string => {
         const d = new Date();
-        // Corrige fuso horário: cria data no fuso local
+
+        // Subtrai 1 mês da data atual
+        d.setMonth(d.getMonth() - 1);
+
+        // Define para o primeiro dia do mês
+        d.setDate(1);
+
+        // Formata no formato YYYY-MM-DD
         const year = d.getFullYear();
         const month = (d.getMonth() + 1).toString().padStart(2, '0');
+
         return `${year}-${month}-01`;
     };
 
@@ -123,7 +131,7 @@ export const FinanceiroPage: React.FC = () => {
         return `${year}-${month}-${day}`;
     };
 
-    const [dataInicio, setDataInicio] = useState<string>(getPrimeiroDiaMes());
+    const [dataInicio, setDataInicio] = useState<string>(getPrimeiroDiaMesAnterior());
     const [dataFim, setDataFim] = useState<string>(getUltimoDiaMes());
 
     // Estados de Dados
@@ -328,7 +336,7 @@ export const FinanceiroPage: React.FC = () => {
         setDebouncedSearchText('');
 
         // Resetar datas para o período padrão
-        setDataInicio(getPrimeiroDiaMes());
+        setDataInicio(getPrimeiroDiaMesAnterior());
         setDataFim(getUltimoDiaMes());
 
         setPage(0);
