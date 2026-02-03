@@ -1,20 +1,25 @@
+// src/components/usuario/UsuarioFormModal.tsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button,
-    CircularProgress, Alert, FormControlLabel, Switch, MenuItem, Select, InputLabel, FormControl, Box, Typography
+    CircularProgress, Alert, FormControlLabel, Switch, MenuItem, Select,
+    InputLabel, FormControl, Box, Typography, IconButton, Tooltip, Chip
 } from '@mui/material';
 import { useForm, SubmitHandler, Controller } from 'react-hook-form';
-import { useAuth } from '../contexts/AuthContext'; // Importação do seu hook de autenticação
+import { useAuth } from '../contexts/AuthContext';
 import {
     Usuario,
-    PerfisEnum, // Assumindo que este Enum está definido em types/usuario
+    PerfisEnum,
     UpdateUsuarioFormData,
     CreateUsuarioFormData
-} from '../types/usuario'; // Assumindo tipagens definidas aqui
+} from '../types/usuario';
 import api from '../services/api';
 
-// O tipo de input agora inclui o campo 'senha' opcional (ou obrigatório na criação)
+// Ícones
+import { QrCode, CheckCircle, Edit as EditIcon } from '@mui/icons-material';
+import { UsuarioPixModal } from './usuario/UsuarioPixModal';
+// Assumindo que você criará/renomeará o modal de PIX para Usuários
+
 type UsuarioFormInputs = UpdateUsuarioFormData & { senha: string };
 
 interface UsuarioFormModalProps {
@@ -25,289 +30,229 @@ interface UsuarioFormModalProps {
 }
 
 export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClose, usuarioToEdit, onSuccess }) => {
-    // Dados do usuário logado (usado para regras de negócio)
-    const { user } = useAuth();
-
+    const { user: loggedInUser } = useAuth();
     const isEditing = !!usuarioToEdit;
 
-    // ⭐️ CORREÇÃO DEFINITIVA: 
-    // Garante que o usuário logado (user) e o usuário em edição (usuarioToEdit) existam.
-    // Usa optional chaining (?) e fallback '' antes de chamar .toString() para evitar undefined.
-    const isEditingSelf = isEditing &&
-        !!(usuarioToEdit && user &&
-            usuarioToEdit.id?.toString() === user.id?.toString());
-    
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [pixModalOpen, setPixModalOpen] = useState(false);
+    const [usuarioCompleto, setUsuarioCompleto] = useState<Usuario | null>(usuarioToEdit || null);
 
-    // SOLUÇÃO ANTIAUTOFILL: Chave para forçar a remontagem do formulário
-    const [formKey, setFormKey] = useState(0);
-
-    const {
-        control,
-        handleSubmit,
-        reset,
-        formState: { errors },
-        // watch, // Não utilizado neste componente, pode ser removido
-    } = useForm<UsuarioFormInputs>({
+    const { control, handleSubmit, reset, formState: { errors } } = useForm<UsuarioFormInputs>({
         defaultValues: {
-            email: '',
-            nome: '',
-            perfil: PerfisEnum.CORRETOR,
-            ativo: true,
-            senha: '' // Padrão vazio para senha
+            email: '', nome: '', perfil: PerfisEnum.CORRETOR, ativo: true, senha: ''
         }
     });
 
-    // Resetar o formulário e forçar a remontagem (para evitar Autofill)
+    // --- HELPERS DE FORMATAÇÃO (PIX) ---
+    const formatarChavePix = (chavePix: any): string => {
+        if (!chavePix?.chave) return '';
+        const chave = chavePix.chave;
+        switch (chavePix.tipo) {
+            case 'CPF': return chave.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+            case 'TELEFONE':
+                const c = chave.replace(/\D/g, '');
+                return c.length === 11 ? c.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : c.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+            case 'EMAIL': return chave;
+            default: return chave;
+        }
+    };
+
+    const buscarUsuarioCompleto = async (id: string) => {
+        try {
+            const response = await api.get(`/usuarios/${id}`);
+            setUsuarioCompleto(response.data);
+        } catch (err) {
+            console.error('Erro ao buscar dados do usuário:', err);
+        }
+    };
+
     useEffect(() => {
         if (open) {
-
-            setFormKey(prev => prev + 1);
-
             if (usuarioToEdit) {
+                const id = usuarioToEdit.id || usuarioToEdit._id;
                 reset({
                     email: usuarioToEdit.email,
                     nome: usuarioToEdit.nome,
                     perfil: usuarioToEdit.perfil,
                     ativo: usuarioToEdit.ativo,
-                    senha: '', // Limpa a senha na edição
-                });
-            } else {
-                reset({
-                    email: '',
-                    nome: '',
-                    perfil: PerfisEnum.CORRETOR,
-                    ativo: true,
                     senha: '',
                 });
+                setUsuarioCompleto(usuarioToEdit);
+                if (id) buscarUsuarioCompleto(id.toString());
+            } else {
+                reset({ email: '', nome: '', perfil: PerfisEnum.CORRETOR, ativo: true, senha: '' });
+                setUsuarioCompleto(null);
             }
             setError(null);
         }
     }, [usuarioToEdit, reset, open]);
 
+    const isEditingSelf = isEditing &&
+        !!(usuarioToEdit && loggedInUser &&
+            (usuarioToEdit.id?.toString() === loggedInUser.id?.toString() ||
+                usuarioToEdit._id?.toString() === loggedInUser._id?.toString()));
+
     const onSubmit: SubmitHandler<UsuarioFormInputs> = async (data) => {
         setLoading(true);
         setError(null);
-
-        let payload: UpdateUsuarioFormData | CreateUsuarioFormData;
-
-        if (isEditing) {
-            // 1. EDIÇÃO: Cria o payload APENAS com os campos de atualização
-            payload = {
-                // Se estiver editando a si mesmo, o email/perfil desabilitado será enviado, 
-                // mas a validação no backend deve ser robusta também.
-                email: data.email,
-                nome: data.nome,
-                perfil: data.perfil,
-                ativo: data.ativo,
-            } as UpdateUsuarioFormData;
-
-        } else {
-            // 2. CRIAÇÃO: A senha é obrigatória.
-            payload = {
-                email: data.email,
-                nome: data.nome,
-                perfil: data.perfil,
-                ativo: data.ativo,
-                senha: data.senha // Necessário na criação
-            } as CreateUsuarioFormData;
-        }
-
         try {
+            const idParaEnvio = usuarioToEdit?.id || usuarioToEdit?._id;
             if (isEditing) {
-                if (isEditing) {
-                    // Tenta pegar .id, se não houver, tenta ._id
-                    const idParaEnvio = usuarioToEdit?.id || (usuarioToEdit as any)?._id;
-
-                    if (!idParaEnvio) {
-                        setError("ID do usuário não encontrado para edição.");
-                        setLoading(false);
-                        return;
-                    }
-
-                    await api.put(`/usuarios/${idParaEnvio}`, payload);
-                }
+                const updatePayload: UpdateUsuarioFormData = {
+                    email: data.email,
+                    nome: data.nome,
+                    perfil: data.perfil,
+                    ativo: data.ativo,
+                    ...(data.senha ? { senha: data.senha } : {})
+                };
+                await api.put(`/usuarios/${idParaEnvio}`, updatePayload);
             } else {
-                await api.post('/usuarios', payload);
+                const createPayload: CreateUsuarioFormData = { ...data };
+                await api.post('/usuarios', createPayload);
             }
-
             onSuccess();
-            handleClose();
+            onClose();
         } catch (err: any) {
-            console.error(err);
-            const message = err.response?.data?.message || 'Ocorreu um erro desconhecido.';
+            const message = err.response?.data?.message || 'Erro ao processar requisição.';
             setError(Array.isArray(message) ? message.join(', ') : message);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleClose = () => {
-        reset();
-        onClose();
-    };
-
     return (
-        <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-            <DialogTitle>{isEditing ? `Editar Usuário: ${usuarioToEdit?.nome}` : 'Novo Usuário'}</DialogTitle>
+        <>
+            <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+                <DialogTitle>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{isEditing ? `Editar Usuário: ${usuarioToEdit?.nome}` : 'Novo Usuário'}</span>
 
-            {/* A prop key={formKey} força a remontagem e resolve o autofill */}
-            <Box key={formKey} component="form" onSubmit={handleSubmit(onSubmit)} noValidate autoComplete='off'>
-                <DialogContent dividers>
-                    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
-                    {/* Campo Nome */}
-                    <Controller
-                        name="nome"
-                        control={control}
-                        rules={{ required: 'O nome é obrigatório.' }}
-                        render={({ field }) => (
-                            <TextField
-                                {...field}
-                                label="Nome Completo"
-                                fullWidth
-                                variant="outlined"
-                                margin="normal"
-                                error={!!errors.nome}
-                                helperText={errors.nome?.message}
-                                sx={{ mt: 0 }}
-                            />
-                        )}
-                    />
-
-                    {/* Campo Email */}
-                    <Controller
-                        name="email"
-                        control={control}
-                        rules={{
-                            required: 'O e-mail é obrigatório.',
-                            pattern: {
-                                value: /^\S+@\S+$/i,
-                                message: "Formato de e-mail inválido."
-                            }
-                        }}
-                        render={({ field }) => (
-                            <TextField
-                                {...field}
-                                label="E-mail"
-                                fullWidth
-                                autoComplete='off' // Antiautofill
-                                variant="outlined"
-                                margin="normal"
-                                error={!!errors.email}
-                                helperText={errors.email?.message}
-                                // 🔒 REGRA DE NEGÓCIO: Desabilita se estiver editando a si mesmo
-                                disabled={isEditingSelf}
-                            />
-                        )}
-                    />
-
-                    {/* Campo Senha - VISÍVEL APENAS NA CRIAÇÃO */}
-                    {!isEditing && (
-                        <>
-                            <Controller
-                                name="senha"
-                                control={control}
-                                rules={{
-                                    required: 'A senha é obrigatória na criação.',
-                                    minLength: {
-                                        value: 6,
-                                        message: "A senha deve ter no mínimo 6 caracteres."
-                                    }
-                                }}
-                                render={({ field }) => (
-                                    <TextField
-                                        {...field}
-                                        label="Senha"
-                                        type="password"
-                                        autoComplete="new-password" // Melhor antiautofill para senhas
-                                        fullWidth
+                        {isEditing && usuarioCompleto && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {usuarioCompleto.chavePix?.chave && (
+                                    <Chip
+                                        icon={<CheckCircle fontSize="small" />}
+                                        label="PIX Configurado"
+                                        size="small"
+                                        color="success"
                                         variant="outlined"
-                                        margin="normal"
-                                        error={!!errors.senha}
-                                        helperText={errors.senha?.message}
+                                    />
+                                )}
+                                <Tooltip title="Configurar PIX">
+                                    <IconButton onClick={() => setPixModalOpen(true)} color="primary" size="small">
+                                        {usuarioCompleto.chavePix?.chave ? <EditIcon /> : <QrCode />}
+                                    </IconButton>
+                                </Tooltip>
+                            </Box>
+                        )}
+                    </Box>
+                </DialogTitle>
+
+                <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+                    <DialogContent dividers>
+                        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+                        {/* Visualização da Chave PIX Atual */}
+                        {isEditing && usuarioCompleto?.chavePix?.chave && (
+                            <Box sx={{
+                                mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 1,
+                                border: '1px solid', borderColor: 'divider', boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                            }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <QrCode fontSize="small" color="primary" /> Chave PIX Principal
+                                    </Typography>
+                                    <Button size="small" onClick={() => setPixModalOpen(true)} startIcon={<EditIcon />}>Alterar</Button>
+                                </Box>
+                                <Box sx={{ display: 'flex', gap: 2 }}>
+                                    <Typography variant="caption"><strong>Tipo:</strong> {usuarioCompleto.chavePix.tipo}</Typography>
+                                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                                        {formatarChavePix(usuarioCompleto.chavePix)}
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        )}
+
+                        <Controller
+                            name="nome"
+                            control={control}
+                            rules={{ required: 'O nome é obrigatório.' }}
+                            render={({ field }) => (
+                                <TextField {...field} label="Nome Completo" fullWidth margin="normal" error={!!errors.nome} helperText={errors.nome?.message} />
+                            )}
+                        />
+
+                        <Controller
+                            name="email"
+                            control={control}
+                            render={({ field }) => (
+                                <TextField {...field} label="E-mail" fullWidth margin="normal" error={!!errors.email} helperText={errors.email?.message} disabled={isEditingSelf} />
+                            )}
+                        />
+
+                        <Controller
+                            name="senha"
+                            control={control}
+                            render={({ field }) => (
+                                <TextField {...field} label={isEditing ? "Alterar Senha (Opcional)" : "Senha"} type="password" fullWidth margin="normal" error={!!errors.senha} helperText={errors.senha?.message} />
+                            )}
+                        />
+
+                        <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                            <Controller
+                                name="perfil"
+                                control={control}
+                                render={({ field }) => (
+                                    <FormControl fullWidth margin="normal">
+                                        <InputLabel>Perfil</InputLabel>
+                                        <Select {...field} label="Perfil" disabled={isEditingSelf}>
+                                            {Object.values(PerfisEnum).map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                                        </Select>
+                                    </FormControl>
+                                )}
+                            />
+                            <Controller
+                                name="ativo"
+                                control={control}
+                                render={({ field }) => (
+                                    <FormControlLabel
+                                        control={<Switch checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />}
+                                        label={field.value ? "Ativo" : "Inativo"}
+                                        disabled={isEditingSelf}
+                                        sx={{ mt: 2 }}
                                     />
                                 )}
                             />
-                            <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: 1, mt: -1 }}>
-                                A senha é obrigatória para novos usuários.
-                            </Typography>
-                        </>
-                    )}
-                    {/* FIM: Campo Senha */}
+                        </Box>
+                    </DialogContent>
 
+                    <DialogActions sx={{ p: 2 }}>
+                        <Button onClick={onClose} color="secondary">Cancelar</Button>
+                        <Button type="submit" variant="contained" disabled={loading}>
+                            {loading ? <CircularProgress size={24} /> : (isEditing ? 'Salvar' : 'Criar')}
+                        </Button>
+                    </DialogActions>
+                </Box>
+            </Dialog>
 
-                    {/* Seletor de Perfil e Switch de Ativo */}
-                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mt: 1 }}>
-
-                        {/* Campo Perfil */}
-                        <Controller
-                            name="perfil"
-                            control={control}
-                            rules={{ required: 'O perfil é obrigatório.' }}
-                            render={({ field }) => (
-                                <FormControl fullWidth margin="normal" error={!!errors.perfil} sx={{ mt: 0.5 }}>
-                                    <InputLabel id="perfil-label">Perfil</InputLabel>
-                                    <Select
-                                        {...field}
-                                        labelId="perfil-label"
-                                        label="Perfil"
-                                        variant="outlined"
-                                        // 🔒 REGRA DE NEGÓCIO: Desabilita se estiver editando a si mesmo
-                                        disabled={isEditingSelf}
-                                    >
-                                        {Object.values(PerfisEnum).map((perfil) => (
-                                            <MenuItem key={perfil} value={perfil}>
-                                                {perfil.replace('_', ' ')}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                    {errors.perfil && <Typography color="error" variant="caption" sx={{ ml: 1, mt: 0.5 }}>{errors.perfil.message}</Typography>}
-                                </FormControl>
-                            )}
-                        />
-
-                        {/* Campo Ativo */}
-                        <Controller
-                            name="ativo"
-                            control={control}
-                            render={({ field }) => (
-                                <FormControlLabel
-                                    control={
-                                        <Switch
-                                            {...field}
-                                            checked={field.value}
-                                            onChange={(e) => field.onChange(e.target.checked)}
-                                            color="primary"
-                                        />
-                                    }
-                                    label={field.value ? "Ativo" : "Inativo"}
-                                    sx={{
-                                        mt: isEditing ? 1.5 : 2.5, // Ajusta o alinhamento 
-                                        flexShrink: 0
-                                    }}
-                                    disabled={isEditingSelf}
-                                />
-                            )}
-                        />
-                    </Box>
-
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleClose} disabled={loading} color="secondary">
-                        Cancelar
-                    </Button>
-                    <Button
-                        type="submit"
-                        variant="contained"
-                        disabled={loading}
-                        startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
-                    >
-                        {isEditing ? 'Salvar Alterações' : 'Criar Usuário'}
-                    </Button>
-                </DialogActions>
-            </Box>
-        </Dialog>
+            {/* Modal de Configuração PIX para Usuário */}
+            {isEditing && usuarioCompleto && (usuarioCompleto.id || usuarioCompleto._id) && (
+                <UsuarioPixModal
+                    open={pixModalOpen}
+                    onClose={() => setPixModalOpen(false)}
+                    // Garante que o objeto passado tenha o campo 'id' preenchido para o service
+                    usuario={{
+                        ...usuarioCompleto,
+                        id: (usuarioCompleto.id || usuarioCompleto._id)?.toString() || ''
+                    }}
+                    onSuccess={() => {
+                        const id = usuarioCompleto.id || usuarioCompleto._id;
+                        if (id) buscarUsuarioCompleto(id.toString());
+                        onSuccess();
+                    }}
+                />
+            )}
+        </>
     );
 };

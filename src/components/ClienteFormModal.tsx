@@ -149,12 +149,6 @@ export const ClienteFormModal: React.FC<ClienteFormModalProps> = ({ open, onClos
         }
     };
 
-    // Função para verificar se cliente tem PIX configurado
-    const temPixConfigurado = (cliente: Cliente | null): boolean => {
-        if (!cliente) return false;
-        return !!cliente.chavePix?.chave; // REMOVIDA VERIFICAÇÃO DE VALIDADO
-    };
-
     // Função para formatar chave PIX para exibição
     const formatarChavePix = (chavePix: any): string => {
         if (!chavePix?.chave) return '';

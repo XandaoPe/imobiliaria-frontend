@@ -25,6 +25,20 @@ export interface Usuario {
     empresa?: EmpresaVinculada | string;
     createdAt: string;
     updatedAt: string;
+    chavePix?: {
+        tipo: string;
+        chave: string;
+        validado: boolean;
+        dataValidacao?: string;
+        preferencial: boolean;
+        dataCadastro: string;
+    };
+    chavesPixAlternativas?: string[];
+    pixValidacaoStatus?: {
+        ultimaTentativaValidacao?: string;
+        tentativas: number;
+        bloqueadoAte?: string;
+    };
 }
 
 export interface UsuarioLogado extends Usuario {
