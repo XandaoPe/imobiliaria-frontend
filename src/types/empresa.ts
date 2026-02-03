@@ -1,5 +1,13 @@
 // src/types/empresa.ts
 
+export type TipoChavePix = 'CNPJ' | 'EMAIL' | 'TELEFONE' | 'CHAVE_ALEATORIA';
+
+export interface ChavePix {
+    tipo: TipoChavePix;
+    chave: string;
+    preferencial: boolean;
+    dataCadastro: string;
+}
 export interface CreateEmpresaFormData {
     nome: string;
     cnpj: string;
@@ -17,10 +25,20 @@ export interface Empresa {
     fone?: string;
     isAdmGeral: boolean;
     ativa: boolean;
-    logo?: string;            // Adicionado: URL da imagem da logo
-    assinatura_url?: string;  // Adicionado: URL da imagem da assinatura
+    logo?: string;
+    assinatura_url?: string;
     createdAt: string;
     updatedAt: string;
+
+    // 🔑 CAMPOS PIX ADICIONADOS
+    chavePix?: ChavePix;
+    chavesPixAlternativas?: string[];
+
+    // 🔑 DADOS BANCÁRIOS ADICIONADOS
+    banco?: string;
+    agencia?: string;
+    conta?: string;
+    tipoConta?: string;
 }
 
 export type EmpresaFormInputs = CreateEmpresaFormData;

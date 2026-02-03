@@ -26,7 +26,7 @@ import DoneIcon from '@mui/icons-material/Done';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 
 // Tipagens e Componentes
-import { Empresa, EmpresaStatusFilter, EmpresaAdmFilter } from '../types/empresa';
+import { Empresa, EmpresaStatusFilter, EmpresaAdmFilter, TipoChavePix } from '../types/empresa';
 import { EmpresaFormModal } from '../components/EmpresaFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import { PerfisEnum } from '../types/usuario';
@@ -201,6 +201,50 @@ export const EmpresasPage: React.FC = () => {
             ),
         },
         {
+            field: 'chavePix',
+            headerName: 'Chave PIX',
+            width: 200,
+            renderCell: (params: GridRenderCellParams<Empresa>) => {
+                const chavePix = params.row.chavePix;
+
+                if (!chavePix || !chavePix.chave) {
+                    return (
+                        <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic' }}>
+                            Não cadastrado
+                        </Typography>
+                    );
+                }
+
+                return (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                            {getTipoChavePixLabel(chavePix.tipo)}
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary" sx={{ fontSize: '0.875rem' }}>
+                            {chavePix.chave}
+                        </Typography>
+                        {chavePix.preferencial && (
+                            <Box
+                                sx={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    bgcolor: 'success.light',
+                                    color: 'success.contrastText',
+                                    px: 1,
+                                    py: 0.25,
+                                    borderRadius: 1,
+                                    fontSize: '0.75rem',
+                                    width: 'fit-content'
+                                }}
+                            >
+                                Preferencial
+                            </Box>
+                        )}
+                    </Box>
+                );
+            },
+        },
+        {
             field: 'fone',
             headerName: 'Telefone',
             width: 150,
@@ -254,6 +298,16 @@ export const EmpresasPage: React.FC = () => {
             ),
         },
     ], [debouncedSearchText, canCreateAndDelete]);
+
+    const getTipoChavePixLabel = (tipo: TipoChavePix): string => {
+        const labels: Record<TipoChavePix, string> = {
+            'CNPJ': 'CNPJ',
+            'EMAIL': 'E-mail',
+            'TELEFONE': 'Telefone',
+            'CHAVE_ALEATORIA': 'Chave Aleatória'
+        };
+        return labels[tipo] || tipo;
+    };
 
     return (
         <Container sx={{ mt: 4, mb: 4 }}>
