@@ -18,9 +18,8 @@ import api from '../services/api';
 // Ícones
 import { QrCode, CheckCircle, Edit as EditIcon } from '@mui/icons-material';
 import { UsuarioPixModal } from './usuario/UsuarioPixModal';
-// Assumindo que você criará/renomeará o modal de PIX para Usuários
 
-type UsuarioFormInputs = UpdateUsuarioFormData & { senha: string };
+type UsuarioFormInputs = UpdateUsuarioFormData & { senha?: string }; // Alterado para opcional
 
 interface UsuarioFormModalProps {
     open: boolean;
@@ -37,6 +36,17 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
     const [error, setError] = useState<string | null>(null);
     const [pixModalOpen, setPixModalOpen] = useState(false);
     const [usuarioCompleto, setUsuarioCompleto] = useState<Usuario | null>(usuarioToEdit || null);
+
+    // Verifica se o usuário editado é o mesmo que está logado
+    const isEditingSelf = React.useMemo(() => {
+        if (!isEditing || !loggedInUser || !usuarioToEdit) return false;
+
+        // Compara por ID ou _ID
+        const editedUserId = usuarioToEdit.id || usuarioToEdit._id;
+        const loggedInUserId = loggedInUser.id || loggedInUser._id;
+
+        return editedUserId?.toString() === loggedInUserId?.toString();
+    }, [isEditing, loggedInUser, usuarioToEdit]);
 
     const { control, handleSubmit, reset, formState: { errors } } = useForm<UsuarioFormInputs>({
         defaultValues: {
@@ -71,46 +81,64 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
         if (open) {
             if (usuarioToEdit) {
                 const id = usuarioToEdit.id || usuarioToEdit._id;
-                reset({
+                // Para edição de outro usuário, não preenchemos senha
+                const resetData: UsuarioFormInputs = {
                     email: usuarioToEdit.email,
                     nome: usuarioToEdit.nome,
                     perfil: usuarioToEdit.perfil,
                     ativo: usuarioToEdit.ativo,
-                    senha: '',
-                });
+                    // Se for edição de outro usuário, deixamos senha vazia
+                    senha: isEditingSelf ? '' : undefined
+                };
+
+                reset(resetData);
                 setUsuarioCompleto(usuarioToEdit);
                 if (id) buscarUsuarioCompleto(id.toString());
             } else {
-                reset({ email: '', nome: '', perfil: PerfisEnum.CORRETOR, ativo: true, senha: '' });
+                // Para criação de novo usuário, mostramos o campo senha
+                reset({
+                    email: '',
+                    nome: '',
+                    perfil: PerfisEnum.CORRETOR,
+                    ativo: true,
+                    senha: ''
+                });
                 setUsuarioCompleto(null);
             }
             setError(null);
         }
-    }, [usuarioToEdit, reset, open]);
-
-    const isEditingSelf = isEditing &&
-        !!(usuarioToEdit && loggedInUser &&
-            (usuarioToEdit.id?.toString() === loggedInUser.id?.toString() ||
-                usuarioToEdit._id?.toString() === loggedInUser._id?.toString()));
+    }, [usuarioToEdit, reset, open, isEditingSelf]);
 
     const onSubmit: SubmitHandler<UsuarioFormInputs> = async (data) => {
         setLoading(true);
         setError(null);
         try {
             const idParaEnvio = usuarioToEdit?.id || usuarioToEdit?._id;
+
             if (isEditing) {
+                // Para edição de outro usuário, não enviamos senha no payload
                 const updatePayload: UpdateUsuarioFormData = {
                     email: data.email,
                     nome: data.nome,
                     perfil: data.perfil,
                     ativo: data.ativo,
-                    ...(data.senha ? { senha: data.senha } : {})
                 };
+
+                // Só adiciona senha se for edição própria E tiver preenchido
+                if (isEditingSelf && data.senha && data.senha.trim() !== '') {
+                    updatePayload.senha = data.senha;
+                }
+
                 await api.put(`/usuarios/${idParaEnvio}`, updatePayload);
             } else {
-                const createPayload: CreateUsuarioFormData = { ...data };
+                // Para criação, sempre envia senha (é obrigatória)
+                const createPayload: CreateUsuarioFormData = {
+                    ...data,
+                    senha: data.senha || '' // Garante que tenha senha
+                };
                 await api.post('/usuarios', createPayload);
             }
+
             onSuccess();
             onClose();
         } catch (err: any) {
@@ -121,12 +149,30 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
         }
     };
 
+    // Determina quando mostrar o campo senha
+    const shouldShowPasswordField = () => {
+        if (!isEditing) {
+            return true; // Para criação, sempre mostra
+        }
+        return isEditingSelf; // Para edição, só mostra se for o próprio usuário
+    };
+
     return (
         <>
             <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
                 <DialogTitle>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>{isEditing ? `Editar Usuário: ${usuarioToEdit?.nome}` : 'Novo Usuário'}</span>
+                        <span>
+                            {isEditing
+                                ? `Editar Usuário: ${usuarioToEdit?.nome}`
+                                : 'Novo Usuário'
+                            }
+                            {isEditingSelf && (
+                                <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+                                    (Seus dados)
+                                </Typography>
+                            )}
+                        </span>
 
                         {isEditing && usuarioCompleto && (
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -179,36 +225,116 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
                             control={control}
                             rules={{ required: 'O nome é obrigatório.' }}
                             render={({ field }) => (
-                                <TextField {...field} label="Nome Completo" fullWidth margin="normal" error={!!errors.nome} helperText={errors.nome?.message} />
+                                <TextField
+                                    {...field}
+                                    label="Nome Completo"
+                                    fullWidth
+                                    margin="normal"
+                                    error={!!errors.nome}
+                                    helperText={errors.nome?.message}
+                                />
                             )}
                         />
 
                         <Controller
                             name="email"
                             control={control}
+                            rules={{
+                                required: 'O e-mail é obrigatório.',
+                                pattern: {
+                                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                    message: 'E-mail inválido'
+                                }
+                            }}
                             render={({ field }) => (
-                                <TextField {...field} label="E-mail" fullWidth margin="normal" error={!!errors.email} helperText={errors.email?.message} disabled={isEditingSelf} />
+                                <TextField
+                                    {...field}
+                                    label="E-mail"
+                                    fullWidth
+                                    margin="normal"
+                                    error={!!errors.email}
+                                    helperText={errors.email?.message}
+                                    disabled={isEditingSelf}
+                                />
                             )}
                         />
 
-                        <Controller
-                            name="senha"
-                            control={control}
-                            render={({ field }) => (
-                                <TextField {...field} label={isEditing ? "Alterar Senha (Opcional)" : "Senha"} type="password" fullWidth margin="normal" error={!!errors.senha} helperText={errors.senha?.message} />
-                            )}
-                        />
+                        {/* Campo Senha - Condicional */}
+                        {shouldShowPasswordField() && (
+                            <Controller
+                                name="senha"
+                                control={control}
+                                rules={{
+                                    // Para criação, senha é obrigatória
+                                    // Para edição própria, senha é opcional
+                                    required: !isEditing ? 'A senha é obrigatória' : false,
+                                    minLength: isEditingSelf ? {
+                                        value: 6,
+                                        message: 'A senha deve ter pelo menos 6 caracteres'
+                                    } : undefined
+                                }}
+                                render={({ field }) => (
+                                    <TextField
+                                        {...field}
+                                        label={
+                                            isEditingSelf
+                                                ? "Alterar Senha (Deixe em branco para manter a atual)"
+                                                : isEditing
+                                                    ? "Nova Senha (Opcional)"
+                                                    : "Senha"
+                                        }
+                                        type="password"
+                                        fullWidth
+                                        margin="normal"
+                                        error={!!errors.senha}
+                                        helperText={errors.senha?.message}
+                                        placeholder={isEditingSelf ? "Digite nova senha..." : "Digite a senha..."}
+                                    />
+                                )}
+                            />
+                        )}
+
+                        {/* Mensagem informativa quando não é possível alterar senha */}
+                        {isEditing && !isEditingSelf && (
+                            <Box sx={{
+                                mb: 2,
+                                p: 1.5,
+                                bgcolor: 'info.light',
+                                borderRadius: 1,
+                                border: '1px solid',
+                                borderColor: 'info.main'
+                            }}>
+                                <Typography variant="caption" sx={{ color: 'info.contrastText' }}>
+                                    <strong>Nota:</strong> Apenas o próprio usuário pode alterar sua senha.
+                                    Para redefinir senha de outro usuário, use a opção "Esqueci minha senha"
+                                    no login ou entre em contato com o administrador.
+                                </Typography>
+                            </Box>
+                        )}
 
                         <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
                             <Controller
                                 name="perfil"
                                 control={control}
+                                rules={{ required: 'O perfil é obrigatório' }}
                                 render={({ field }) => (
                                     <FormControl fullWidth margin="normal">
                                         <InputLabel>Perfil</InputLabel>
-                                        <Select {...field} label="Perfil" disabled={isEditingSelf}>
-                                            {Object.values(PerfisEnum).map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                                        <Select
+                                            {...field}
+                                            label="Perfil"
+                                            error={!!errors.perfil}
+                                            disabled={isEditingSelf}
+                                        >
+                                            {Object.values(PerfisEnum).map((p) => (
+                                                <MenuItem key={p} value={p}>{p}</MenuItem>
+                                            ))}
                                         </Select>
+                                        {errors.perfil && (
+                                            <Typography variant="caption" color="error">
+                                                {errors.perfil.message}
+                                            </Typography>
+                                        )}
                                     </FormControl>
                                 )}
                             />
@@ -217,7 +343,12 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
                                 control={control}
                                 render={({ field }) => (
                                     <FormControlLabel
-                                        control={<Switch checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />}
+                                        control={
+                                            <Switch
+                                                checked={field.value}
+                                                onChange={(e) => field.onChange(e.target.checked)}
+                                            />
+                                        }
                                         label={field.value ? "Ativo" : "Inativo"}
                                         disabled={isEditingSelf}
                                         sx={{ mt: 2 }}
@@ -241,7 +372,6 @@ export const UsuarioFormModal: React.FC<UsuarioFormModalProps> = ({ open, onClos
                 <UsuarioPixModal
                     open={pixModalOpen}
                     onClose={() => setPixModalOpen(false)}
-                    // Garante que o objeto passado tenha o campo 'id' preenchido para o service
                     usuario={{
                         ...usuarioCompleto,
                         id: (usuarioCompleto.id || usuarioCompleto._id)?.toString() || ''
