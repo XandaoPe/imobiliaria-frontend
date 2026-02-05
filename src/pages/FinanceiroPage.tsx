@@ -28,36 +28,17 @@ import { FinanceiroPreviewTooltip } from '../components/FinanceiroPreviewTooltip
 import { Edit as EditIcon } from '@mui/icons-material';
 import { FinanceiroEdicaoModal } from '../components/financeiro/FinanceiroEdicaoModal';
 
+import { PIXQRCodeModal } from '../components/financeiro/PIXQRCodeModal';
+import { QrCode2 as QrCodeIcon } from '@mui/icons-material';
+import { podeGerarPIX } from '../utils/pixValidation';
+import { Transacao } from '../types/financeiro';
+ 
+
 const DEBOUNCE_DELAY = 400;
 
 type StatusFinanceiroFilter = 'TODOS' | 'PENDENTE' | 'PAGO' | 'CANCELADO' | 'ATRASADO';
 type TipoLancamentoFilter = 'TODOS' | 'RECEITA' | 'DESPESA';
 type CategoriaFilter = 'TODOS' | 'ALUGUEL' | 'VENDA' | 'COMISSAO' | 'REPASSE' | 'MANUTENCAO' | 'OPERACIONAL' | 'OUTROS';
-
-interface Transacao {
-    _id: string;
-    dataVencimento: string;
-    tipo: 'RECEITA' | 'DESPESA';
-    descricao: string;
-    valor: number;
-    status: string;
-    categoria: string;
-    parcelaNumero?: number;
-    negociacaoCodigo?: string;
-    dataPagamento?: string;
-    valorPago?: number;
-    observacoes?: string;
-    cliente?: {
-        _id: string;
-        nome: string;
-    };
-    imovel?: {
-        _id: string;
-        codigo: string;
-        titulo?: string;
-    };
-    comissoesDistribuidas?: boolean;
-}
 
 interface HighlightedTextProps {
     text: string | null | undefined;
@@ -178,6 +159,9 @@ export const FinanceiroPage: React.FC = () => {
     const [edicaoModalOpen, setEdicaoModalOpen] = useState(false);
     const [transacaoParaEditar, setTransacaoParaEditar] = useState<Transacao | null>(null);
 
+    const [pixModalOpen, setPixModalOpen] = useState(false);
+    const [transacaoParaPix, setTransacaoParaPix] = useState<Transacao | null>(null);
+
     const handlePopoverOpen = (event: React.MouseEvent<HTMLElement>, item: Transacao) => {
         setAnchorElPreview(event.currentTarget);
         setPreviewData(item);
@@ -191,6 +175,19 @@ export const FinanceiroPage: React.FC = () => {
     const handleAbrirEdicao = (transacao: Transacao) => {
         setTransacaoParaEditar(transacao);
         setEdicaoModalOpen(true);
+    };
+
+    // 3. Função para abrir modal PIX
+    const handleGerarPIX = (transacao: Transacao) => {
+        const validacao = podeGerarPIX(transacao);
+
+        if (!validacao.pode) {
+            alert(validacao.motivo);
+            return;
+        }
+
+        setTransacaoParaPix(transacao);
+        setPixModalOpen(true);
     };
 
     const formatCurrency = (val: number) =>
@@ -393,8 +390,6 @@ export const FinanceiroPage: React.FC = () => {
                     </Box>
 
                     {/* BARRA DE FILTROS */}
-                    {/* BARRA DE FILTROS SIMPLIFICADA */}
-                    {/* BARRA DE FILTROS SIMPLIFICADA */}
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         <Paper sx={{
                             p: 2,
@@ -725,6 +720,18 @@ export const FinanceiroPage: React.FC = () => {
                                                         </IconButton>
                                                     </Tooltip>
 
+                                                    <Tooltip title="Gerar QR Code PIX">
+                                                        <IconButton
+                                                            color="primary"
+                                                            onClick={() => handleGerarPIX(item)}
+                                                            size="small"
+                                                            disabled={item.status !== 'PENDENTE' ||
+                                                                (item.tipo !== 'RECEITA' && item.categoria !== 'COMISSAO')}
+                                                        >
+                                                            <QrCodeIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+
                                                     {item.status === 'PENDENTE' && (
                                                         <Tooltip title="Baixar Título">
                                                             <IconButton color="success" onClick={() => handleDarBaixa(item._id)} size="small">
@@ -1011,6 +1018,15 @@ export const FinanceiroPage: React.FC = () => {
                 }}
                 onSuccess={carregarDados}
                 transacaoId={transacaoParaEditar?._id || null}
+            />
+
+            <PIXQRCodeModal
+                open={pixModalOpen}
+                onClose={() => {
+                    setPixModalOpen(false);
+                    setTransacaoParaPix(null);
+                }}
+                transacao={transacaoParaPix}
             />
 
         </Box>

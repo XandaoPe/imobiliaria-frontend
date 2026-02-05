@@ -2,21 +2,29 @@ import * as yup from 'yup';
 
 export interface Transacao {
     _id: string;
+    dataVencimento: string;
+    tipo: 'RECEITA' | 'DESPESA';
     descricao: string;
     valor: number;
-    dataVencimento: string;
+    status: 'PENDENTE' | 'PAGO' | 'CANCELADO' | 'ATRASADO'; // ✅ Corrigido para valores específicos
+    categoria: string; // ✅ Mantém como string (pode ser 'ALUGUEL', 'VENDA', 'COMISSAO', etc.)
+    parcelaNumero?: number;
+    negociacaoCodigo?: string;
     dataPagamento?: string;
-    tipo: 'RECEITA' | 'DESPESA';
-    status: 'PENDENTE' | 'PAGO' | 'ATRASADO' | 'CANCELADO';
-    categoria: 'ALUGUEL' | 'REPASSE' | 'COMISSAO' | 'OPERACIONAL' | 'OUTROS';
-    cliente?: { _id: string; nome: string }; // Objeto populado
+    valorPago?: number;
+    observacoes?: string;
+    cliente?: {
+        _id: string;
+        nome: string;
+    };
     imovel?: {
         _id: string;
         codigo: string;
         titulo?: string;
-        endereco?: string;
-        cidade?: string;
+        endereco?: string; // ✅ Adicione se precisar
+        cidade?: string; // ✅ Adicione se precisar
     };
+    comissoesDistribuidas?: boolean; // ✅ Mantém este campo
 }
 
 export const financeiroValidationSchema = yup.object().shape({
