@@ -22,7 +22,30 @@ interface UsuarioPixModalProps {
 
 const chavePixSchema = yup.object().shape({
     tipo: yup.string().oneOf(Object.values(TipoChavePix)).required('Tipo de chave é obrigatório'),
-    chave: yup.string().required('Chave PIX é obrigatória'),
+    chave: yup.string()
+        .required('Chave PIX é obrigatória')
+        .test('formato-valido', 'Formato da chave inválido para o tipo selecionado', function (value) {
+            const { tipo } = this.parent;
+            if (!value) return false;
+            const cleanValue = value.replace(/\D/g, '');
+
+            switch (tipo) {
+                case TipoChavePix.CPF:
+                    return cleanValue.length === 11;
+                case TipoChavePix.CNPJ:
+                    return cleanValue.length === 14;
+                case TipoChavePix.TELEFONE:
+                    // Aceita 10 (fixo) ou 11 (celular) dígitos
+                    return cleanValue.length >= 10 && cleanValue.length <= 11;
+                case TipoChavePix.EMAIL:
+                    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+                case TipoChavePix.CHAVE_ALEATORIA:
+                    // Chave aleatória (UUID) geralmente tem 36 caracteres
+                    return value.length > 30;
+                default:
+                    return true;
+            }
+        }),
     preferencial: yup.boolean().default(false)
 });
 

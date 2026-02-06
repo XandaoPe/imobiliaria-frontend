@@ -56,23 +56,25 @@ export const PIXQRCodeModal: React.FC<PIXQRCodeModalProps> = ({
         setTabValue(0);
     };
 
-    const gerarQRCode = async () => {
+    const gerarQRCode = async (forcarNovo: boolean = false) => {
         if (!transacao) return;
 
         setLoading(true);
         setError(null);
+        if (forcarNovo) setPixData(null); // Limpa o anterior para forçar refresh visual
 
         try {
             const response = await api.post('/pix/gerar-qrcode', {
                 lancamentoId: transacao._id,
                 descricaoPersonalizada: `PIX ${transacao.descricao} - ${transacao.negociacaoCodigo || ''}`,
-                valorPersonalizado: transacao.valor
+                valorPersonalizado: transacao.valor,
+                forcarNovo: forcarNovo // Envia flag para o backend
             });
 
             setPixData(response.data);
+            setTabValue(0); // Volta para a aba do QR Code
         } catch (err: any) {
             setError(err.response?.data?.message || 'Erro ao gerar QR Code PIX');
-            console.error('Erro ao gerar PIX:', err);
         } finally {
             setLoading(false);
         }
@@ -345,13 +347,15 @@ export const PIXQRCodeModal: React.FC<PIXQRCodeModalProps> = ({
                 <Button onClick={onClose} color="secondary">
                     Fechar
                 </Button>
-                {pixData && pixData.status === 'GERADO' && (
+                {/* Botão Gerar Novo: Agora passa 'true' para forçar a substituição */}
+                {pixData && (
                     <Button
                         variant="contained"
-                        onClick={gerarQRCode}
+                        onClick={() => gerarQRCode(true)}
                         startIcon={<QrCode2 />}
+                        disabled={loading}
                     >
-                        Gerar Novo
+                        {loading ? 'Gerando...' : 'Gerar Novo'}
                     </Button>
                 )}
             </DialogActions>
