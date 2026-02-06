@@ -6,7 +6,7 @@ import {
     Chip, Alert, Stack, Paper, CircularProgress,
     Tab, Tabs
 } from '@mui/material';
-import { QrCode2, ContentCopy, Download, CheckCircle, Close } from '@mui/icons-material';
+import { QrCode2, ContentCopy, Download, CheckCircle, Close, Info } from '@mui/icons-material';
 import { QRCodeSVG } from 'qrcode.react'; // ✅ Use QRCodeSVG ao invés de QRCode
 import { Transacao } from '../../types/financeiro';
 import api from '../../services/api';
@@ -28,6 +28,8 @@ interface PIXData {
     dataExpiracao: string;
     dataCriacao: string;
     status: string;
+    aviso?: string; 
+    alerta?: string;
 }
 
 export const PIXQRCodeModal: React.FC<PIXQRCodeModalProps> = ({
@@ -164,7 +166,20 @@ export const PIXQRCodeModal: React.FC<PIXQRCodeModalProps> = ({
                     </Alert>
                 ) : pixData ? (
                     <Stack spacing={3}>
-                        {/* Informações da Transação */}
+                                {/* Alerta exibido quando o backend identifica um QR Code já existente */}
+                                {pixData.aviso && (
+                                    <Alert
+                                        severity="warning"
+                                        variant="filled"
+                                        icon={<Info fontSize="inherit" />}
+                                        sx={{ fontWeight: 'medium' }}
+                                    >
+                                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                            {pixData.aviso}
+                                        </Typography>
+                                        {pixData.alerta}
+                                    </Alert>
+                                )}                        {/* Informações da Transação */}
                         <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
                             <Stack direction="row" justifyContent="space-between" alignItems="center">
                                 <Box>

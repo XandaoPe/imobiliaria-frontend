@@ -6,10 +6,10 @@ export const podeGerarPIX = (transacao: any): { pode: boolean; motivo?: string }
     }
 
     // Verifica tipo e categoria
-    const tiposPermitidos = ['RECEITA', 'COMISSAO'];
-    if (!tiposPermitidos.includes(transacao.tipo) && transacao.categoria !== 'COMISSAO') {
-        return { pode: false, motivo: 'Somente receitas e comissões podem gerar PIX' };
-    }
+    // const tiposPermitidos = ['RECEITA', 'COMISSAO'];
+    // if (!tiposPermitidos.includes(transacao.tipo) && transacao.categoria !== 'COMISSAO') {
+    //     return { pode: false, motivo: 'Somente receitas e comissões podem gerar PIX' };
+    // }
 
     // Verifica valor positivo
     if (transacao.valor <= 0) {

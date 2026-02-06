@@ -725,8 +725,7 @@ export const FinanceiroPage: React.FC = () => {
                                                             color="primary"
                                                             onClick={() => handleGerarPIX(item)}
                                                             size="small"
-                                                            disabled={item.status !== 'PENDENTE' ||
-                                                                (item.tipo !== 'RECEITA' && item.categoria !== 'COMISSAO')}
+                                                            disabled={item.status !== 'PENDENTE'}
                                                         >
                                                             <QrCodeIcon fontSize="small" />
                                                         </IconButton>
